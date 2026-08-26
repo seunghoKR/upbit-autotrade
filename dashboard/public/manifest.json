@@ -1,0 +1,16 @@
+{
+  "short_name": "NURIOH",
+  "name": "NURIOH 자동매매 트레이딩 시스템",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0B0E14",
+  "theme_color": "#0B0E14",
+  "display": "standalone",
+  "orientation": "portrait"
+}
