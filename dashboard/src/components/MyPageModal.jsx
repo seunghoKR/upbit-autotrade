@@ -112,85 +112,85 @@ export default function MyPageModal({
   const isAdmin = user?.role === 'ADMIN';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4 animate-in fade-in overflow-y-auto">
-      <div className="bg-slate-900 border-2 border-indigo-500/50 rounded-2xl max-w-2xl w-full p-4 sm:p-6 shadow-2xl shadow-black/80 relative space-y-5 my-auto max-h-[95vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-5 animate-in fade-in overflow-y-auto">
+      <div className="bg-slate-900 border-2 border-indigo-500/50 rounded-3xl max-w-3xl w-full p-5 sm:p-7 shadow-2xl shadow-black/80 relative space-y-6 my-auto max-h-[95vh] overflow-y-auto">
         
         {/* 1. 상단 프로필 헤더 */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3.5">
             <div className="relative">
               <img
                 src={user?.profileImage || 'https://raw.githubusercontent.com/wonseokjung/solopreneur-ai-agents/main/agents/youngja/assets/youngja_thumbsup.png'}
                 alt=""
-                className="w-12 h-12 rounded-2xl border-2 border-indigo-500/40 object-cover"
+                className="w-13 h-13 rounded-2xl border-2 border-indigo-500/40 object-cover"
               />
               {isAdmin && (
-                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-amber-500 text-black flex items-center justify-center text-[10px] font-bold shadow">
+                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-amber-500 text-black flex items-center justify-center text-xs font-black shadow">
                   👑
                 </span>
               )}
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-base sm:text-lg font-black text-slate-100">
+                <h3 className="text-lg sm:text-xl font-black text-slate-100">
                   {user?.nickname || '누리오 마스터 대표님'}
                 </h3>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-bold">
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-bold">
                   {isAdmin ? '마스터 관리자' : user?.tier}
                 </span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-semibold">
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-semibold">
                   IP: 49.171.41.10
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                누리오 자동매매 안전 관리 센터 & 개인 맞춤 설정
+              <p className="text-sm text-slate-300 mt-1">
+                누리오 자동매매 안전 관리 센터 & 개인 맞춤 한도 설정
               </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition cursor-pointer"
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-6 h-6" />
           </button>
         </div>
 
         {/* 2. 탭 네비게이션 */}
-        <div className="flex items-center gap-2 border-b border-slate-800 pb-2 text-xs font-bold">
+        <div className="flex items-center gap-2.5 border-b border-slate-800 pb-2.5 text-sm font-bold flex-wrap sm:flex-nowrap">
           <button
             onClick={() => setActiveTab('AUTO_TRADING')}
-            className={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
+            className={`px-4 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer ${
               activeTab === 'AUTO_TRADING'
                 ? 'bg-indigo-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800'
             }`}
           >
-            <Zap className="w-3.5 h-3.5" />
+            <Zap className="w-4 h-4" />
             <span>⚡ 자동매매 동의/한도 설정</span>
           </button>
 
           <button
             onClick={() => setActiveTab('API_SECURITY')}
-            className={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
+            className={`px-4 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer ${
               activeTab === 'API_SECURITY'
                 ? 'bg-indigo-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800'
             }`}
           >
-            <KeyRound className="w-3.5 h-3.5" />
+            <KeyRound className="w-4 h-4" />
             <span>🔑 API 보안</span>
           </button>
 
           <button
             onClick={() => setActiveTab('MEMBERSHIP')}
-            className={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
+            className={`px-4 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer ${
               activeTab === 'MEMBERSHIP'
                 ? 'bg-indigo-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800'
             }`}
           >
-            <Crown className="w-3.5 h-3.5" />
+            <Crown className="w-4 h-4" />
             <span>💎 멤버십</span>
           </button>
         </div>
@@ -199,37 +199,37 @@ export default function MyPageModal({
 
         {/* TAB 1: ⚡ 자동매매 핵심 안전 동의 & 총 운용 한도 설정 */}
         {activeTab === 'AUTO_TRADING' && (
-          <div className="space-y-4 animate-in fade-in">
+          <div className="space-y-5 animate-in fade-in text-sm text-slate-200">
             {/* 1. 자동매매 서비스 이용 동의 카드 */}
-            <div className={`p-4 rounded-2xl border transition-all ${
+            <div className={`p-5 rounded-2xl border transition-all ${
               isAgreed 
                 ? 'bg-emerald-950/20 border-emerald-500/40 shadow-lg shadow-emerald-950/30' 
                 : 'bg-rose-950/20 border-rose-500/40'
             }`}>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-start gap-3">
-                  <div className={`p-2.5 rounded-xl border shrink-0 ${
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3.5">
+                  <div className={`p-3 rounded-2xl border shrink-0 ${
                     isAgreed ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' : 'bg-rose-500/20 text-rose-400 border-rose-500/40'
                   }`}>
-                    <ShieldCheck className="w-6 h-6" />
+                    <ShieldCheck className="w-7 h-7" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h4 className="text-sm font-extrabold text-slate-100">
+                      <h4 className="text-base font-black text-slate-100">
                         알고리즘 자동매매 실행 동의
                       </h4>
-                      <span className={`text-[10px] px-2 py-0.2 rounded-full font-bold border ${
+                      <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
                         isAgreed ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
                       }`}>
                         {isAgreed ? '동의 완료 (ON)' : '미동의 (자동주문 차단됨)'}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                    <p className="text-sm text-slate-200 mt-1.5 leading-relaxed">
                       업비트 계좌에서 <strong>초단타 급등 신호 포착 및 트레일링 스탑에 의해 자동으로 주문이 집행</strong>되는 것에 동의합니다.
                     </p>
                     {!isAgreed && (
-                      <p className="text-[11px] text-rose-400 font-bold mt-1 flex items-center gap-1">
-                        <AlertTriangle className="w-3.5 h-3.5" /> 미동의 상태에서는 모든 자동 매수가 차단되며 수동 승인만 가능합니다.
+                      <p className="text-xs text-rose-400 font-bold mt-1.5 flex items-center gap-1.5">
+                        <AlertTriangle className="w-4 h-4" /> 미동의 상태에서는 모든 자동 매수가 차단되며 수동 승인만 가능합니다.
                       </p>
                     )}
                   </div>
@@ -239,55 +239,55 @@ export default function MyPageModal({
                 <button
                   type="button"
                   onClick={() => setIsAgreed(!isAgreed)}
-                  className={`w-12 h-6 rounded-full p-0.5 transition-colors cursor-pointer self-end sm:self-center shrink-0 ${
+                  className={`w-14 h-7 rounded-full p-1 transition-colors cursor-pointer self-end sm:self-center shrink-0 ${
                     isAgreed ? 'bg-emerald-500' : 'bg-slate-700'
                   }`}
                 >
                   <div className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                    isAgreed ? 'translate-x-6' : 'translate-x-0'
+                    isAgreed ? 'translate-x-7' : 'translate-x-0'
                   }`} />
                 </button>
               </div>
             </div>
 
             {/* 2. 자동매매 총 운용 한도 금액 설정 */}
-            <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="bg-slate-950/70 p-5 rounded-2xl border border-slate-800 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h4 className="text-sm font-bold text-slate-200 flex items-center gap-1.5">
-                    <Coins className="w-4 h-4 text-cyan-400" />
+                  <h4 className="text-base font-black text-slate-100 flex items-center gap-2">
+                    <Coins className="w-5 h-5 text-cyan-400" />
                     자동매매 총 운용 한도 금액
                   </h4>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="text-sm text-slate-300 mt-0.5">
                     모든 슬롯의 1회 진입금액 합계가 이 총 한도를 초과하지 않도록 안전하게 제한합니다.
                   </p>
                 </div>
 
-                <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                <div className="flex items-center gap-2 self-end sm:self-auto">
                   <input
                     type="number"
                     step="50000"
                     min="10000"
                     value={maxTotalLimitKrw}
                     onChange={(e) => setMaxTotalLimitKrw(Number(e.target.value))}
-                    className="w-32 bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-right text-cyan-300 font-mono font-extrabold text-sm focus:outline-none focus:border-cyan-500"
+                    className="w-36 bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-right text-cyan-300 font-mono font-black text-base focus:outline-none focus:border-cyan-500"
                   />
-                  <span className="text-xs text-slate-400 font-bold">원</span>
+                  <span className="text-sm text-slate-300 font-bold">원</span>
                 </div>
               </div>
 
               {/* 퀵 한도 설정 버튼들 */}
-              <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                <span className="text-[11px] text-slate-500 mr-1">빠른 설정:</span>
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="text-xs text-slate-400 mr-1 font-semibold">빠른 설정:</span>
                 {[300000, 500000, 1000000, 2000000, 5000000].map(amt => (
                   <button
                     key={amt}
                     type="button"
                     onClick={() => setQuickTotalLimit(amt)}
-                    className={`px-2.5 py-1 rounded-lg border font-mono transition cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-lg border font-mono text-xs sm:text-sm transition cursor-pointer ${
                       maxTotalLimitKrw === amt
-                        ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 font-bold'
-                        : 'bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-800'
+                        ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 font-black'
+                        : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
                     }`}
                   >
                     {(amt / 10000).toLocaleString()}만원
@@ -296,14 +296,14 @@ export default function MyPageModal({
               </div>
 
               {/* 한도 대비 현재 슬롯 합계 게이지 바 */}
-              <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 space-y-1">
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-400">슬롯 설정 합계: <strong className="text-slate-200 font-mono">{currentTotalSlotAmount.toLocaleString()}원</strong></span>
+              <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 space-y-1.5">
+                <div className="flex justify-between text-xs sm:text-sm">
+                  <span className="text-slate-300">슬롯 설정 합계: <strong className="text-white font-mono">{currentTotalSlotAmount.toLocaleString()}원</strong></span>
                   <span className={`font-bold font-mono ${isLimitExceeded ? 'text-rose-400' : 'text-emerald-400'}`}>
                     한도: {maxTotalLimitKrw.toLocaleString()}원 {isLimitExceeded ? '(한도 초과 ⚠️)' : '(안전 ✅)'}
                   </span>
                 </div>
-                <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
                   <div
                     className={`h-full transition-all duration-300 ${
                       isLimitExceeded 
@@ -317,50 +317,50 @@ export default function MyPageModal({
             </div>
 
             {/* 3. 슬롯별 자동매매 허용 금액 설정 */}
-            <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 space-y-3">
+            <div className="bg-slate-950/70 p-5 rounded-2xl border border-slate-800 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-sm font-bold text-slate-200 flex items-center gap-1.5">
-                    <Layers className="w-4 h-4 text-indigo-400" />
+                  <h4 className="text-base font-black text-slate-100 flex items-center gap-2">
+                    <Layers className="w-5 h-5 text-indigo-400" />
                     슬롯별 자동매매 허용 금액 설정
                   </h4>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="text-sm text-slate-300 mt-0.5">
                     급등 신호 포착 시 각 슬롯에 배정될 1회 진입금액을 개별 설정합니다.
                   </p>
                 </div>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-mono font-bold">
+                <span className="text-xs sm:text-sm px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 font-mono font-black">
                   합계: {currentTotalSlotAmount.toLocaleString()}원
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
                 {[1, 2, 3, 4, 5].map((slotId) => {
                   const currentSlot = slots.find(s => s.slotId === slotId);
                   const isEnabled = currentSlot?.isEnabled ?? true;
                   const amount = slotLimits[slotId] || 50000;
 
                   return (
-                    <div key={slotId} className="bg-slate-900/90 p-3 rounded-xl border border-slate-800 space-y-2">
+                    <div key={slotId} className="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 space-y-2.5">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                          <span className={`w-2 h-2 rounded-full ${isEnabled ? 'bg-emerald-400' : 'bg-slate-600'}`}></span>
-                          <span className="font-bold text-slate-200">슬롯 {slotId}</span>
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2.5 h-2.5 rounded-full ${isEnabled ? 'bg-emerald-400' : 'bg-slate-600'}`}></span>
+                          <span className="font-bold text-slate-100 text-sm">슬롯 {slotId}</span>
                         </div>
-                        <span className="text-[10px] text-slate-500">
+                        <span className="text-xs text-slate-400 font-medium">
                           {isEnabled ? '활성' : '비활성'}
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1.5">
                         <input
                           type="number"
                           step="5000"
                           min="5000"
                           value={amount}
                           onChange={(e) => handleSlotAmountChange(slotId, e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-right text-slate-100 font-mono font-bold text-xs focus:outline-none focus:border-indigo-500"
+                          className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-right text-slate-100 font-mono font-bold text-sm focus:outline-none focus:border-indigo-500"
                         />
-                        <span className="text-slate-400 text-[11px] shrink-0">원</span>
+                        <span className="text-slate-300 text-xs shrink-0 font-medium">원</span>
                       </div>
                     </div>
                   );
@@ -369,29 +369,29 @@ export default function MyPageModal({
             </div>
 
             {/* 4. 주문 실행 승인 모드 선택 */}
-            <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 space-y-3">
-              <h4 className="text-sm font-bold text-slate-200 flex items-center gap-1.5">
-                <Sliders className="w-4 h-4 text-purple-400" />
+            <div className="bg-slate-950/70 p-5 rounded-2xl border border-slate-800 space-y-4">
+              <h4 className="text-base font-black text-slate-100 flex items-center gap-2">
+                <Sliders className="w-5 h-5 text-purple-400" />
                 급등 포착 시 주문 실행 방식
               </h4>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-sm">
                 <button
                   type="button"
                   onClick={() => setExecutionMode('AUTO')}
-                  className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                  className={`p-4 rounded-2xl border text-left transition cursor-pointer ${
                     executionMode === 'AUTO'
                       ? 'bg-indigo-600/20 border-indigo-500 text-indigo-200 shadow-md ring-1 ring-indigo-400'
                       : 'bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-850'
                   }`}
                 >
-                  <div className="flex items-center justify-between font-bold text-slate-100 mb-1">
-                    <span className="flex items-center gap-1 text-indigo-300">
+                  <div className="flex items-center justify-between font-black text-slate-100 mb-1.5">
+                    <span className="flex items-center gap-1.5 text-indigo-300 text-sm sm:text-base">
                       ⚡ 전자동 즉시 체결 (Auto)
                     </span>
-                    {executionMode === 'AUTO' && <Check className="w-4 h-4 text-indigo-400" />}
+                    {executionMode === 'AUTO' && <Check className="w-5 h-5 text-indigo-400" />}
                   </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
                     급등 신호 포착 즉시 0.1초 만에 슬롯에 자동 탑승하고 시장가 매수를 집행합니다.
                   </p>
                 </button>
@@ -399,19 +399,19 @@ export default function MyPageModal({
                 <button
                   type="button"
                   onClick={() => setExecutionMode('MANUAL')}
-                  className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                  className={`p-4 rounded-2xl border text-left transition cursor-pointer ${
                     executionMode === 'MANUAL'
                       ? 'bg-amber-600/20 border-amber-500 text-amber-200 shadow-md ring-1 ring-amber-400'
                       : 'bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-850'
                   }`}
                 >
-                  <div className="flex items-center justify-between font-bold text-slate-100 mb-1">
-                    <span className="flex items-center gap-1 text-amber-300">
+                  <div className="flex items-center justify-between font-black text-slate-100 mb-1.5">
+                    <span className="flex items-center gap-1.5 text-amber-300 text-sm sm:text-base">
                       🛡️ 안전 수동 승인 (Confirm)
                     </span>
-                    {executionMode === 'MANUAL' && <Check className="w-4 h-4 text-amber-400" />}
+                    {executionMode === 'MANUAL' && <Check className="w-5 h-5 text-amber-400" />}
                   </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
                     급등 포착 시 텔레그램 및 화면에 승인 알림을 띄우며, 승인 버튼 클릭 시에만 매수합니다.
                   </p>
                 </button>
@@ -422,25 +422,25 @@ export default function MyPageModal({
 
         {/* TAB 2: 🔑 API 키 및 보안 */}
         {activeTab === 'API_SECURITY' && (
-          <div className="space-y-4 animate-in fade-in text-xs">
-            <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 space-y-3">
+          <div className="space-y-5 animate-in fade-in text-sm text-slate-200">
+            <div className="bg-slate-950/70 p-5 rounded-2xl border border-slate-800 space-y-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <KeyRound className="w-5 h-5 text-amber-400" />
+                <div className="flex items-center gap-3">
+                  <KeyRound className="w-6 h-6 text-amber-400" />
                   <div>
-                    <h4 className="text-sm font-bold text-slate-200">업비트 Open API 연동 현황</h4>
-                    <p className="text-slate-400 text-[11px]">AES-256 군사 등급 암호화 보관 중</p>
+                    <h4 className="text-base font-black text-slate-100">업비트 Open API 연동 현황</h4>
+                    <p className="text-slate-300 text-xs sm:text-sm">AES-256 군사 등급 암호화 보관 중</p>
                   </div>
                 </div>
-                <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" /> 정상 연결됨
+                <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold flex items-center gap-1.5 text-xs sm:text-sm">
+                  <CheckCircle2 className="w-4 h-4" /> 정상 연결됨
                 </span>
               </div>
 
-              <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-2">
+              <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-2.5 text-xs sm:text-sm">
                 <div className="flex justify-between">
                   <span className="text-slate-400">등록된 승인 IP:</span>
-                  <span className="font-mono text-slate-200 font-bold">49.171.41.10</span>
+                  <span className="font-mono text-slate-100 font-black">49.171.41.10</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">API 권한:</span>
@@ -454,7 +454,7 @@ export default function MyPageModal({
                   onClose();
                   if (onOpenApiModal) onOpenApiModal();
                 }}
-                className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer"
               >
                 <KeyRound className="w-4 h-4 text-amber-400" />
                 <span>API 키 재등록 / 변경</span>
@@ -465,22 +465,22 @@ export default function MyPageModal({
 
         {/* TAB 3: 💎 멤버십 및 이용권 */}
         {activeTab === 'MEMBERSHIP' && (
-          <div className="space-y-4 animate-in fade-in text-xs">
-            <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 space-y-3">
+          <div className="space-y-5 animate-in fade-in text-sm text-slate-200">
+            <div className="bg-slate-950/70 p-5 rounded-2xl border border-slate-800 space-y-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Crown className="w-5 h-5 text-amber-400" />
+                <div className="flex items-center gap-3">
+                  <Crown className="w-6 h-6 text-amber-400" />
                   <div>
-                    <h4 className="text-sm font-bold text-slate-200">현재 이용 중인 플랜</h4>
-                    <p className="text-slate-400 text-[11px]">{user?.role === 'ADMIN' ? '마스터 관리자 영구 라이선스' : user?.tier}</p>
+                    <h4 className="text-base font-black text-slate-100">현재 이용 중인 플랜</h4>
+                    <p className="text-slate-300 text-xs sm:text-sm">{user?.role === 'ADMIN' ? '마스터 관리자 영구 라이선스' : user?.tier}</p>
                   </div>
                 </div>
-                <span className="px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 font-extrabold">
+                <span className="px-3.5 py-1.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 font-black text-xs sm:text-sm">
                   {user?.maxSlots || 5}슬롯 무제한
                 </span>
               </div>
 
-              <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-2">
+              <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-2.5 text-xs sm:text-sm">
                 <div className="flex justify-between">
                   <span className="text-slate-400">동시 가동 슬롯 수:</span>
                   <span className="font-bold text-indigo-400 font-mono">{user?.maxSlots || 5}개</span>
@@ -497,7 +497,7 @@ export default function MyPageModal({
                   onClose();
                   if (onOpenPricing) onOpenPricing();
                 }}
-                className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-lg shadow-indigo-600/30"
+                className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-indigo-600/30"
               >
                 <Crown className="w-4 h-4 text-amber-300" />
                 <span>멤버십 플랜 업그레이드</span>
@@ -507,22 +507,22 @@ export default function MyPageModal({
         )}
 
         {/* 4. 하단 액션 바 */}
-        <div className="flex items-center justify-between gap-3 pt-3 border-t border-slate-800">
-          <div className="text-xs text-slate-400">
+        <div className="flex items-center justify-between gap-3 pt-3 border-t border-slate-800 text-xs sm:text-sm">
+          <div className="text-slate-300">
             {isLimitExceeded ? (
-              <span className="text-rose-400 font-bold flex items-center gap-1">
-                <AlertTriangle className="w-3.5 h-3.5" /> 슬롯 합계가 총 한도를 초과했습니다.
+              <span className="text-rose-400 font-bold flex items-center gap-1.5">
+                <AlertTriangle className="w-4 h-4" /> 슬롯 합계가 총 한도를 초과했습니다.
               </span>
             ) : (
               <span>설정 저장 시 슬롯 매니저와 백엔드에 즉시 반영됩니다.</span>
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-xs transition cursor-pointer"
+              className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs sm:text-sm transition cursor-pointer"
             >
               닫기
             </button>
@@ -531,7 +531,7 @@ export default function MyPageModal({
               type="button"
               disabled={isSaving}
               onClick={handleSave}
-              className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-md shadow-indigo-600/30 cursor-pointer"
+              className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs sm:text-sm transition flex items-center gap-2 shadow-md shadow-indigo-600/30 cursor-pointer"
             >
               {isSaved ? <Check className="w-4 h-4 text-emerald-300" /> : <Save className="w-4 h-4" />}
               <span>{isSaved ? '저장 완료!' : isSaving ? '저장 중...' : '마이페이지 설정 저장'}</span>

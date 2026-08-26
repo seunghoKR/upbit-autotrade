@@ -215,13 +215,13 @@ export default function ChartView({
               <h2 className="text-base sm:text-lg font-black text-slate-100 flex items-center gap-2">
                 {coinMeta.name} 실시간 가격 차트
               </h2>
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
                 실시간 틱 감시 중
               </span>
             </div>
 
-            <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5">
+            <p className="text-xs sm:text-sm text-slate-300 mt-1">
               {isSlotPending 
                 ? `슬롯 ${selectedSlot.slotId}번에 포착된 ${coinMeta.name}의 실시간 급등 호가 및 체결 추세를 확인합니다.`
                 : isSlotHolding 
@@ -235,14 +235,14 @@ export default function ChartView({
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
           {/* 슬롯에 신호/포지션이 없을 때만 추천 코인 선택 탭 표시 */}
           {!hasActiveSlotCoin && (
-            <div className="flex items-center gap-1.5 bg-slate-950/80 p-1 rounded-xl border border-slate-800 text-xs">
+            <div className="flex items-center gap-1.5 bg-slate-950/80 p-1 rounded-xl border border-slate-800 text-xs sm:text-sm">
               {/* 거래대금 1위 버튼 */}
               <button
                 onClick={() => setIdleMode('TOP_VOLUME')}
                 className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1 cursor-pointer ${
                   idleMode === 'TOP_VOLUME'
                     ? 'bg-gradient-to-r from-amber-500/30 to-orange-500/30 border border-amber-500/50 text-amber-300 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                    : 'text-slate-300 hover:text-white'
                 }`}
                 title="업비트 당일 거래대금이 가장 많은 시장 주도 코인을 표시합니다."
               >
@@ -256,7 +256,7 @@ export default function ChartView({
                 className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1 cursor-pointer ${
                   idleMode === 'TOP_GAINER'
                     ? 'bg-gradient-to-r from-purple-500/30 to-pink-500/30 border border-purple-500/50 text-purple-300 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                    : 'text-slate-300 hover:text-white'
                 }`}
                 title="업비트 당일 상승률이 가장 높은 급등 코인을 표시합니다."
               >
@@ -270,7 +270,7 @@ export default function ChartView({
                 className={`px-2.5 py-1.5 rounded-lg font-bold transition flex items-center gap-1 cursor-pointer ${
                   idleMode === 'BTC'
                     ? 'bg-slate-800 text-slate-100 border border-slate-700 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                    : 'text-slate-300 hover:text-white'
                 }`}
               >
                 <Crown className="w-3.5 h-3.5 text-amber-400" />
@@ -282,7 +282,7 @@ export default function ChartView({
           {/* 현재 체결가 및 24H 변동률 */}
           <div className="flex items-center gap-3 self-end sm:self-auto">
             <div className="text-right">
-              <span className="text-[10px] text-slate-400 block">현재 체결가</span>
+              <span className="text-xs text-slate-300 block font-medium">현재 체결가</span>
               <div 
                 className="text-xl sm:text-2xl font-black font-mono tracking-tight"
                 style={{ color: coinMeta.color }}
@@ -291,7 +291,7 @@ export default function ChartView({
               </div>
             </div>
 
-            <div className={`px-2.5 sm:px-3 py-1.5 rounded-xl border text-xs font-extrabold font-mono flex items-center gap-1 ${
+            <div className={`px-3 py-1.5 rounded-xl border text-xs sm:text-sm font-extrabold font-mono flex items-center gap-1 ${
               isPositive 
                 ? 'bg-rose-500/15 text-rose-400 border-rose-500/30' 
                 : 'bg-blue-500/15 text-blue-400 border-blue-500/30'
@@ -304,27 +304,27 @@ export default function ChartView({
       </div>
 
       {/* 2. 24시간 최고가/최저가 & 보조 지표 바 */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-3.5 py-2 rounded-xl bg-slate-950/80 border border-slate-800 text-xs">
-        <div className="flex items-center gap-3 sm:gap-4 text-xs">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs sm:text-sm">
+        <div className="flex items-center gap-3 sm:gap-5 text-xs sm:text-sm">
           <div>
-            <span className="text-slate-500 text-[11px] mr-1.5">24H 최고:</span>
+            <span className="text-slate-400 mr-1.5">24H 최고:</span>
             <span className="font-mono text-rose-400 font-bold">{Math.round(high24h).toLocaleString()}원</span>
           </div>
           <div>
-            <span className="text-slate-500 text-[11px] mr-1.5">24H 최저:</span>
+            <span className="text-slate-400 mr-1.5">24H 최저:</span>
             <span className="font-mono text-blue-400 font-bold">{Math.round(low24h).toLocaleString()}원</span>
           </div>
           <div className="hidden md:block">
-            <span className="text-slate-500 text-[11px] mr-1.5">24H 거래대금:</span>
-            <span className="font-mono text-slate-300">{(accTradeVolume24h / 100000000).toFixed(1)}억원</span>
+            <span className="text-slate-400 mr-1.5">24H 거래대금:</span>
+            <span className="font-mono text-slate-200 font-bold">{(accTradeVolume24h / 100000000).toFixed(1)}억원</span>
           </div>
         </div>
 
         {/* RSI & 볼린저 밴드 */}
-        <div className="flex items-center gap-2">
-          <div className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 flex items-center gap-1.5">
-            <span className="text-slate-400 text-[11px]">RSI(14):</span>
-            <span className={`font-bold font-mono text-[11px] ${
+        <div className="flex items-center gap-2.5">
+          <div className="px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 flex items-center gap-1.5">
+            <span className="text-slate-300 text-xs">RSI(14):</span>
+            <span className={`font-bold font-mono text-xs sm:text-sm ${
               rsi <= 30 ? 'text-emerald-400' : rsi >= 70 ? 'text-rose-400' : 'text-cyan-400'
             }`}>
               {rsi || 50}
