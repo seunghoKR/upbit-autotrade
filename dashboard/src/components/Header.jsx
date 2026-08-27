@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, Power, RefreshCw, ShieldAlert, BarChart3, Settings, BookOpen } from 'lucide-react';
+import { ShieldCheck, Power, RefreshCw, ShieldAlert, BarChart3, Settings, BookOpen, Zap } from 'lucide-react';
 
 export default function Header({ 
   botRunning, 
@@ -15,34 +15,31 @@ export default function Header({
   onOpenManual
 }) {
   return (
-    <header className="border-b border-dark-border bg-dark-card/90 backdrop-blur-md sticky top-0 z-40 px-3 sm:px-6 py-2.5 sm:py-3.5">
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
+    <header className="border-b border-slate-800 bg-slate-950/90 backdrop-blur-md sticky top-0 z-40 px-2.5 sm:px-6 py-2 sm:py-3">
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-1.5 sm:gap-4">
         
-        {/* 좌측: 로고 & 브랜드명 (모바일 최적화) */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl overflow-hidden shadow-md shadow-emerald-500/20 border border-emerald-500/30 flex items-center justify-center bg-slate-950 shrink-0">
+        {/* 좌측: 로고 & 브랜드명 (모바일 1줄 고정) */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+          <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg overflow-hidden shadow-md shadow-emerald-500/20 border border-emerald-500/30 flex items-center justify-center bg-slate-950 shrink-0">
             <img 
               src="/assets/logos/nurioh_logo.png" 
               alt="NURIOH" 
               className="w-full h-full object-cover"
             />
           </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <h1 className="text-base sm:text-lg font-black text-white tracking-tight">NURIOH</h1>
-              <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold hidden xs:inline">
-                AI
-              </span>
-            </div>
-            <p className="text-[10px] text-slate-400 hidden sm:block">실시간 급등 감시 & 멀티 슬롯 트레이딩</p>
+          <div className="flex items-center gap-1">
+            <h1 className="text-sm sm:text-lg font-black text-white tracking-tight whitespace-nowrap">NURIOH</h1>
+            <span className="text-[9px] sm:text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold hidden sm:inline">
+              AI
+            </span>
           </div>
         </div>
 
         {/* 데스크톱 전용 실시간 현재가 티커 */}
         {livePrice && (
-          <div className="hidden xl:flex items-center gap-3 px-3 py-1.5 rounded-xl bg-dark-bg/60 border border-dark-border text-xs">
+          <div className="hidden xl:flex items-center gap-3 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs">
             <span className="font-semibold text-slate-400">{livePrice.code || 'KRW-BTC'}</span>
-            <span className={`font-bold font-mono ${livePrice.change === 'FALL' ? 'text-upbit-blue' : 'text-upbit-red'}`}>
+            <span className={`font-bold font-mono ${livePrice.change === 'FALL' ? 'text-blue-400' : 'text-rose-400'}`}>
               {Number(livePrice.trade_price || 0).toLocaleString()} KRW
             </span>
             <span className={`text-[11px] px-1.5 py-0.2 rounded font-mono font-semibold ${
@@ -53,72 +50,70 @@ export default function Header({
           </div>
         )}
 
-        {/* 우측: 제어 버튼 바 (📖 매뉴얼/의견, ⚙️ 설정, 📊 운영, 🚨 긴급 강제 매도 등) */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 flex-wrap sm:flex-nowrap justify-end">
-          {/* 📖 매뉴얼 & 의견 수렴 창구 버튼 */}
+        {/* 우측: 제어 버튼 바 (모바일에서 화면 밖으로 안 벗어나게 초슬림 1줄 압축) */}
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+          {/* 📖 매뉴얼 버튼 */}
           <button
             onClick={onOpenManual}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-500/20 to-purple-500/20 hover:from-indigo-500/30 hover:to-purple-500/30 border border-indigo-500/40 text-indigo-200 text-xs font-bold transition cursor-pointer shadow-sm"
-            title="서비스 핵심 매뉴얼 및 기능 개선 의견 제안"
+            className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg bg-indigo-950/40 hover:bg-indigo-900/40 border border-indigo-500/40 text-indigo-300 text-xs font-bold transition cursor-pointer flex items-center gap-1 shrink-0"
+            title="매뉴얼 & 개선 의견"
           >
             <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
-            <span className="hidden xs:inline">매뉴얼/의견</span>
-            <span className="xs:hidden">매뉴얼</span>
+            <span className="hidden md:inline">매뉴얼</span>
           </button>
 
-          {/* ⚙️ 매매 조건 설정 버튼 */}
+          {/* ⚙️ 설정 버튼 */}
           <button
             onClick={onOpenSettings}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold transition cursor-pointer shadow-sm"
-            title="초단타 급등 매수/매도 상세 설정"
+            className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold transition cursor-pointer flex items-center gap-1 shrink-0"
+            title="상세 매매 설정"
           >
-            <Settings className="w-3.5 h-3.5 text-indigo-400" />
-            <span className="hidden xs:inline">설정</span>
+            <Settings className="w-3.5 h-3.5 text-slate-300" />
+            <span className="hidden md:inline">설정</span>
           </button>
 
           {/* 📊 운영자 대시보드 */}
           <button
             onClick={onOpenOperatorDashboard}
-            className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/40 border border-indigo-500/30 text-indigo-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
-            title="운영자 대시보드"
+            className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg bg-indigo-950/40 hover:bg-indigo-900/40 border border-indigo-500/30 text-indigo-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer shrink-0"
+            title="운영 콘솔"
           >
             <BarChart3 className="w-3.5 h-3.5 text-indigo-400" />
-            <span className="hidden sm:inline">운영</span>
+            <span className="hidden md:inline">운영</span>
           </button>
 
-          {/* 2FA 상태 */}
+          {/* 2FA 상태 (PC에서만 표시) */}
           <button
             onClick={onOpen2FA}
-            className={`p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-medium border transition flex items-center gap-1 cursor-pointer ${
+            className={`hidden sm:flex p-1.5 rounded-lg text-xs font-medium border transition items-center gap-1 cursor-pointer shrink-0 ${
               is2FAActive 
                 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
                 : 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
             }`}
-            title="2FA 보안 설정"
+            title="2FA 보안"
           >
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{is2FAActive ? '2FA' : '2FA'}</span>
           </button>
 
           {/* 새로고침 */}
           <button
             onClick={onRefresh}
-            className="p-2 rounded-xl bg-dark-bg hover:bg-dark-hover border border-dark-border text-slate-300 transition cursor-pointer"
+            className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 transition cursor-pointer shrink-0"
             title="새로고침"
           >
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
 
-          {/* 봇 가동/정지 토글 */}
+          {/* 봇 가동/정지 토글 (모바일 초슬림 뱃지) */}
           <button
             onClick={onToggleBot}
-            className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-extrabold transition shadow-md flex items-center gap-1.5 cursor-pointer ${
+            className={`px-2 sm:px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition shadow flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0 ${
               botRunning
-                ? 'bg-emerald-500 text-black hover:bg-emerald-400 shadow-emerald-500/20'
-                : 'bg-rose-500/15 border border-rose-500/30 text-rose-400 hover:bg-rose-500/25'
+                ? 'bg-emerald-500 text-black hover:bg-emerald-400'
+                : 'bg-rose-500/20 border border-rose-500/40 text-rose-300 hover:bg-rose-500/30'
             }`}
           >
-            <Power className="w-3.5 h-3.5" />
+            <span className={`w-2 h-2 rounded-full ${botRunning ? 'bg-black animate-ping' : 'bg-rose-400'}`}></span>
             <span>{botRunning ? '가동중' : '정지'}</span>
           </button>
         </div>

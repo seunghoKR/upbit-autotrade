@@ -124,21 +124,21 @@ export default function SlotManager({
   return (
     <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-4 sm:p-6 backdrop-blur-xl shadow-2xl space-y-5">
       {/* 1. 상단 타이틀 & 봇 가동 제어 바 */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 shadow-md">
-            <Radio className="w-5 h-5 animate-pulse" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3 sm:pb-4">
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 shadow-md">
+            <Radio className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-lg sm:text-xl font-black text-white tracking-tight">
-                업비트 멀티 슬롯 자동매매 매니저
+              <h2 className="text-base sm:text-lg font-black text-white tracking-tight whitespace-nowrap">
+                멀티 슬롯 자동매매 매니저
               </h2>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-bold">
-                {displaySlots.length}개 슬롯 가동
+              <span className="text-[10px] sm:text-xs px-2 py-0.2 sm:px-2.5 sm:py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-bold whitespace-nowrap">
+                {displaySlots.length}슬롯
               </span>
             </div>
-            <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-400 mt-0.5 hidden sm:block">
               100% 전자동 알고리즘으로 시세 급등을 감지하고, 완료 즉시 텔레그램으로 수익 결과를 전송합니다.
             </p>
           </div>
@@ -148,13 +148,13 @@ export default function SlotManager({
         <div className="flex items-center gap-2 self-end sm:self-auto">
           <button
             onClick={onToggleBot}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl border font-bold text-xs sm:text-sm transition shadow-lg cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border font-bold text-xs sm:text-sm transition shadow-lg cursor-pointer whitespace-nowrap ${
               botRunning
                 ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30'
                 : 'bg-rose-500/20 border-rose-500/40 text-rose-300 hover:bg-rose-500/30'
             }`}
           >
-            <span className={`w-2.5 h-2.5 rounded-full ${botRunning ? 'bg-emerald-400 animate-ping' : 'bg-rose-400'}`}></span>
+            <span className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full ${botRunning ? 'bg-emerald-400 animate-ping' : 'bg-rose-400'}`}></span>
             <span>{botRunning ? '전 슬롯 자동매매 가동 중' : '자동매매 일시정지'}</span>
           </button>
         </div>
@@ -162,7 +162,7 @@ export default function SlotManager({
 
       {/* 2. 슬롯 탭 바 (2개 이상 슬롯일 때만 표시, 모바일 가로 스크롤) */}
       {displaySlots.length > 1 && (
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none border-b border-slate-800/60">
+        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1.5 scrollbar-none border-b border-slate-800/60">
           {displaySlots.map((slot) => {
             const isSelected = (selectedSlotId === slot.slotId);
             const hasPosition = slot.positionStatus === 'IN_POSITION';
@@ -170,7 +170,7 @@ export default function SlotManager({
               <button
                 key={slot.slotId}
                 onClick={() => onSelectSlot && onSelectSlot(slot.slotId)}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold shrink-0 transition-all border cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all border cursor-pointer whitespace-nowrap ${
                   isSelected
                     ? 'bg-emerald-500 text-black border-emerald-400 shadow-lg shadow-emerald-500/20 scale-105'
                     : hasPosition
@@ -192,7 +192,7 @@ export default function SlotManager({
       )}
 
       {/* 3. 슬롯 카드 그리드 (1개 슬롯은 화면 가운데 정렬, 멀티 슬롯은 PC 3열 그리드 배치) */}
-      <div className={displaySlots.length === 1 ? "flex justify-center py-2" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"}>
+      <div className={displaySlots.length === 1 ? "flex justify-center py-2" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4"}>
         {displaySlots.map((slot) => {
           const isSelected = (selectedSlotId === slot.slotId);
           const isEditing = (editingSlotId === slot.slotId);
@@ -215,7 +215,7 @@ export default function SlotManager({
             <div
               key={slot.slotId}
               onClick={() => onSelectSlot && onSelectSlot(slot.slotId)}
-              className={`rounded-2xl p-4 sm:p-5 border transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between space-y-3.5 ${
+              className={`rounded-2xl p-3.5 sm:p-5 border transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between space-y-3 ${
                 displaySlots.length === 1 ? 'max-w-xl w-full ' : ''
               }${
                 isSelfStrategy
@@ -251,9 +251,9 @@ export default function SlotManager({
                 </div>
               )}
               {/* 상단 슬롯 헤더 */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs ${
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${
                     hasPosition 
                       ? 'bg-rose-500/25 text-rose-300 border border-rose-500/40' 
                       : (isSelfStrategy 
@@ -262,36 +262,41 @@ export default function SlotManager({
                   }`}>
                     {slot.slotId}
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-black text-white">{slot.slotName || `${slot.slotId}번 슬롯`}</span>
-                      <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-extrabold tracking-tight border shadow-sm ${
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-nowrap overflow-hidden">
+                      <span className="text-xs sm:text-sm font-black text-white whitespace-nowrap truncate">
+                        {slot.slotName || `${slot.slotId}번 슬롯`}
+                      </span>
+                      <span className={`text-[9px] sm:text-[10px] px-1.5 py-0.2 rounded-full font-extrabold tracking-tight border shadow-sm shrink-0 whitespace-nowrap ${
                         isSelfStrategy 
                           ? 'bg-purple-500/30 text-purple-200 border-purple-400/60 shadow-purple-500/20' 
                           : 'bg-emerald-500/20 text-emerald-300 border-emerald-400/50 shadow-emerald-500/20'
                       }`}>
-                        {isSelfStrategy ? '🛠️ 셀프전략 (사용자설정)' : '🎯 추천전략 (운영자)'}
+                        <span className="sm:hidden">{isSelfStrategy ? '셀프' : '추천'}</span>
+                        <span className="hidden sm:inline">{isSelfStrategy ? '🛠️ 셀프전략' : '🎯 추천전략'}</span>
                       </span>
                     </div>
-                    <span className="text-xs text-slate-400">{formatMarketName(slot.targetMarket)}</span>
+                    <span className="text-[11px] sm:text-xs text-slate-400 whitespace-nowrap truncate block">
+                      {formatMarketName(slot.targetMarket)}
+                    </span>
                   </div>
                 </div>
 
                 {/* 상태 뱃지 & 액션 버튼 */}
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={(e) => handleOpenStats(e, slot)}
-                    className="p-1.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition"
-                    title="슬롯별 거래 통계 확인"
+                    className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition"
+                    title="통계"
                   >
-                    <BarChart3 className="w-4 h-4" />
+                    <BarChart3 className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={(e) => handleStartEdit(e, slot)}
-                    className="p-1.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition"
-                    title="슬롯 설정 변경"
+                    className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition"
+                    title="설정"
                   >
-                    <Settings2 className="w-4 h-4" />
+                    <Settings2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
@@ -494,12 +499,12 @@ export default function SlotManager({
                           onSellSlot && onSellSlot(slot.slotId);
                         }
                       }}
-                      className={`px-3 py-1.5 rounded-xl font-black text-xs flex items-center gap-1.5 transition-all shadow-md ${
+                      className={`px-2.5 sm:px-3 py-1.5 rounded-xl font-black text-xs flex items-center gap-1 transition-all shadow-md shrink-0 whitespace-nowrap ${
                         hasPosition
                           ? 'bg-rose-600 hover:bg-rose-500 text-white border border-rose-400 shadow-rose-600/30 animate-pulse cursor-pointer'
                           : 'bg-slate-800/80 text-slate-400 border border-slate-700/80 cursor-pointer hover:bg-slate-800'
                       }`}
-                      title={hasPosition ? '이 슬롯의 코인을 지금 즉시 전량 시장가 매도합니다.' : '보유 중인 포지션이 있을 때 즉시 전량 매도합니다.'}
+                      title="업비트 시장가 즉시 전량 매도"
                     >
                       <Zap className={`w-3.5 h-3.5 ${hasPosition ? 'text-yellow-300 fill-yellow-300' : 'text-slate-400'}`} />
                       <span>⚡ 긴급 강제 매도</span>
