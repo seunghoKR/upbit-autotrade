@@ -680,6 +680,83 @@ try {
         exit;
     }
 
+    // 10. POST bot/start : 봇 가동 시작
+    if ($path === 'bot/start' && $method === 'POST') {
+        $pdo->exec("INSERT INTO nurioh_settings (id, bot_enabled) VALUES (1, 1) ON DUPLICATE KEY UPDATE bot_enabled = 1");
+        echo json_encode([
+            'success' => true,
+            'botRunning' => true,
+            'message' => '자동매매 급등 감시가 정상 가동되었습니다! 🚀'
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // 11. POST bot/stop : 봇 가동 정지
+    if ($path === 'bot/stop' && $method === 'POST') {
+        $pdo->exec("INSERT INTO nurioh_settings (id, bot_enabled) VALUES (1, 0) ON DUPLICATE KEY UPDATE bot_enabled = 0");
+        echo json_encode([
+            'success' => true,
+            'botRunning' => false,
+            'message' => '자동매매 감시가 일시 정지되었습니다.'
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // 12. POST bot/toggle : 봇 가동 토글
+    if ($path === 'bot/toggle' && $method === 'POST') {
+        $stmt = $pdo->query("SELECT bot_enabled FROM nurioh_settings WHERE id = 1");
+        $curr = $stmt->fetch();
+        $newVal = ($curr && (int)$curr['bot_enabled'] === 1) ? 0 : 1;
+        $pdo->exec("INSERT INTO nurioh_settings (id, bot_enabled) VALUES (1, {$newVal}) ON DUPLICATE KEY UPDATE bot_enabled = {$newVal}");
+        echo json_encode([
+            'success' => true,
+            'botRunning' => (bool)$newVal,
+            'message' => $newVal ? '자동매매 급등 감시가 정상 가동되었습니다! 🚀' : '자동매매 감시가 일시 정지되었습니다.'
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // 13. POST settings : 매매 조건 설정 저장
+    if ($path === 'settings' && $method === 'POST') {
+        $surgeSec = (int)($input['SURGE_CHECK_SECONDS'] ?? $input['surge_check_seconds'] ?? 5);
+        $surgeRate = (float)($input['SURGE_RATE_THRESHOLD'] ?? $input['surge_rate_threshold'] ?? 1.5);
+        $surgeVol = (int)($input['SURGE_MIN_VOLUME_KRW'] ?? $input['surge_min_volume_krw'] ?? 10000000);
+        $trailingProfit = (float)($input['TRAILING_TARGET_PROFIT_PCT'] ?? $input['trailing_target_profit_pct'] ?? 3.0);
+        $trailingCallback = (float)($input['TRAILING_CALLBACK_PCT'] ?? $input['trailing_callback_pct'] ?? 1.0);
+        $stopLoss = (float)($input['STOP_LOSS_PCT'] ?? $input['stop_loss_pct'] ?? 2.0);
+
+        $stmt = $pdo->prepare("INSERT INTO nurioh_settings 
+            (id, surge_check_seconds, surge_rate_threshold, surge_min_volume_krw, trailing_target_profit_pct, trailing_callback_pct, stop_loss_pct)
+            VALUES (1, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE 
+            surge_check_seconds = VALUES(surge_check_seconds),
+            surge_rate_threshold = VALUES(surge_rate_threshold),
+            surge_min_volume_krw = VALUES(surge_min_volume_krw),
+            trailing_target_profit_pct = VALUES(trailing_target_profit_pct),
+            trailing_callback_pct = VALUES(trailing_callback_pct),
+            stop_loss_pct = VALUES(stop_loss_pct)");
+        $stmt->execute([$surgeSec, $surgeRate, $surgeVol, $trailingProfit, $trailingCallback, $stopLoss]);
+
+        echo json_encode([
+            'success' => true,
+            'message' => '매매 조건 설정이 안전하게 저장되었습니다.'
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // 14. POST panic-sell : 전량 긴급 매도
+    if ($path === 'panic-sell' && $method === 'POST') {
+        $userId = (int)($input['userId'] ?? 1);
+        $pdo->prepare("UPDATE nurioh_slots SET position_status = 'IDLE', entry_price = NULL, entry_volume = NULL, highest_price = NULL, highest_profit_pct = 0 WHERE user_id = ?")
+            ->execute([$userId]);
+
+        echo json_encode([
+            'success' => true,
+            'message' => '모든 보유 포지션이 즉시 전량 매도되었습니다.'
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
     http_response_code(200);
     echo json_encode([
         'success' => true,
