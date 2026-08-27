@@ -23,8 +23,8 @@ export default function LandingPage({ onOpenKakaoLogin }) {
     <div className="min-h-screen bg-[#07090E] text-slate-100 selection:bg-emerald-500 selection:text-black flex flex-col font-sans">
       
       {/* 🌟 1. 상단 네비게이션 헤더 */}
-      <header className="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl sticky top-0 z-40 px-4 sm:px-8 py-3.5">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+      <header className="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl sticky top-0 z-40">
+        <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 py-3 sm:py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden shadow-lg shadow-emerald-500/20 border border-emerald-500/30 flex items-center justify-center bg-slate-950 shrink-0">
               <img 

@@ -450,8 +450,8 @@ export default function App() {
         livePrice={livePrice}
       />
 
-      {/* 메인 콘텐츠 영역 */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
+      {/* 메인 콘텐츠 영역 (상단 헤더와 좌우 라인 100% 일치) */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-6">
         {/* 🟡 유료 회원 구독 상태 & 카카오 온보딩 바 */}
         <SubscriptionCard
           user={currentUser}
