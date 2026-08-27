@@ -2,30 +2,42 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, 
   User, 
-  ShieldCheck, 
   KeyRound, 
-  Crown, 
-  Coins, 
-  Save, 
-  Check, 
-  AlertTriangle, 
-  Sparkles, 
-  Zap, 
-  Radio, 
   Send, 
-  Layers, 
-  Sliders, 
+  Zap, 
+  ShieldCheck, 
+  ShieldAlert, 
+  AlertTriangle, 
   CheckCircle2, 
-  Lock,
-  Smartphone,
-  Info,
+  Sparkles,
+  ExternalLink,
+  ChevronRight,
   Clock,
-  Phone,
-  Mail,
-  FileText,
-  Gift
+  Gift,
+  ArrowRight
 } from 'lucide-react';
-import { saveAutoTradingSettings, requestUserProfileUpdate } from '../services/api';
+import { 
+  registerApiKey, 
+  linkTelegram, 
+  saveAutoTradingSettings,
+  requestUserProfileUpdate 
+} from '../services/api';
+
+// 📞 전화번호 자동 하이픈 포맷터 (숫자만 입력 시 010-1234-5678 자동 포맷)
+const formatPhoneNumber = (value) => {
+  if (!value) return '';
+  const numbers = value.replace(/[^0-9]/g, '').slice(0, 11);
+  
+  if (numbers.length < 4) {
+    return numbers;
+  } else if (numbers.length < 7) {
+    return `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
+  } else if (numbers.length < 11) {
+    return `${numbers.slice(0, 3)}-${numbers.slice(3, 6)}-${numbers.slice(6)}`;
+  } else {
+    return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`;
+  }
+};
 
 export default function MyPageModal({ 
   isOpen, 
@@ -41,8 +53,8 @@ export default function MyPageModal({
   const isAdmin = user?.role === 'DEVELOPER' || user?.role === 'ADMIN';
   const isApproved = user?.approvalStatus === 'APPROVED' || isAdmin;
 
-  // 승인 전이면 기본 탭을 'APPLY', 승인 후면 'API_SECURITY'
-  const [activeTab, setActiveTab] = useState(isApproved ? 'API_SECURITY' : 'APPLY');
+  // 승인 전이면 'APPLY', 승인 후면 'PROFILE'이 기본 탭
+  const [activeTab, setActiveTab] = useState(isApproved ? 'PROFILE' : 'APPLY');
   
   // 1. 프로필 & 무료체험 신청 폼 상태
   const [name, setName] = useState('');
@@ -70,7 +82,7 @@ export default function MyPageModal({
   useEffect(() => {
     if (user) {
       setName(user.name || user.nickname || '');
-      setPhone(user.phone && user.phone !== '010-0000-0000' ? user.phone : '');
+      setPhone(user.phone && user.phone !== '010-0000-0000' ? formatPhoneNumber(user.phone) : '');
       setEmail(user.email || '');
       setNickname(user.nickname || '');
       setTelegramId(user.telegramId || '');
@@ -101,7 +113,7 @@ export default function MyPageModal({
   const currentTotalSlotAmount = Object.values(slotLimits).reduce((a, b) => Number(a) + Number(b), 0);
   const isLimitExceeded = maxTotalLimitKrw > 0 && currentTotalSlotAmount > maxTotalLimitKrw;
 
-  // 🎁 무료 사용 승인 신청 핸들러
+  // 🎁 무료 사용 승인 신청 / 회원 정보 수정 핸들러
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
     if (!nickname.trim()) {
@@ -139,20 +151,35 @@ export default function MyPageModal({
         await onReloadUser();
       }
 
-      setProfileSuccessMsg('🎉 운영자에게 무료 사용 승인 요청이 성공적으로 접수되었습니다! 운영자 승인 즉시 3일 무료체험이 활성화됩니다.');
-      setTimeout(() => {
-        setProfileSuccessMsg('');
-      }, 5000);
+      setProfileSuccessMsg(isApproved 
+        ? '회원 정보가 성공적으로 수정되었습니다!' 
+        : '🎉 3일 무료 사용 신청이 접수되었습니다! 운영자 확인 후 즉시 승인됩니다.');
     } catch (err) {
-      setProfileErrorMsg(err.response?.data?.error || err.message || '신청 처리 중 오류가 발생했습니다.');
+      setProfileErrorMsg(err.response?.data?.error || err.message || '요청 처리 중 오류가 발생했습니다.');
     } finally {
       setIsSubmittingProfile(false);
     }
   };
 
-  // ⚡ 자동매매 한도 저장 핸들러
-  const handleAutoTradingSave = async () => {
+  // 텔레그램 연동 저장
+  const handleTelegramSave = async (e) => {
+    e.preventDefault();
+    if (!telegramId.trim()) return;
+
+    try {
+      await linkTelegram(user?.id || 1, telegramId.trim());
+      alert('스마트폰 텔레그램 ID가 성공적으로 연동되었습니다!');
+      if (onReloadUser) onReloadUser();
+    } catch (err) {
+      alert('텔레그램 연동 실패: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  // 자동매매 안전 설정 저장
+  const handleSaveAutoSettings = async () => {
     setIsSaving(true);
+    setIsSaved(false);
+
     try {
       await saveAutoTradingSettings({
         userId: user?.id || 1,
@@ -162,17 +189,16 @@ export default function MyPageModal({
         slotLimits
       });
 
-      if (onReloadUser) {
-        await onReloadUser();
+      if (onUpdateSlot) {
+        for (const [slotId, amount] of Object.entries(slotLimits)) {
+          await onUpdateSlot(Number(slotId), { tradeAmountKrw: Number(amount) });
+        }
       }
 
       setIsSaved(true);
-      setTimeout(() => {
-        setIsSaved(false);
-        onClose();
-      }, 700);
+      setTimeout(() => setIsSaved(false), 3000);
     } catch (err) {
-      console.error('Failed to save mypage auto trading settings:', err);
+      alert('설정 저장 실패: ' + err.message);
     } finally {
       setIsSaving(false);
     }
@@ -192,15 +218,15 @@ export default function MyPageModal({
         {/* 1. 상단 헤더 */}
         <div className="flex items-center justify-between pb-3.5 border-b border-slate-800">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-yellow-500/20 to-amber-500/20 border border-yellow-500/30 flex items-center justify-center text-xl shrink-0">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-yellow-500/20 to-amber-500/20 border border-yellow-500/30 flex items-center justify-center text-xl shrink-0">
               {isApproved ? '👤' : '🎁'}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-lg sm:text-xl font-black text-white">
+                <h3 className="text-base sm:text-xl font-black text-white">
                   {isApproved ? '마이페이지 & 자동매매 설정' : '3일 무료 사용 신청'}
                 </h3>
-                <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
+                <span className={`text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 rounded-full font-bold border whitespace-nowrap ${
                   isApproved 
                     ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' 
                     : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
@@ -210,7 +236,7 @@ export default function MyPageModal({
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
                 {isApproved 
-                  ? '업비트 API 키 등록, 텔레그램 연동 및 슬롯별 매매 한도를 관리합니다.' 
+                  ? '회원 정보, 업비트 API 키, 텔레그램 알림 및 슬롯별 한도를 관리합니다.' 
                   : '운영자 확인을 위한 기본 정보를 입력하고 3일 무료체험을 신청하세요.'}
               </p>
             </div>
@@ -220,59 +246,67 @@ export default function MyPageModal({
             onClick={onClose}
             className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* 2. 탭 네비게이션 */}
+        {/* 2. 탭 네비게이션 (모바일/PC 1줄 완벽 4분할 정돈) */}
         {isApproved ? (
-          <div className="flex items-center gap-2 border-b border-slate-800 pb-2 text-xs sm:text-sm font-bold flex-wrap">
-            <button
-              onClick={() => setActiveTab('API_SECURITY')}
-              className={`px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
-                activeTab === 'API_SECURITY'
-                  ? 'bg-yellow-400 text-slate-950 font-black shadow'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
-              }`}
-            >
-              <KeyRound className="w-4 h-4" />
-              <span>🔑 API 키 등록</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('TELEGRAM')}
-              className={`px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
-                activeTab === 'TELEGRAM'
-                  ? 'bg-indigo-600 text-white font-black shadow'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
-              }`}
-            >
-              <Send className="w-4 h-4" />
-              <span>✈️ 텔레그램 알림</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('AUTO_TRADING')}
-              className={`px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
-                activeTab === 'AUTO_TRADING'
-                  ? 'bg-indigo-600 text-white font-black shadow'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
-              }`}
-            >
-              <Zap className="w-4 h-4" />
-              <span>⚡ 한도/슬롯 설정</span>
-            </button>
-
+          <div className="grid grid-cols-4 gap-1.5 border-b border-slate-800 pb-3">
+            {/* 1) 👤 내 정보 */}
             <button
               onClick={() => setActiveTab('PROFILE')}
-              className={`px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
+              className={`py-2 px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap truncate text-xs sm:text-sm font-bold ${
                 activeTab === 'PROFILE'
-                  ? 'bg-indigo-600 text-white font-black shadow'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                  ? 'bg-indigo-600 text-white font-black shadow-md shadow-indigo-600/30'
+                  : 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
               }`}
             >
-              <User className="w-4 h-4" />
-              <span>👤 내 정보 수정</span>
+              <User className="w-3.5 h-3.5 shrink-0" />
+              <span className="sm:hidden">내정보</span>
+              <span className="hidden sm:inline">내 정보</span>
+            </button>
+
+            {/* 2) 🔑 API 키 */}
+            <button
+              onClick={() => setActiveTab('API_SECURITY')}
+              className={`py-2 px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap truncate text-xs sm:text-sm font-bold ${
+                activeTab === 'API_SECURITY'
+                  ? 'bg-yellow-400 text-slate-950 font-black shadow-md shadow-yellow-400/30'
+                  : 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
+              }`}
+            >
+              <KeyRound className="w-3.5 h-3.5 shrink-0" />
+              <span className="sm:hidden">API키</span>
+              <span className="hidden sm:inline">API 키</span>
+            </button>
+
+            {/* 3) ✈️ 텔레그램 */}
+            <button
+              onClick={() => setActiveTab('TELEGRAM')}
+              className={`py-2 px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap truncate text-xs sm:text-sm font-bold ${
+                activeTab === 'TELEGRAM'
+                  ? 'bg-indigo-600 text-white font-black shadow-md shadow-indigo-600/30'
+                  : 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
+              }`}
+            >
+              <Send className="w-3.5 h-3.5 shrink-0" />
+              <span className="sm:hidden">텔레그램</span>
+              <span className="hidden sm:inline">텔레그램</span>
+            </button>
+
+            {/* 4) ⚡ 슬롯 설정 */}
+            <button
+              onClick={() => setActiveTab('AUTO_TRADING')}
+              className={`py-2 px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap truncate text-xs sm:text-sm font-bold ${
+                activeTab === 'AUTO_TRADING'
+                  ? 'bg-indigo-600 text-white font-black shadow-md shadow-indigo-600/30'
+                  : 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
+              }`}
+            >
+              <Zap className="w-3.5 h-3.5 shrink-0" />
+              <span className="sm:hidden">한도설정</span>
+              <span className="hidden sm:inline">슬롯 설정</span>
             </button>
           </div>
         ) : (
@@ -288,7 +322,7 @@ export default function MyPageModal({
         {/* 3. 탭별 상세 콘텐츠 */}
 
         {/* ========================================================= */}
-        {/* TAB: 🎁 무료 사용 신청 (승인 전 기본) / 👤 내 정보 수정 (승인 후) */}
+        {/* TAB: 👤 내 정보 수정 / 🎁 무료 사용 신청 */}
         {/* ========================================================= */}
         {(activeTab === 'APPLY' || activeTab === 'PROFILE') && (
           <form onSubmit={handleProfileSubmit} className="space-y-4 animate-in fade-in text-sm text-slate-200">
@@ -345,11 +379,11 @@ export default function MyPageModal({
                     연락처 (휴대폰 번호) <span className="text-yellow-400">*</span>
                   </label>
                   <input
-                    type="text"
+                    type="tel"
                     required
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="예: 010-1234-5678"
+                    onChange={(e) => setPhone(formatPhoneNumber(e.target.value))}
+                    placeholder="숫자만 입력 (예: 01012345678)"
                     className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 font-mono text-sm focus:outline-none focus:border-yellow-400"
                   />
                 </div>
@@ -369,14 +403,14 @@ export default function MyPageModal({
               </div>
             </div>
 
-            {/* 약관 동의 */}
-            <div className="p-3.5 bg-slate-950/70 rounded-2xl border border-slate-800">
-              <label className="flex items-center gap-2.5 cursor-pointer text-xs text-slate-300 hover:text-white">
+            {/* 이용 약관 동의 */}
+            <div className="p-3 rounded-2xl bg-slate-950/40 border border-slate-800">
+              <label className="flex items-center gap-2.5 text-xs text-slate-300 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={agreedTerms}
                   onChange={(e) => setAgreedTerms(e.target.checked)}
-                  className="w-4 h-4 rounded bg-slate-900 border-slate-700 text-yellow-400 focus:ring-yellow-400 cursor-pointer"
+                  className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-yellow-400 focus:ring-yellow-400 cursor-pointer shrink-0"
                 />
                 <span>[필수] 개인정보 수집 및 비수탁 자동매매 소프트웨어 이용약관에 동의합니다.</span>
               </label>
@@ -385,162 +419,143 @@ export default function MyPageModal({
             <button
               type="submit"
               disabled={isSubmittingProfile}
-              className="w-full py-3.5 rounded-2xl bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] font-black text-sm transition shadow-xl shadow-yellow-500/20 flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-3.5 rounded-2xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-black text-sm transition flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-yellow-400/20 disabled:opacity-50"
             >
-              <Sparkles className="w-4 h-4 text-slate-950" />
-              <span>
-                {isSubmittingProfile 
-                  ? '접수 처리 중...' 
-                  : (isApproved ? '회원 정보 수정 저장' : '✨ 3일 무료 사용 승인 신청하기')}
-              </span>
+              <Sparkles className="w-4 h-4" />
+              <span>{isSubmittingProfile ? '처리 중...' : (isApproved ? '회원 정보 수정 저장' : '✨ 3일 무료 사용 승인 신청하기')}</span>
             </button>
           </form>
         )}
 
         {/* ========================================================= */}
-        {/* TAB: 🔑 업비트 API 키 등록 & 보안 (승인 완료 후) */}
+        {/* TAB 1: 🔑 업비트 API 키 관리 (승인 회원 전용) */}
         {/* ========================================================= */}
-        {isApproved && activeTab === 'API_SECURITY' && (
-          <div className="space-y-4 animate-in fade-in text-sm text-slate-200">
-            <div className="bg-slate-950/70 p-5 rounded-2xl border border-slate-800 space-y-4">
+        {activeTab === 'API_SECURITY' && isApproved && (
+          <div className="space-y-4 animate-in fade-in">
+            <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-3">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <KeyRound className="w-6 h-6 text-amber-400" />
-                  <div>
-                    <h4 className="text-base font-black text-slate-100">업비트 Open API 연동</h4>
-                    <p className="text-slate-400 text-xs">AES-256 군사 등급 암호화 보관 중</p>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <KeyRound className="w-5 h-5 text-yellow-400" />
+                  <h4 className="font-bold text-white text-sm">업비트 Open API 연동</h4>
                 </div>
-                <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold flex items-center gap-1.5 text-xs">
-                  <CheckCircle2 className="w-4 h-4" /> 승인 서버 IP: {serverIp}
+                {user?.hasApiKey ? (
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5" /> 정상 연결됨
+                  </span>
+                ) : (
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/30 font-bold flex items-center gap-1">
+                    <ShieldAlert className="w-3.5 h-3.5" /> 미등록
+                  </span>
+                )}
+              </div>
+
+              <p className="text-xs text-slate-400 leading-relaxed">
+                출금 권한을 제외한 <strong>[자산조회 / 주문조회 / 원화주문]</strong> 권한만 허용하여 키를 발급해 주세요.
+              </p>
+
+              {/* 공인 IP 안내 */}
+              <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs">
+                <span className="text-slate-400 font-medium">업비트 허용 IP 주소:</span>
+                <span className="font-mono text-emerald-400 font-bold bg-slate-950 px-2 py-1 rounded-lg border border-slate-800">
+                  {serverIp}
                 </span>
               </div>
 
-              <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-slate-400">업비트 등록 IP:</span>
-                  <span className="font-mono text-cyan-300 font-bold">{serverIp}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">API 권한:</span>
-                  <span className="text-emerald-400 font-bold">자산조회, 주문조회, 주문하기 (출금 불가 안전)</span>
-                </div>
-              </div>
-
               <button
-                type="button"
                 onClick={() => {
                   onClose();
                   if (onOpenApiModal) onOpenApiModal();
                 }}
-                className="w-full py-3.5 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-black text-sm transition flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-yellow-400/20"
+                className="w-full py-3 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow"
               >
                 <KeyRound className="w-4 h-4" />
-                <span>🔑 업비트 API 키 등록 / 변경하기</span>
+                <span>{user?.hasApiKey ? '🔑 API 키 재등록 / 변경' : '🔑 지금 바로 API 키 등록하기'}</span>
               </button>
             </div>
           </div>
         )}
 
         {/* ========================================================= */}
-        {/* TAB: ✈️ 텔레그램 알림 연동 (승인 완료 후) */}
+        {/* TAB 2: ✈️ 텔레그램 승인 알림 연동 (승인 회원 전용) */}
         {/* ========================================================= */}
-        {isApproved && activeTab === 'TELEGRAM' && (
-          <div className="space-y-4 animate-in fade-in text-sm text-slate-200">
-            <div className="bg-slate-950/70 p-5 rounded-2xl border border-slate-800 space-y-4">
-              <div className="flex items-center gap-3">
-                <Send className="w-6 h-6 text-sky-400" />
-                <div>
-                  <h4 className="text-base font-black text-slate-100">텔레그램 실시간 급등/수익 알림</h4>
-                  <p className="text-slate-400 text-xs">급등 포착 및 매도 익절 결과를 스마트폰으로 즉시 전송합니다.</p>
-                </div>
+        {activeTab === 'TELEGRAM' && isApproved && (
+          <form onSubmit={handleTelegramSave} className="space-y-4 animate-in fade-in">
+            <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-3">
+              <div className="flex items-center gap-2">
+                <Send className="w-5 h-5 text-indigo-400" />
+                <h4 className="font-bold text-white text-sm">스마트폰 텔레그램 1:1 알림 연동</h4>
               </div>
 
-              <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-3 text-xs">
-                <div>
-                  <label className="text-slate-400 block mb-1 font-semibold">텔레그램 사용자 ID (@아이디)</label>
-                  <input
-                    type="text"
-                    value={telegramId}
-                    onChange={(e) => setTelegramId(e.target.value)}
-                    placeholder="예: nurioh_trader"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 text-sm font-mono focus:outline-none focus:border-indigo-400"
-                  />
-                </div>
-                <p className="text-slate-400 leading-relaxed">
-                  💡 텔레그램에서 <strong>@nurioh_trade_bot</strong>을 검색하여 <code>/start</code>를 누르시면 실시간 알림이 시작됩니다.
-                </p>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                텔레그램 봇(<code>@nurioh_trade_bot</code>)을 통해 각 슬롯의 매도 손익 정산 알림을 받아보실 수 있습니다.
+              </p>
+
+              <div>
+                <label className="text-xs text-slate-400 font-bold block mb-1">내 텔레그램 Chat ID</label>
+                <input
+                  type="text"
+                  value={telegramId}
+                  onChange={(e) => setTelegramId(e.target.value)}
+                  placeholder="예: 5618137472"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-slate-100 font-mono text-sm focus:outline-none focus:border-indigo-400"
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-indigo-950/30 border border-indigo-500/20 text-xs text-indigo-300 space-y-1">
+                <p><strong>💡 내 Chat ID 찾는 법:</strong></p>
+                <p>1. 텔레그램에서 <code>@userinfobot</code>을 검색하여 대화를 시작하세요.</p>
+                <p>2. 봇이 알려주는 <strong>Id 숫자</strong>를 복사하여 위 입력창에 넣으시면 됩니다.</p>
               </div>
 
               <button
-                type="button"
-                onClick={handleProfileSubmit}
-                className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer shadow"
+                type="submit"
+                className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow"
               >
-                <Save className="w-4 h-4" />
-                <span>텔레그램 ID 저장</span>
+                <Send className="w-4 h-4" />
+                <span>텔레그램 연동 저장</span>
               </button>
             </div>
-          </div>
+          </form>
         )}
 
         {/* ========================================================= */}
-        {/* TAB: ⚡ 자동매매 한도/슬롯 설정 (승인 완료 후) */}
+        {/* TAB 3: ⚡ 자동매매 슬롯별 한도 설정 (승인 회원 전용) */}
         {/* ========================================================= */}
-        {isApproved && activeTab === 'AUTO_TRADING' && (
+        {activeTab === 'AUTO_TRADING' && isApproved && (
           <div className="space-y-4 animate-in fade-in text-sm text-slate-200">
-            {/* 총 한도 */}
-            <div className="bg-slate-950/70 p-4 sm:p-5 rounded-2xl border border-slate-800 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <h4 className="text-sm font-black text-slate-100 flex items-center gap-2">
-                    <Coins className="w-4 h-4 text-cyan-400" />
-                    자동매매 총 운용 한도 금액
-                  </h4>
-                  <p className="text-xs text-slate-400">모든 슬롯의 1회 진입금액 합계 한도입니다.</p>
-                </div>
-
-                <div className="flex items-center gap-2 self-end sm:self-auto">
-                  <input
-                    type="number"
-                    step="50000"
-                    min="10000"
-                    value={maxTotalLimitKrw}
-                    onChange={(e) => setMaxTotalLimitKrw(Number(e.target.value))}
-                    className="w-32 bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-right text-cyan-300 font-mono font-bold text-sm focus:outline-none focus:border-cyan-500"
-                  />
-                  <span className="text-xs text-slate-300 font-bold">원</span>
-                </div>
-              </div>
-            </div>
-
-            {/* 슬롯별 금액 */}
-            <div className="bg-slate-950/70 p-4 sm:p-5 rounded-2xl border border-slate-800 space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-black text-slate-100 flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-indigo-400" />
-                  슬롯별 1회 매수 배정 금액
-                </h4>
-                <span className="text-xs font-mono font-bold text-indigo-300">
-                  합계: {currentTotalSlotAmount.toLocaleString()}원
+            {/* 1. 슬롯별 1회 매수 한도 금액 설정 */}
+            <div className="bg-slate-950/70 p-4 sm:p-5 rounded-2xl border border-slate-800 space-y-4">
+              <h4 className="text-sm font-bold text-slate-100 flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-amber-400" />
+                  슬롯별 1회 매수 설정 금액 (KRW)
                 </span>
-              </div>
+                <span className="text-xs text-slate-400 font-normal">
+                  총 배정: <strong className="text-indigo-400 font-bold">{currentTotalSlotAmount.toLocaleString()}원</strong>
+                </span>
+              </h4>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((slotId) => {
-                  const amount = slotLimits[slotId] || 50000;
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {slots.slice(0, user?.maxSlots || 5).map((slot) => {
+                  const currentVal = slotLimits[slot.slotId] ?? (slot.tradeAmountKrw || 50000);
                   return (
-                    <div key={slotId} className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800 space-y-1">
-                      <span className="font-bold text-slate-300 text-xs">슬롯 {slotId}</span>
-                      <div className="flex items-center gap-1">
+                    <div key={slot.slotId} className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <span className="font-bold text-xs text-slate-200 block truncate">
+                          {slot.slotId}번 ({slot.targetMarket ? slot.targetMarket.replace('KRW-', '') : '슬롯'})
+                        </span>
+                        <span className="text-[10px] text-slate-400">1회 진입금액</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <input
                           type="number"
-                          step="5000"
-                          value={amount}
-                          onChange={(e) => handleSlotAmountChange(slotId, e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-right text-slate-100 font-mono font-bold text-xs"
+                          step="10000"
+                          min="0"
+                          value={currentVal}
+                          onChange={(e) => handleSlotAmountChange(slot.slotId, e.target.value)}
+                          className="w-24 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-right font-mono text-xs text-emerald-400 font-bold focus:outline-none focus:border-indigo-400"
                         />
-                        <span className="text-slate-400 text-[10px]">원</span>
+                        <span className="text-xs text-slate-400">원</span>
                       </div>
                     </div>
                   );
@@ -548,15 +563,21 @@ export default function MyPageModal({
               </div>
             </div>
 
-            <button
-              type="button"
-              disabled={isSaving}
-              onClick={handleAutoTradingSave}
-              className="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition flex items-center justify-center gap-2 shadow"
-            >
-              {isSaved ? <Check className="w-4 h-4 text-emerald-300" /> : <Save className="w-4 h-4" />}
-              <span>{isSaved ? '저장 완료!' : isSaving ? '저장 중...' : '한도 및 슬롯 설정 저장'}</span>
-            </button>
+            {/* 저장 버튼 */}
+            <div className="flex items-center justify-end gap-3 pt-2">
+              {isSaved && (
+                <span className="text-xs text-emerald-400 flex items-center gap-1 font-bold animate-in fade-in">
+                  <CheckCircle2 className="w-4 h-4" /> 설정이 안전하게 저장되었습니다!
+                </span>
+              )}
+              <button
+                onClick={handleSaveAutoSettings}
+                disabled={isSaving}
+                className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition flex items-center gap-2 cursor-pointer shadow-lg shadow-indigo-600/20 disabled:opacity-50"
+              >
+                <span>{isSaving ? '저장 중...' : '슬롯 한도 설정 저장'}</span>
+              </button>
+            </div>
           </div>
         )}
 
