@@ -625,17 +625,47 @@ try {
         exit;
     }
 
-    // 8. POST slots/{id}/sell : 슬롯 개별 긴급 시장가 매도
+    // 8. POST slots/{id}/sell : 슬롯 개별 긴급 시장가 매도 및 텔레그램 정산 알림
     if (preg_match('#^slots/([0-9]+)/sell$#', $path, $matches) && $method === 'POST') {
         $slotId = (int)$matches[1];
         $userId = (int)($input['userId'] ?? 1);
 
+        $slotStmt = $pdo->prepare("SELECT * FROM nurioh_slots WHERE user_id = ? AND slot_id = ?");
+        $slotStmt->execute([$userId, $slotId]);
+        $slot = $slotStmt->fetch();
+
         $pdo->prepare("UPDATE nurioh_slots SET position_status = 'IDLE', entry_price = NULL, entry_volume = NULL, highest_price = NULL, highest_profit_pct = 0 WHERE user_id = ? AND slot_id = ?")
             ->execute([$userId, $slotId]);
 
+        // 📢 대표님 요청: 오직 매도 완료 시에만 슬롯별 실현 손익 정산 알림 발송!
+        if ($slot) {
+            $mkt = $slot['target_market'] ?? 'KRW-BTC';
+            $slotName = $slot['slot_name'] ?? "{$slotId}번 슬롯";
+            $entryPrice = (float)($slot['entry_price'] ?? 0);
+            $profitPct = (float)($slot['highest_profit_pct'] ?? 0);
+            $amountKrw = (float)($slot['trade_amount_krw'] ?? 50000);
+            $profitKrw = $amountKrw * ($profitPct / 100);
+
+            $isProfit = $profitPct >= 0;
+            $emoji = $isProfit ? '🟢 [수익 실현 매도 완료]' : '🔴 [손실 제한 매도 완료]';
+            $sign = $isProfit ? '+' : '';
+            $pctStr = "{$sign}" . number_format($profitPct, 2) . "%";
+            $krwStr = "{$sign}" . number_format((int)$profitKrw) . " KRW";
+            $timeStr = date('Y-m-d H:i:s');
+
+            $alertMsg = "<b>{$emoji}</b>\n\n" .
+                        "🎰 <b>배정 슬롯:</b> <b>{$slotId}번 슬롯 ({$slotName})</b>\n" .
+                        "📌 <b>암호화폐:</b> <code>{$mkt}</code>\n" .
+                        "📈 <b>실현 수익률:</b> <b>{$pctStr}</b>\n" .
+                        "💵 <b>실현 손익금:</b> <b>{$krwStr}</b>\n" .
+                        "⏱ <b>청산 시각:</b> {$timeStr}\n";
+
+            sendTelegramAdminAlert($alertMsg);
+        }
+
         echo json_encode([
             'success' => true,
-            'message' => "슬롯 {$slotId}번 긴급 시장가 매도가 완료되었습니다!"
+            'message' => "슬롯 {$slotId}번 매도 정산이 완료되었습니다!"
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }
