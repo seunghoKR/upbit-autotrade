@@ -1,61 +1,62 @@
-# 🚀 영자의 업비트 자동매매 & 실시간 승인 트레이딩 시스템
+# 🚀 NURIOH AI TRADER | 업비트 비수탁형 멀티 슬롯 자동매매 플랫폼
 
-> **Design & Built with Youngja 🎨✨**  
-> 업비트 Open API를 연동하여 실시간 시세를 분석하고, 텔레그램 메신저로 승인 요청을 보내 대표님의 최종 결정으로 주문을 체결하는 스마트 트레이딩 솔루션입니다.
-
----
-
-## 🌟 주요 기능
-1. **업비트 Open API 연동:** 실시간 캔들/호가 조회 및 JWT 기반 안전한 시장가/지정가 주문 집행
-2. **기술적 지표 전략 엔진:** RSI(14) 과매도/과매수 포착 및 볼린저 밴드(Bollinger Bands) 하단 지지 반등 감지
-3. **텔레그램 인터랙티브 승인 비서 (`@nurioh_trade_bot`):**
-   - 매매 신호 포착 시 스마트폰으로 즉시 알림 전송
-   - `[✅ 즉시 승인 및 주문]` / `[❌ 주문 취소]` 원클릭 버튼 제공
-   - 타임아웃(기본 30초) 정책 적용 (자동 취소 또는 자동 실행)
-   - `/balance`(잔고), `/status`(상태), `/start_bot`, `/stop_bot` 원격 제어 지원
-4. **강력한 2단계 보안:** 
-   - 업비트 Secret Key `AES-256-GCM` 암호화
-   - **Microsoft Authenticator** 표준 TOTP 2FA 지원
-5. **React + Vite 실시간 모던 대시보드:**
-   - 다크 테마 & 네온 액센트 디자인
-   - 실시간 계좌 자산, 보유 코인 평가손익 카드
-   - 실시간 차트 & 보조지표 시각화
-   - 전략 파라미터(손절률, 익절률, 1회 주문금액 등) 실시간 튜닝
+> **Version:** `v2.1.0 (Production Release)`  
+> **Live Service:** [https://nuriohtrade.iwinv.net](https://nuriohtrade.iwinv.net)  
+> **Server IP:** `115.68.168.243`  
+> **Design & Built by:** AI 디자인실장 영자 🎨✨ & 마스터 개발자 이승호 대표님 👑
 
 ---
 
-## 🚀 실행 방법
+## 🌟 1. 서비스 핵심 특장점
 
-### 1. 사전 준비 (업비트 IP 등록)
-- 업비트 웹사이트 > **[마이페이지] > [Open API 관리]**에 접속하여 대표님 현재 공인 IP를 등록해 주세요:
-  - **등록할 IP:** `49.171.41.10`
-  - **권한:** `자산조회`, `주문조회`, `주문하기` (출금하기 제외)
+1. **비수탁형(Non-Custodial) 철통 보안:**
+   - 회원의 투자금을 절대 직접 수탁하지 않습니다. 오직 본인 명의의 업비트 계좌에서 **출금 권한이 배제된 [조회/주문] Open API 키**로만 안전하게 구동됩니다.
+2. **1초 카카오톡 원스톱 온보딩:**
+   - 복잡한 가입 절차 없이 카카오톡 간편 인증 ➔ 3일 무료체험 신청 ➔ 운영자 승인 후 즉시 봇 가동!
+3. **1~9번 독립 멀티 슬롯 분산 트레이딩:**
+   - 종목별 독립적인 슬롯(BTC, ETH, SOL, XRP 등) 배정 및 1회 주문 금액 개별 설정 지원.
+4. **텔레그램 매도 손익 정산 알림 (`@nurioh_trade_bot`):**
+   - 불필요한 시세 감시 스팸 알림을 100% 차단하고, 오직 **[매도(익절/손절) 완료 시]**에만 슬롯 번호, 코인 종목, 실현 수익률(%), 실현 손익금(KRW) 정산 카드 1장 발송!
+5. **모바일 & PC 반응형 엔터프라이즈 UI:**
+   - 모바일 화면 줄바꿈 방지, 1줄 4분할 탭 메뉴, 전화번호 자동 하이픈 포맷터 탑재.
 
-### 2. 프로그램 실행 (원클릭 실행)
+---
+
+## 🌐 2. 서버 & 배포 인프라 환경
+
+- **상용 웹서버:** iwinv Apache Web Hosting (PHP 8.4 UTF-8 + MariaDB 10.x)
+- **도메인:** `https://nuriohtrade.iwinv.net` (IP: `115.68.168.243`)
+- **원클릭 자동 배포:** `node deploy_ftp.js` (프론트엔드 빌드 및 PHP 백엔드 `/public_html` 자동 업로드)
+- **시세 수집 엔진:** 24시간 파이 노드 PC (Node.js Express + WebSocket)
+
+---
+
+## 🚀 3. 빠른 시작 및 명령어 가이드
+
+### 1) 프론트엔드 빌드 & 호스팅 서버 배포
 ```bash
-# 전체 시스템(백엔드 서버 + 대시보드 웹) 동시 가동
+# 1. 프론트엔드 프로덕션 빌드
+cd dashboard
+npm run build
+
+# 2. iwinv 상용 호스팅 서버로 원클릭 FTP 배포
+cd ..
+node deploy_ftp.js
+```
+
+### 2) 로컬 개발 환경 실행
+```bash
+# Node 백엔드 (포트 4000) & Vite 프론트엔드 (포트 3000) 동시 실행
 npm run dev
 ```
 
-- **백엔드 API 서버:** `http://localhost:4000`
-- **React 웹 대시보드:** `http://localhost:3000`
-
 ---
 
-## 📁 프로젝트 구조
-```
-자동매매프로그램/
-├── .env                       # API 키 및 환경 변수
-├── server/                    # 백엔드 엔진 & 텔레그램 봇
-│   ├── config.js              # 환경 설정
-│   ├── security/              # AES-256 암호화 & Microsoft OTP 2FA
-│   ├── upbit/                 # 업비트 REST / WebSocket 클라이언트
-│   ├── strategy/              # RSI, 볼린저 밴드 & 매매 신호 엔진
-│   ├── telegram/              # 텔레그램 승인 봇 매니저
-│   └── index.js               # Express & WebSocket 서버
-├── dashboard/                 # React + Vite 모던 웹 대시보드
-│   ├── src/
-│   │   ├── components/        # Header, BalanceCard, ChartView, StrategySetting 등
-│   │   └── App.jsx            # 메인 트레이딩 터미널 화면
-└── UPBIT_AUTO_TRADING_PLAN.md # 프로젝트 상세 기획서
-```
+## 📂 4. 시스템 아키텍처
+
+- **상세 개발 메모 및 트러블슈팅:** [`PROJECT_DEVELOPMENT_MEMO.md`](./PROJECT_DEVELOPMENT_MEMO.md)
+- **다중 사용자 확장 기획서:** [`NURIOH_MULTI_USER_EXPANSION_PLAN.md`](./NURIOH_MULTI_USER_EXPANSION_PLAN.md)
+- **파이 노드 PC 가이드:** [`PI_NODE_SERVER_SETUP_GUIDE.md`](./PI_NODE_SERVER_SETUP_GUIDE.md)
+
+---
+*© 2026 NURIOH TRADER. All rights reserved. Created with Youngja 💖*
