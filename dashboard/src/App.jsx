@@ -43,9 +43,24 @@ import {
   registerApiKey
 } from './services/api';
 
+import LandingPage from './components/LandingPage';
+
+// 🛠️ 기본 1~9번 분산 트레이딩 슬롯 템플릿 (어떤 상황에서도 슬롯이 비어있지 않도록 보장)
+const DEFAULT_SLOTS = [
+  { id: 1, slotId: 1, slotName: '1번 슬롯', isEnabled: true, targetMarket: 'KRW-BTC', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 2, slotId: 2, slotName: '2번 슬롯', isEnabled: true, targetMarket: 'KRW-ETH', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 3, slotId: 3, slotName: '3번 슬롯', isEnabled: true, targetMarket: 'KRW-SOL', tradeAmountKrw: 30000, strategyType: 'RECOMMENDED', targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 4, slotId: 4, slotName: '4번 슬롯', isEnabled: true, targetMarket: 'KRW-XRP', tradeAmountKrw: 30000, strategyType: 'RECOMMENDED', targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 5, slotId: 5, slotName: '5번 슬롯', isEnabled: true, targetMarket: 'KRW-DOGE', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 6, slotId: 6, slotName: '6번 슬롯', isEnabled: true, targetMarket: 'KRW-ADA', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 7, slotId: 7, slotName: '7번 슬롯', isEnabled: true, targetMarket: 'KRW-AVAX', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 8, slotId: 8, slotName: '8번 슬롯', isEnabled: true, targetMarket: 'KRW-DOT', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 9, slotId: 9, slotName: '9번 슬롯', isEnabled: true, targetMarket: 'KRW-NEAR', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+];
+
 export default function App() {
   const [botRunning, setBotRunning] = useState(false);
-  const [serverIp, setServerIp] = useState('49.171.41.10');
+  const [serverIp, setServerIp] = useState('115.68.168.243');
   
   // 모달 상태 관리
   const [isGuideOpen, setIsGuideOpen] = useState(false);
@@ -54,6 +69,7 @@ export default function App() {
   const [isMyPageOpen, setIsMyPageOpen] = useState(false);
   const [isManualOpen, setIsManualOpen] = useState(false);
   const [isKakaoModalOpen, setIsKakaoModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState('login'); // 'login' | 'signup'
   const [isUpbitGuideOpen, setIsUpbitGuideOpen] = useState(false);
   const [isApiModalOpen, setIsApiModalOpen] = useState(false);
   const [isPricingOpen, setIsPricingOpen] = useState(false);
@@ -71,18 +87,19 @@ export default function App() {
   const devModeRef = useRef(devModeOverride);
   devModeRef.current = devModeOverride;
 
-  // 회원 상태 (기본 대표님 계정)
-  const [currentUser, setCurrentUser] = useState({
-    id: 1,
-    kakaoId: 'admin_nurioh_ceo',
-    name: '누리오 마스터',
-    nickname: '누리오 마스터 대표님',
-    role: 'ADMIN',
-    tier: 'VIP',
-    maxSlots: 5,
-    remainingDays: 9999,
-    hasApiKey: true,
-    profileImage: 'https://raw.githubusercontent.com/wonseokjung/solopreneur-ai-agents/main/agents/youngja/assets/youngja_thumbsup.png'
+  // 회원 상태 (sessionStorage 우선 -> 자동로그인 체크된 localStorage 확인)
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const sessionProfile = sessionStorage.getItem('nurioh_user_profile');
+      if (sessionProfile) return JSON.parse(sessionProfile);
+
+      const isRemembered = localStorage.getItem('nurioh_remember_me') === 'true';
+      if (isRemembered) {
+        const localProfile = localStorage.getItem('nurioh_user_profile');
+        if (localProfile) return JSON.parse(localProfile);
+      }
+    } catch (e) {}
+    return null;
   });
 
   // 트레이딩 설정 및 데이터 상태
@@ -104,7 +121,8 @@ export default function App() {
   });
 
   const [accounts, setAccounts] = useState([]);
-  const [slots, setSlots] = useState([]);
+  const [accountError, setAccountError] = useState(null);
+  const [slots, setSlots] = useState(DEFAULT_SLOTS);
   const [candles, setCandles] = useState([]);
   const [pendingApproval, setPendingApproval] = useState(null);
   const [tradeHistory, setTradeHistory] = useState([]);
@@ -113,20 +131,31 @@ export default function App() {
   const [currentRsi, setCurrentRsi] = useState(50);
   const [currentBb, setCurrentBb] = useState(null);
 
-  // 회원 등급에 따른 슬롯 개수 제한 적용 (Free: 1개, Pro: 3개, VIP: 5개)
-  const maxSlotsAllowed = currentUser?.maxSlots || 5;
-  const visibleSlots = slots.slice(0, maxSlotsAllowed);
+  // 회원 등급에 따른 슬롯 개수 제한 적용 (Free: 1개, Pro: 3개, VIP: 9개)
+  const maxSlotsAllowed = currentUser?.maxSlots || (currentUser?.role === 'DEVELOPER' || currentUser?.role === 'ADMIN' ? 9 : 5);
+  const effectiveSlots = (slots && slots.length > 0) ? slots : DEFAULT_SLOTS;
+  const visibleSlots = effectiveSlots.slice(0, maxSlotsAllowed);
 
   // 현재 선택된 슬롯 및 대상 마켓
-  const selectedSlot = visibleSlots.find(s => s.slotId === selectedSlotId) || visibleSlots[0] || slots[0];
+  const selectedSlot = visibleSlots.find(s => s.slotId === selectedSlotId) || visibleSlots[0] || effectiveSlots[0];
   const activeMarket = selectedSlot?.targetMarket || settings.DEFAULT_MARKET || 'KRW-BTC';
 
   // 1. 초기 데이터 및 회원 프로필 로드 (선택된 모드 유지)
   const loadData = async () => {
     try {
-      const savedUserId = localStorage.getItem('nurioh_user_id') || 1;
+      const savedUserId = sessionStorage.getItem('nurioh_user_id') || localStorage.getItem('nurioh_user_id');
+      if (!savedUserId) {
+        return;
+      }
+
       const userRes = await getUserProfile(savedUserId).catch(() => null);
       if (userRes && userRes.user) {
+        if (localStorage.getItem('nurioh_remember_me') === 'true') {
+          localStorage.setItem('nurioh_user_profile', JSON.stringify(userRes.user));
+        } else {
+          sessionStorage.setItem('nurioh_user_profile', JSON.stringify(userRes.user));
+        }
+
         setCurrentUser(prev => {
           const override = devModeRef.current;
           if (override) {
@@ -148,7 +177,11 @@ export default function App() {
         if (status.serverIp) setServerIp(status.serverIp);
         if (status.settings) setSettings(status.settings);
         if (status.accounts) setAccounts(status.accounts);
-        if (status.slots) setSlots(status.slots);
+        if (status.accountError) setAccountError(status.accountError);
+        else setAccountError(null);
+        if (status.slots && Array.isArray(status.slots) && status.slots.length > 0) {
+          setSlots(status.slots);
+        }
         if (status.pendingApproval) setPendingApproval(status.pendingApproval);
         if (status.tradeHistory) setTradeHistory(status.tradeHistory);
       }
@@ -174,55 +207,62 @@ export default function App() {
   useEffect(() => {
     loadData();
 
-    // 2. 백엔드 WebSocket 연결
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}`;
-    const ws = new WebSocket(wsUrl);
+    // 2. 백엔드 WebSocket 연결 (로컬 환경 지원, 실패 시 조용히 무시)
+    let ws = null;
+    try {
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}`;
+        ws = new WebSocket(wsUrl);
 
-    ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
+        ws.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data);
 
-        if (msg.type === 'INIT') {
-          setBotRunning(msg.botRunning);
-          if (msg.settings) setSettings(msg.settings);
-          if (msg.slots) setSlots(msg.slots);
-          if (msg.pendingApproval) setPendingApproval(msg.pendingApproval);
-        } else if (msg.type === 'TICKER_REALTIME') {
-          setLivePrice(msg.data);
-          setLivePriceMap(prev => ({ ...prev, [msg.data.code]: msg.data }));
-        } else if (msg.type === 'TICK') {
-          setCurrentRsi(msg.data.rsi);
-          setCurrentBb(msg.data.bb);
-        } else if (msg.type === 'SLOTS_UPDATED') {
-          setSlots(msg.slots);
-        } else if (msg.type === 'TRADE_SIGNAL') {
-          setPendingApproval(msg.signal);
-          if (msg.signal && msg.signal.slotId) {
-            setSelectedSlotId(msg.signal.slotId);
+            if (msg.type === 'INIT') {
+              setBotRunning(msg.botRunning);
+              if (msg.settings) setSettings(msg.settings);
+              if (msg.slots) setSlots(msg.slots);
+              if (msg.pendingApproval) setPendingApproval(msg.pendingApproval);
+            } else if (msg.type === 'TICKER_REALTIME') {
+              setLivePrice(msg.data);
+              setLivePriceMap(prev => ({ ...prev, [msg.data.code]: msg.data }));
+            } else if (msg.type === 'TICK') {
+              setCurrentRsi(msg.data.rsi);
+              setCurrentBb(msg.data.bb);
+            } else if (msg.type === 'SLOTS_UPDATED') {
+              setSlots(msg.slots);
+            } else if (msg.type === 'TRADE_SIGNAL') {
+              setPendingApproval(msg.signal);
+              if (msg.signal && msg.signal.slotId) {
+                setSelectedSlotId(msg.signal.slotId);
+              }
+            } else if (msg.type === 'TRADE_EXECUTED') {
+              setPendingApproval(null);
+              setTradeHistory(prev => [msg.signal, ...prev]);
+              loadData();
+            } else if (msg.type === 'SIGNAL_CANCELLED') {
+              setPendingApproval(null);
+            } else if (msg.type === 'BOT_STATE') {
+              setBotRunning(msg.isRunning);
+            } else if (msg.type === 'SETTINGS_UPDATED') {
+              setSettings(msg.settings);
+            } else if (msg.type === 'PANIC_SELL_COMPLETED') {
+              loadData();
+            }
+          } catch (e) {
+            console.error('WS Parse Error:', e);
           }
-        } else if (msg.type === 'TRADE_EXECUTED') {
-          setPendingApproval(null);
-          setTradeHistory(prev => [msg.signal, ...prev]);
-          loadData();
-        } else if (msg.type === 'SIGNAL_CANCELLED') {
-          setPendingApproval(null);
-        } else if (msg.type === 'BOT_STATE') {
-          setBotRunning(msg.isRunning);
-        } else if (msg.type === 'SETTINGS_UPDATED') {
-          setSettings(msg.settings);
-        } else if (msg.type === 'PANIC_SELL_COMPLETED') {
-          loadData();
-        }
-      } catch (e) {
-        console.error('WS Parse Error:', e);
+        };
       }
-    };
+    } catch (e) {
+      console.warn('WebSocket init skipped:', e);
+    }
 
-    const interval = setInterval(loadData, 10000);
+    const interval = setInterval(loadData, 5000);
 
     return () => {
-      ws.close();
+      if (ws) ws.close();
       clearInterval(interval);
     };
   }, []);
@@ -240,17 +280,40 @@ export default function App() {
     }));
   };
 
-  // 카카오 로그인 핸들러
-  const handleKakaoLoginSuccess = async (kakaoPayload) => {
-    const res = await loginWithKakao(kakaoPayload);
-    if (res && res.user) {
-      setDevModeOverride(null);
-      devModeRef.current = null;
-      setCurrentUser(res.user);
-      localStorage.setItem('nurioh_user_id', res.user.id);
-      if (!res.user.hasApiKey) {
-        setIsApiModalOpen(true);
+  // 카카오 로그인 핸들러 (rememberMe 분기)
+  const handleKakaoLoginSuccess = async (kakaoPayload, rememberMe = false) => {
+    try {
+      const res = await loginWithKakao(kakaoPayload);
+      if (res && res.user) {
+        setDevModeOverride(null);
+        devModeRef.current = null;
+        setCurrentUser(res.user);
+
+        if (rememberMe) {
+          // 🔒 자동 로그인 체크(ON) 시: localStorage에 저장 (브라우저 닫아도 유지)
+          localStorage.setItem('nurioh_user_id', String(res.user.id));
+          localStorage.setItem('nurioh_user_profile', JSON.stringify(res.user));
+          localStorage.setItem('nurioh_remember_me', 'true');
+          sessionStorage.removeItem('nurioh_user_id');
+          sessionStorage.removeItem('nurioh_user_profile');
+        } else {
+          // 🚪 자동 로그인 해제(OFF - 기본값) 시: sessionStorage에만 저장 (브라우저 닫으면 로그아웃)
+          sessionStorage.setItem('nurioh_user_id', String(res.user.id));
+          sessionStorage.setItem('nurioh_user_profile', JSON.stringify(res.user));
+          localStorage.removeItem('nurioh_user_id');
+          localStorage.removeItem('nurioh_user_profile');
+          localStorage.removeItem('nurioh_remember_me');
+        }
+
+        setIsKakaoModalOpen(false);
+        if (!res.user.hasApiKey) {
+          setIsApiModalOpen(true);
+        }
+        await loadData();
       }
+    } catch (err) {
+      console.error('Kakao login failed:', err);
+      alert('로그인 처리 중 오류가 발생했습니다: ' + (err.response?.data?.error || err.message));
     }
   };
 
@@ -259,6 +322,10 @@ export default function App() {
     setDevModeOverride(null);
     devModeRef.current = null;
     localStorage.removeItem('nurioh_user_id');
+    localStorage.removeItem('nurioh_user_profile');
+    localStorage.removeItem('nurioh_remember_me');
+    sessionStorage.removeItem('nurioh_user_id');
+    sessionStorage.removeItem('nurioh_user_profile');
     setCurrentUser(null);
   };
 
@@ -289,9 +356,9 @@ export default function App() {
 
   // 슬롯 설정 수정
   const handleUpdateSlot = async (slotId, slotData) => {
-    await updateSlotConfig(slotId, slotData);
-    const res = await getSlots();
-    if (res && res.slots) setSlots(res.slots);
+    const userId = currentUser?.id || 1;
+    await updateSlotConfig(slotId, { ...slotData, userId });
+    await loadData();
   };
 
   // 슬롯 개별 매도
@@ -319,19 +386,66 @@ export default function App() {
     setPendingApproval(null);
   };
 
+  // 🌟 로그인 전: 서비스 소개 랜딩페이지 표출
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-dark-bg text-slate-100 selection:bg-emerald-500 selection:text-black">
+        <LandingPage 
+          onOpenKakaoLogin={(mode = 'login') => {
+            setAuthModalMode(mode);
+            setIsKakaoModalOpen(true);
+          }} 
+        />
+
+        {/* 🟡 카카오톡 간편 로그인 / 회원가입 모달 */}
+        <KakaoAuthModal
+          isOpen={isKakaoModalOpen}
+          initialMode={authModalMode}
+          onClose={() => setIsKakaoModalOpen(false)}
+          onLoginSuccess={handleKakaoLoginSuccess}
+        />
+
+        {/* 📖 업비트 API 발급방법 가이드 모달 */}
+        <UpbitGuideModal
+          isOpen={isUpbitGuideOpen}
+          onClose={() => setIsUpbitGuideOpen(false)}
+          serverIp={serverIp}
+        />
+
+        {/* PWA 앱 설치 안내 */}
+        <PwaInstallPrompt />
+      </div>
+    );
+  }
+
+  // 🎨 플랜별 차별화된 테마 바탕색 스타일
+  const getThemeBgClass = () => {
+    const tier = currentUser?.tier || 'FREE_TRIAL';
+    if (tier === 'VIP' || currentUser?.role === 'ADMIN') {
+      // 💎 VIP / 마스터: 럭셔리 딥 퍼플 & 로열 골드 테마
+      return 'bg-[#0a0514] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-950/40 via-[#0a0514] to-[#040208]';
+    }
+    if (tier === 'PRO') {
+      // ⚡ PRO 플랜: 세련된 딥 인디고 & 사이버 블루 테마
+      return 'bg-[#060c1c] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-950/40 via-[#060c1c] to-[#03060e]';
+    }
+    // 🆓 무료 체험: 모던하고 깔끔한 딥 슬레이트 & 차콜 테마
+    return 'bg-[#090d16] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900/40 via-[#090d16] to-[#04060b]';
+  };
+
   return (
-    <div className="min-h-screen bg-dark-bg text-slate-100 flex flex-col pb-20">
-      {/* 상단 헤더 (Panic Sell, 운영자 대시보드 버튼 포함) */}
+    <div className={`min-h-screen ${getThemeBgClass()} text-slate-100 selection:bg-emerald-500 selection:text-black flex flex-col font-sans pb-12 transition-colors duration-500`}>
+      {/* 글로벌 네비게이션 헤더 */}
       <Header
         botRunning={botRunning}
         onToggleBot={handleToggleBot}
         onOpen2FA={() => setIs2FAModalOpen(true)}
+        is2FAActive={is2FAActive}
+        onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenGuide={() => setIsGuideOpen(true)}
         onOpenPanicSell={() => setIsPanicSellOpen(true)}
         onOpenOperatorDashboard={() => setIsOperatorDashboardOpen(true)}
-        onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenManual={() => setIsManualOpen(true)}
-        is2FAActive={is2FAActive}
         onRefresh={loadData}
         livePrice={livePrice}
       />
@@ -350,9 +464,15 @@ export default function App() {
         />
 
         {/* 계좌 잔고 요약 카드 */}
-        <BalanceCard accounts={accounts} livePriceMap={livePriceMap} />
+        <BalanceCard 
+          accounts={accounts} 
+          livePriceMap={livePriceMap} 
+          serverIp={serverIp} 
+          accountError={accountError}
+          onOpenApiModal={() => setIsApiModalOpen(true)}
+        />
 
-        {/* 🎛️ 1~5번 독립 멀티 슬롯 분산 트레이딩 매니저 (원클릭 차트 선택 연동) */}
+        {/* 🎛️ 1~9번 독립 멀티 슬롯 분산 트레이딩 매니저 */}
         <SlotManager
           slots={visibleSlots}
           onUpdateSlot={handleUpdateSlot}
@@ -363,25 +483,11 @@ export default function App() {
           onTriggerMockSurge={triggerMockSurge}
           selectedSlotId={selectedSlotId}
           onSelectSlot={setSelectedSlotId}
-          pendingApproval={pendingApproval}
-          onApprove={handleApprove}
-          onReject={handleReject}
+          krwBalance={parseFloat(accounts.find(a => a.currency === 'KRW')?.balance || '0')}
+          currentUser={currentUser}
         />
 
-        {/* 📈 메인 실시간 단독 원화(KRW) 가격 차트 (선택된 슬롯 코인 전용 색상 그래프) */}
-        <div className="w-full">
-          <ChartView
-            candles={candles}
-            selectedSlot={selectedSlot}
-            market={activeMarket}
-            livePriceMap={livePriceMap}
-            rsi={currentRsi}
-            bb={currentBb}
-            pendingApproval={pendingApproval}
-          />
-        </div>
-
-        {/* 승인 대기 알림 & 체결 내역 */}
+        {/* 실시간 체결 로그 & 텔레그램 알림 이력 */}
         <TradeLogs
           pendingApproval={pendingApproval}
           tradeHistory={tradeHistory}
@@ -445,10 +551,11 @@ export default function App() {
         remainingDays={currentUser?.remainingDays || 7}
       />
 
-      {/* 👑 마스터 대표님 전용 회원 관리 패널 */}
+      {/* 👑 마스터 대표님 / 운영자 전용 회원 관리 패널 */}
       <AdminUserManagement
         isOpen={isAdminUsersOpen}
         onClose={() => setIsAdminUsersOpen(false)}
+        currentUser={currentUser}
       />
 
       {/* 🚨 Panic Sell 비상 전량 매도 모달 */}
@@ -487,6 +594,7 @@ export default function App() {
         onOpenApiModal={() => setIsApiModalOpen(true)}
         onOpenPricing={() => setIsPricingOpen(true)}
         onReloadUser={loadData}
+        serverIp={serverIp}
       />
 
       {/* 📖 서비스 통합 매뉴얼 & 운영자 의견 수렴 모달 */}

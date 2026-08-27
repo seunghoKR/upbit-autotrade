@@ -7,6 +7,15 @@ export default function PwaInstallPrompt() {
   const [dontShowFor7Days, setDontShowFor7Days] = useState(false);
 
   useEffect(() => {
+    // 0. 모바일 디바이스(스마트폰/태블릿)인지 검사 (PC 환경에서는 표시 안 함)
+    const isMobileDevice = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                           (window.innerWidth <= 768 && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
+
+    if (!isMobileDevice) {
+      setIsVisible(false);
+      return;
+    }
+
     // 1. 이미 PWA / 독립형 앱(Standalone)으로 실행 중인지 검사
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                          window.navigator.standalone === true ||

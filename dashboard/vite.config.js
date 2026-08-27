@@ -8,7 +8,9 @@ export default defineConfig({
     tailwindcss()
   ],
   server: {
+    host: true,
     port: 3000,
+    allowedHosts: true,
     watch: {
       usePolling: true,
       interval: 1000

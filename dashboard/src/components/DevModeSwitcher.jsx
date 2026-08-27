@@ -30,17 +30,17 @@ export default function DevModeSwitcher({
     {
       tier: 'VIP',
       role: 'USER',
-      name: '💎 VIP 플랜',
-      label: 'VIP회원 (5슬롯)',
-      maxSlots: 5,
+      name: '💎 VIP 최고급',
+      label: 'VIP회원 (9슬롯)',
+      maxSlots: 9,
       badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-500/40 hover:bg-purple-500/30'
     },
     {
       tier: 'VIP',
       role: 'ADMIN',
-      name: '👑 마스터 관리자',
-      label: '대표님 최고권한',
-      maxSlots: 5,
+      name: '👑 마스터 개발자',
+      label: '대표님 최고권한 (9슬롯)',
+      maxSlots: 9,
       badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
     }
   ];

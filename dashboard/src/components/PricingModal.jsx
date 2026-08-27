@@ -19,52 +19,52 @@ export default function PricingModal({ isOpen, onClose, currentTier = 'FREE_TRIA
       id: 'FREE_TRIAL',
       name: '무료 체험 (Free Trial)',
       price: '0원',
-      period: '7일간 무료',
+      period: '3일간 무료',
       description: '누리오 자동매매 엔진을 직접 경험해 보세요',
-      slots: '1개 슬롯 (비트코인 등)',
+      slots: '1개 주력 슬롯',
       badge: '기본 제공',
       badgeColor: 'bg-slate-800 text-slate-300 border-slate-700',
       features: [
-        '단일 슬롯 (1개 코인 운영)',
-        '기본 RSI & 볼린저밴드 전략',
-        '텔레그램 실시간 승인 알림',
-        '웹 대시보드 실시간 시세 조회'
+        '1개 단일 슬롯 (BTC 등 자유 선택)',
+        '운영자 검증 추천전략 자동 적용',
+        '텔레그램 실시간 매매 결과 알림',
+        '웹 대시보드 실시간 잔고 연동'
       ],
       isPopular: false
     },
     {
       id: 'PRO',
       name: '프로 (Pro Trader)',
-      price: '49,000원',
+      price: '1,000,000원',
       period: '월 구독',
-      description: '분산 투자와 트레일링 스탑으로 안정적 수익 극대화',
-      slots: '3개 독립 슬롯 분산 운영',
+      description: '3개 슬롯 분산 투자와 트레일링 스탑으로 안정적 수익 극대화',
+      slots: '3개 독립 슬롯 분산 가동',
       badge: '가장 인기 👍',
       badgeColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
       features: [
-        '3개 멀티 슬롯 동시 운영 (BTC/ETH/XRP 등)',
-        '실시간 급등 감지 (Surge Engine)',
-        '고점 추적 트레일링 스탑 (감시 익절)',
-        '1:1 텔레그램 승인 비서 연동',
-        '우선 매매 시그널 분석'
+        '3개 멀티 슬롯 동시 운영 (BTC/ETH/SOL 등)',
+        '실시간 전종목 급등 스캔 엔진',
+        '셀프 커스텀 전략 (익절/손절/콜백 조절)',
+        '개별 슬롯 즉시 시장가 매도 기능',
+        '슬롯별 누적 거래 통계 리포트'
       ],
       isPopular: true
     },
     {
       id: 'VIP',
-      name: 'VIP 마스터 (VIP Elite)',
-      price: '99,000원',
+      name: '최고급 마스터 (VIP Elite)',
+      price: '2,000,000원',
       period: '월 구독',
-      description: '최대 5개 슬롯 전체 개방 및 비상 Panic Sell 지원',
-      slots: '5개 슬롯 전체 무제한 개방',
+      description: '9개 슬롯(3x3 풀그리드) 전체 개방으로 압도적 분산 수익 실현',
+      slots: '9개 슬롯 풀 가동 (3x3 완벽분산)',
       badge: '최고급 플랜 👑',
       badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
       features: [
-        '5개 슬롯 전체 풀 가동 (스캘핑/단타/스윙 분산)',
-        '초단타 급등 스캘핑 엔진 탑재',
-        '원클릭 🚨 Panic Sell (비상 전량 즉시 매도)',
-        '전용 1:1 기술 지원 & 전략 파라미터 컨설팅',
-        '새로운 전략 알고리즘 우선 배포'
+        '9개 슬롯 전체 풀 가동 (대형/알트/급등 3x3 분산)',
+        '초단타 급등 스캘핑 엔진 풀가동',
+        '셀프 & 추천 전략 하이브리드 운용',
+        '원클릭 Panic Sell & 개별 슬롯 긴급 매도',
+        '1:1 전용 기술지원 & VIP 전용 서버 배정'
       ],
       isPopular: false
     }

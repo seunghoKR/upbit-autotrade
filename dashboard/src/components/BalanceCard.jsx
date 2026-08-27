@@ -1,8 +1,14 @@
 import React, { useState } from 'react';
 import { Wallet, Coins, TrendingUp, TrendingDown, Info, ShieldCheck, Sparkles, CheckCircle2 } from 'lucide-react';
 
-export default function BalanceCard({ accounts = [], livePriceMap = {}, accountError = null }) {
-  const hasRealAccounts = Array.isArray(accounts) && accounts.length > 0;
+export default function BalanceCard({ 
+  accounts = [], 
+  livePriceMap = {}, 
+  accountError = null, 
+  serverIp = '115.68.168.243',
+  onOpenApiModal
+}) {
+  const hasRealAccounts = Array.isArray(accounts) && accounts.length > 0 && accounts.some(a => parseFloat(a.balance || 0) > 0 || parseFloat(a.locked || 0) > 0);
   const [useMockSimulation, setUseMockSimulation] = useState(false);
 
   // 실제 업비트 계좌 데이터
@@ -57,25 +63,41 @@ export default function BalanceCard({ accounts = [], livePriceMap = {}, accountE
         <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-[11px]">
           <div className="flex items-center gap-1.5 text-emerald-300 font-medium truncate">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span className="truncate">업비트 실계좌 <strong>{accounts.length}개 항목</strong> 동기화됨</span>
+            <span className="truncate">업비트 실계좌 <strong>{accounts.length}개 항목</strong> 실시간 동기화됨</span>
           </div>
           <span className="text-[10px] font-mono px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
-            IP: 49.171.41.10
+            IP: {serverIp}
           </span>
         </div>
       ) : (
-        <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-[11px]">
-          <div className="flex items-center gap-1.5 text-slate-300 truncate">
-            <Info className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-            <span className="truncate">업비트 API 연동 대기 중 (IP 49.171.41.10)</span>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-3.5 py-2 rounded-xl bg-slate-900/95 border border-amber-500/30 text-[11px]">
+          <div className="flex items-center gap-2 text-slate-200">
+            <Info className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>
+              {accountError ? (
+                <strong className="text-rose-400">{accountError}</strong>
+              ) : (
+                <span>업비트 API 연동 대기 중 (등록 IP: <strong className="text-cyan-300">{serverIp}</strong>)</span>
+              )}
+            </span>
           </div>
-          <button
-            onClick={() => setUseMockSimulation(!useMockSimulation)}
-            className="px-2 py-0.5 rounded-lg border text-[10px] font-bold transition flex items-center gap-1 shrink-0 bg-indigo-500/20 text-indigo-300 border-indigo-500/40"
-          >
-            <Sparkles className="w-2.5 h-2.5" />
-            <span>{useMockSimulation ? '모의자산 ON' : '모의자산 OFF'}</span>
-          </button>
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            {onOpenApiModal && (
+              <button
+                onClick={onOpenApiModal}
+                className="px-2.5 py-1 rounded-lg bg-yellow-400 hover:bg-yellow-300 text-slate-950 text-[11px] font-black transition flex items-center gap-1 shadow-md shadow-yellow-400/20 cursor-pointer"
+              >
+                <span>🔑 API 키 등록하기</span>
+              </button>
+            )}
+            <button
+              onClick={() => setUseMockSimulation(!useMockSimulation)}
+              className="px-2 py-1 rounded-lg border text-[10px] font-bold transition flex items-center gap-1 shrink-0 bg-indigo-500/20 text-indigo-300 border-indigo-500/40 cursor-pointer"
+            >
+              <Sparkles className="w-2.5 h-2.5" />
+              <span>{useMockSimulation ? '모의자산 ON' : '모의자산 OFF'}</span>
+            </button>
+          </div>
         </div>
       )}
 

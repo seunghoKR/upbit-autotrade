@@ -11,11 +11,11 @@ class Database {
 
     public static function getConnection(): PDO {
         if (self::$instance === null) {
-            $host = getenv('DB_HOST') ?: '127.0.0.1';
+            $host = getenv('DB_HOST') ?: 'localhost';
             $port = getenv('DB_PORT') ?: '3306';
-            $dbname = getenv('DB_NAME') ?: 'nurioh_trader';
-            $user = getenv('DB_USER') ?: 'root';
-            $pass = getenv('DB_PASS') ?: '';
+            $dbname = getenv('DB_NAME') ?: 'nuriohtrade';
+            $user = getenv('DB_USER') ?: 'nuriohtrade';
+            $pass = getenv('DB_PASS') ?: '#seungho0409';
             $charset = 'utf8mb4';
 
             $dsn = "mysql:host={$host};port={$port};dbname={$dbname};charset={$charset}";

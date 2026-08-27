@@ -86,17 +86,6 @@ export default function Header({
             <span className="hidden sm:inline">운영</span>
           </button>
 
-          {/* 🚨 긴급 강제 매도 (한글화) */}
-          <button
-            onClick={onOpenPanicSell}
-            className="px-2.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-[11px] sm:text-xs font-extrabold shadow-md shadow-rose-900/40 border border-rose-500/50 transition flex items-center gap-1 cursor-pointer animate-pulse"
-            title="보유 코인 전량 긴급 강제 매도"
-          >
-            <ShieldAlert className="w-3.5 h-3.5 text-white" />
-            <span className="hidden sm:inline">긴급 강제 매도</span>
-            <span className="sm:hidden">강제 매도</span>
-          </button>
-
           {/* 2FA 상태 */}
           <button
             onClick={onOpen2FA}

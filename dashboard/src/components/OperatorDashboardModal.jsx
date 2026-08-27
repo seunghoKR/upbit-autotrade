@@ -21,9 +21,10 @@ import {
   Save,
   CheckCircle2,
   Clock,
-  Settings2
+  Settings2,
+  Ban
 } from 'lucide-react';
-import { getAdminUsers, updateUserTier, updateSettings } from '../services/api';
+import { getAdminUsers, updateUserTier, updateSettings, updateExcludedMarkets } from '../services/api';
 
 export default function OperatorDashboardModal({ 
   isOpen, 
@@ -31,10 +32,14 @@ export default function OperatorDashboardModal({
   currentSettings = {},
   onSaveSettings
 }) {
-  const [activeTab, setActiveTab] = useState('STRATEGY'); // 'BUSINESS' or 'STRATEGY'
+  const [activeTab, setActiveTab] = useState('STRATEGY'); // 'STRATEGY' | 'BUSINESS' | 'EXCLUDED'
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
+
+  // 🚫 제외 코인 목록 관리
+  const [excludedMarkets, setExcludedMarkets] = useState(currentSettings?.EXCLUDED_MARKETS || []);
+  const [newExcludedInput, setNewExcludedInput] = useState('');
 
   // 1. 운영자 트레이딩 전략 프리셋 목록
   const [strategies, setStrategies] = useState([
@@ -282,6 +287,40 @@ export default function OperatorDashboardModal({
     }
   };
 
+  // 🚫 제외 코인 추가/삭제 핸들러
+  const handleAddExcludedMarket = async (marketCode) => {
+    let formatted = marketCode.trim().toUpperCase();
+    if (!formatted.startsWith('KRW-')) {
+      formatted = `KRW-${formatted}`;
+    }
+    if (excludedMarkets.includes(formatted)) {
+      alert('이미 감시/매매 제외 목록에 등록된 코인입니다.');
+      return;
+    }
+    const updated = [...excludedMarkets, formatted];
+    setExcludedMarkets(updated);
+    setNewExcludedInput('');
+    try {
+      await updateExcludedMarkets(updated);
+      setSaveSuccessMsg(`[${formatted}] 코인이 감시 및 매매 제외 목록에 추가되었습니다! 🚫`);
+      setTimeout(() => setSaveSuccessMsg(''), 4000);
+    } catch (err) {
+      alert('제외 코인 저장 실패: ' + err.message);
+    }
+  };
+
+  const handleRemoveExcludedMarket = async (marketCode) => {
+    const updated = excludedMarkets.filter(m => m !== marketCode);
+    setExcludedMarkets(updated);
+    try {
+      await updateExcludedMarkets(updated);
+      setSaveSuccessMsg(`[${marketCode}] 코인의 제외 설정이 해제되었습니다 (감시 재개). ✅`);
+      setTimeout(() => setSaveSuccessMsg(''), 4000);
+    } catch (err) {
+      alert('제외 코인 삭제 실패: ' + err.message);
+    }
+  };
+
   const totalMembers = users.length > 0 ? users.length + 47 : 48;
   const vipCount = users.filter(u => u.tier === 'VIP').length + 23;
   const proCount = users.filter(u => u.tier === 'PRO').length + 20;
@@ -306,36 +345,48 @@ export default function OperatorDashboardModal({
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                트레이딩 전략 알고리즘 제어(추가/수정/삭제) 및 회원 구독/입금 관리를 총괄합니다.
+                전략 알고리즘 제어, 감시/매매 제외 코인 관리 및 회원 구독/입금을 총괄합니다.
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* 2대 메인 탭 전환 버튼 */}
+            {/* 3대 메인 탭 전환 버튼 */}
             <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
               <button
                 onClick={() => setActiveTab('STRATEGY')}
-                className={`px-3.5 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 cursor-pointer ${
                   activeTab === 'STRATEGY'
                     ? 'bg-indigo-600 text-white shadow-md'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
                 <Sliders className="w-3.5 h-3.5 text-indigo-300" />
-                <span>🎯 트레이딩 전략 관리</span>
+                <span>🎯 전략 관리</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('EXCLUDED')}
+                className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  activeTab === 'EXCLUDED'
+                    ? 'bg-rose-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Ban className="w-3.5 h-3.5 text-rose-300" />
+                <span>🚫 제외 코인 ({excludedMarkets.length})</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('BUSINESS')}
-                className={`px-3.5 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 cursor-pointer ${
                   activeTab === 'BUSINESS'
                     ? 'bg-indigo-600 text-white shadow-md'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
                 <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
-                <span>📊 비즈니스 & 입금 승인</span>
+                <span>📊 비즈니스</span>
               </button>
             </div>
 
@@ -820,6 +871,115 @@ export default function OperatorDashboardModal({
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* TAB 3: 🚫 감시/매매 제외 코인 관리 (Blacklist) */}
+          {/* ========================================================================= */}
+          {activeTab === 'EXCLUDED' && (
+            <div className="space-y-6">
+              {/* 상단 설명 배너 */}
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-950/40 via-slate-900 to-slate-900 border border-rose-500/30 flex items-start gap-3">
+                <div className="p-2 rounded-xl bg-rose-500/20 text-rose-300 shrink-0">
+                  <Ban className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-white text-sm">전종목 자동 감시 중 특정 코인 제외 (Blacklist)</h4>
+                  <p className="text-xs text-slate-300 leading-relaxed mt-0.5">
+                    자동매매 봇은 업비트 원화마켓 전종목을 24시간 실시간 감시하지만, 
+                    <strong>유의종목, 급변동 종목 또는 운영자가 원치 않는 특정 코인</strong>을 등록하면 
+                    감시 신호 포착 및 자동 매수 대상에서 즉시 제외됩니다.
+                  </p>
+                </div>
+              </div>
+
+              {/* 코인 등록 입력창 */}
+              <div className="p-5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-4">
+                <h4 className="text-xs font-extrabold text-slate-200 flex items-center gap-1.5">
+                  <Plus className="w-4 h-4 text-emerald-400" />
+                  <span>제외할 코인 티커(심볼) 직접 추가</span>
+                </h4>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="예: XRP 또는 KRW-XRP 또는 DOGE"
+                    value={newExcludedInput}
+                    onChange={(e) => setNewExcludedInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newExcludedInput.trim()) {
+                        handleAddExcludedMarket(newExcludedInput);
+                      }
+                    }}
+                    className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white font-mono text-sm uppercase focus:outline-none focus:border-rose-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => newExcludedInput.trim() && handleAddExcludedMarket(newExcludedInput)}
+                    className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-xs transition shadow-md cursor-pointer shrink-0"
+                  >
+                    제외 등록
+                  </button>
+                </div>
+
+                {/* 추천 퀵 제외 버튼 */}
+                <div className="flex items-center gap-1.5 flex-wrap pt-1 text-xs">
+                  <span className="text-[11px] text-slate-500 font-bold">빠른 추가:</span>
+                  {['KRW-XRP', 'KRW-DOGE', 'KRW-SHIB', 'KRW-BTT', 'KRW-TRX', 'KRW-PEPE'].map((coin) => (
+                    <button
+                      key={coin}
+                      type="button"
+                      disabled={excludedMarkets.includes(coin)}
+                      onClick={() => handleAddExcludedMarket(coin)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold border transition ${
+                        excludedMarkets.includes(coin)
+                          ? 'bg-slate-800 text-slate-600 border-slate-800 cursor-not-allowed'
+                          : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-700 cursor-pointer'
+                      }`}
+                    >
+                      +{coin}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 현재 제외된 코인 목록 */}
+              <div className="p-5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <h4 className="font-bold text-white text-sm flex items-center gap-2">
+                    <span>현재 감시/매매 제외 중인 코인 목록</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold font-mono">
+                      총 {excludedMarkets.length}종목
+                    </span>
+                  </h4>
+                </div>
+
+                {excludedMarkets.length === 0 ? (
+                  <div className="py-8 text-center text-slate-500 text-xs">
+                    현재 제외된 코인이 없습니다. 업비트 원화마켓 모든 코인이 정상 감시 중입니다. ✨
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {excludedMarkets.map((market) => (
+                      <div
+                        key={market}
+                        className="px-3.5 py-2 rounded-xl bg-rose-950/40 border border-rose-500/40 text-rose-200 font-mono text-xs font-black flex items-center gap-2 shadow-sm"
+                      >
+                        <Ban className="w-3.5 h-3.5 text-rose-400" />
+                        <span>{market}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveExcludedMarket(market)}
+                          className="p-1 rounded-lg hover:bg-rose-900/60 text-rose-400 hover:text-white transition cursor-pointer"
+                          title="제외 해제 (감시 재개)"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}

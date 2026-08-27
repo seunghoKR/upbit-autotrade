@@ -31,6 +31,11 @@ export const saveAutoTradingSettings = async (settingsData) => {
   return res.data;
 };
 
+export const requestUserProfileUpdate = async (profileData) => {
+  const res = await axios.post(`${API_BASE}/user/profile-request`, profileData);
+  return res.data;
+};
+
 // ==========================================
 // 🛠️ 개발자 전용 API (Developer Operations)
 // ==========================================
@@ -48,21 +53,6 @@ export const getSystemStatus = async () => {
 // ==========================================
 // 마스터 관리자 패널 API
 // ==========================================
-
-export const getAdminUsers = async () => {
-  const res = await axios.get(`${API_BASE}/admin/users`);
-  return res.data;
-};
-
-export const updateUserTier = async (userId, tier, addDays = 30) => {
-  const res = await axios.post(`${API_BASE}/admin/users/${userId}/tier`, { tier, addDays });
-  return res.data;
-};
-
-export const toggleUserActive = async (userId) => {
-  const res = await axios.post(`${API_BASE}/admin/users/${userId}/toggle`);
-  return res.data;
-};
 
 // ==========================================
 // 트레이딩 & 봇 제어 API
@@ -140,5 +130,32 @@ export const get2FASetup = async () => {
 
 export const verify2FA = async (token) => {
   const res = await axios.post(`${API_BASE}/2fa/verify`, { token });
+  return res.data;
+};
+
+// 👑 관리자 회원 조회 및 수정
+export const getAdminUsers = async (viewerRole = 'DEVELOPER') => {
+  const res = await axios.get(`${API_BASE}/admin/users?viewerRole=${viewerRole}`);
+  return res.data;
+};
+
+export const updateAdminUser = async (userId, data) => {
+  const res = await axios.post(`${API_BASE}/admin/users/${userId}/update`, data);
+  return res.data;
+};
+
+export const updateUserTier = async (userId, newTier, addDays = 30) => {
+  const res = await axios.post(`${API_BASE}/admin/users/${userId}/update`, { tier: newTier, addDays });
+  return res.data;
+};
+
+export const toggleUserActive = async (userId) => {
+  const res = await axios.post(`${API_BASE}/admin/users/${userId}/update`, { toggleActive: true });
+  return res.data;
+};
+
+// 🚫 감시/매매 제외 코인 목록 관리
+export const updateExcludedMarkets = async (markets) => {
+  const res = await axios.post(`${API_BASE}/admin/excluded-markets`, { markets });
   return res.data;
 };
