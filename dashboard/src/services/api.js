@@ -102,6 +102,11 @@ export const updateSlotConfig = async (slotId, slotData) => {
   return res.data;
 };
 
+export const buySlotPosition = async (slotId, buyData) => {
+  const res = await axios.post(`${API_BASE}/slots/${slotId}/buy`, buyData);
+  return res.data;
+};
+
 export const sellSlotPosition = async (slotId) => {
   const res = await axios.post(`${API_BASE}/slots/${slotId}/sell`);
   return res.data;

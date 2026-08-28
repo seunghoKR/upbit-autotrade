@@ -118,7 +118,50 @@ function fetchUpbitAccounts(string $accessKey, string $secretKey, ?string &$erro
         $errorMsg = "업비트 서버 응답 없음 (HTTP {$httpCode})";
     }
 
-    return [];
+function executeUpbitOrder(string $accessKey, string $secretKey, array $params, ?string &$errorMsg = null): ?array {
+    $queryString = http_build_query($params);
+    $jwt = generateUpbitJwt($accessKey, $secretKey, $queryString);
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, 'https://api.upbit.com/v1/orders');
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        "Authorization: {$jwt}",
+        "Content-Type: application/json",
+        "Accept: application/json",
+        "User-Agent: NURIOH-TRADER"
+    ]);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($params));
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr = curl_error($ch);
+    curl_close($ch);
+
+    if ($curlErr) {
+        $errorMsg = "cURL 주문 전송 오류: {$curlErr}";
+        return null;
+    }
+
+    if ($response) {
+        $data = json_decode($response, true);
+        if ($httpCode >= 200 && $httpCode < 300 && is_array($data)) {
+            return $data;
+        }
+        if (isset($data['error']['message'])) {
+            $errorMsg = "업비트 주문 실패 [{$data['error']['name']}]: {$data['error']['message']}";
+        } else {
+            $errorMsg = "업비트 주문 오류 (HTTP {$httpCode}): {$response}";
+        }
+    } else {
+        $errorMsg = "업비트 주문 서버 응답 없음 (HTTP {$httpCode})";
+    }
+
+    return null;
 }
 
 $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
@@ -705,6 +748,84 @@ try {
         echo json_encode([
             'success' => true,
             'message' => "슬롯 {$slotId}번 ({$strategyType}) 설정이 저장되었습니다."
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // 7.1 POST slots/{id}/buy : 슬롯 급등 포착 시 업비트 시장가 자동 매수 집행
+    if (preg_match('#^slots/([0-9]+)/buy$#', $path, $matches) && $method === 'POST') {
+        $slotId = (int)$matches[1];
+        $userId = (int)($input['userId'] ?? 1);
+        $market = trim((string)($input['market'] ?? 'KRW-BTC'));
+        $tradeAmount = (float)($input['amountKrw'] ?? 0);
+        $currentPrice = (float)($input['currentPrice'] ?? 0);
+
+        if ($tradeAmount < 5000) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => '최소 매수 금액은 5,000원 이상이어야 합니다.']);
+            exit;
+        }
+
+        // 사용자 API 키 조회
+        $keyStmt = $pdo->prepare("SELECT access_key_enc, secret_key_enc FROM nurioh_user_apikeys WHERE user_id = ? AND is_valid = 1");
+        $keyStmt->execute([$userId]);
+        $keyInfo = $keyStmt->fetch();
+
+        $orderRes = null;
+        $orderErr = null;
+
+        if ($keyInfo && $keyInfo['access_key_enc'] && $keyInfo['secret_key_enc']) {
+            $accessKey = base64_decode($keyInfo['access_key_enc']);
+            $secretKey = base64_decode($keyInfo['secret_key_enc']);
+
+            // 업비트 시장가 매수 주문 (side: bid, ord_type: price, price: 매수원화금액)
+            $orderParams = [
+                'market' => $market,
+                'side' => 'bid',
+                'price' => (string)$tradeAmount,
+                'ord_type' => 'price'
+            ];
+            $orderRes = executeUpbitOrder($accessKey, $secretKey, $orderParams, $orderErr);
+        }
+
+        if (!$orderRes && $orderErr) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => $orderErr], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        // 슬롯 상태를 IN_POSITION으로 업데이트
+        $stmt = $pdo->prepare("UPDATE nurioh_slots SET 
+            position_status = 'IN_POSITION',
+            target_market = ?,
+            entry_price = ?,
+            entry_amount_krw = ?,
+            highest_price = ?,
+            highest_profit_pct = 0,
+            entered_at = NOW()
+            WHERE user_id = ? AND slot_id = ?");
+        $stmt->execute([
+            $market,
+            $currentPrice > 0 ? $currentPrice : 1,
+            $tradeAmount,
+            $currentPrice > 0 ? $currentPrice : 1,
+            $userId,
+            $slotId
+        ]);
+
+        // 텔레그램 매수 알림
+        $timeStr = date('Y-m-d H:i:s');
+        $buyAlertMsg = "<b>⚡ [실시간 급등 감지 매수 체결]</b>\n\n" .
+                       "🎰 <b>배정 슬롯:</b> <b>{$slotId}번 슬롯</b>\n" .
+                       "📌 <b>매수 코인:</b> <code>{$market}</code>\n" .
+                       "💵 <b>매수 금액:</b> " . number_format((int)$tradeAmount) . " KRW\n" .
+                       "⏱ <b>체결 시각:</b> {$timeStr}\n";
+        sendTelegramAdminAlert($buyAlertMsg);
+
+        echo json_encode([
+            'success' => true,
+            'message' => "{$slotId}번 슬롯 {$market} " . number_format((int)$tradeAmount) . "원 시장가 매수 체결 완료!",
+            'order' => $orderRes
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }

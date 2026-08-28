@@ -34,6 +34,7 @@ import {
   triggerMockSurge,
   getSlots,
   updateSlotConfig,
+  buySlotPosition,
   sellSlotPosition,
   panicSellAll,
   approveTrade,
@@ -42,6 +43,7 @@ import {
   loginWithKakao,
   registerApiKey
 } from './services/api';
+import { upbitClientEngine } from './services/upbitWsService';
 
 import LandingPage from './components/LandingPage';
 
@@ -204,8 +206,153 @@ export default function App() {
     }
   }, [activeMarket, selectedSlotId]);
 
+  // ⚡ 실시간 업비트 웹소켓 및 급등 감지 연동 레퍼런스
+  const slotsRef = useRef(slots);
+  const currentUserRef = useRef(currentUser);
+  const isExecutingBuyRef = useRef(false);
+  const isExecutingSellRef = useRef({});
+
+  useEffect(() => {
+    slotsRef.current = slots;
+  }, [slots]);
+
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
+
   useEffect(() => {
     loadData();
+
+    // ⚡ 1. 브라우저 직접 업비트 실시간 웹소켓 & 급등 감지기 가동
+    upbitClientEngine.init({
+      onTick: (tick) => {
+        setLivePriceMap(prev => ({ ...prev, [tick.code]: tick }));
+        if (tick.code === activeMarket) {
+          setLivePrice(tick);
+        }
+
+        // 🎯 1.1 보유 중인 슬롯의 실시간 트레일링 익절 & 손절 자동 검사
+        const currentSlots = slotsRef.current || [];
+        const activeUser = currentUserRef.current;
+
+        for (const slot of currentSlots) {
+          if (!slot.isEnabled || slot.positionStatus !== 'IN_POSITION' || slot.targetMarket !== tick.code) {
+            continue;
+          }
+
+          const entryPrice = slot.entryPrice || tick.trade_price;
+          if (!entryPrice || entryPrice <= 0) continue;
+
+          const currentPrice = tick.trade_price;
+          const profitPct = ((currentPrice - entryPrice) / entryPrice) * 100;
+          const highestPrice = Math.max(slot.highestPrice || entryPrice, currentPrice);
+          const highestProfitPct = Math.max(slot.highestProfitPct || 0, profitPct);
+
+          const targetProfit = slot.targetProfitPct || 3.0;
+          const callback = slot.trailingCallbackPct || 1.0;
+          const stopLoss = -(slot.stopLossPct || 2.0);
+
+          // 익절 조건 (최고점 찍고 콜백 또는 목표달성) 또는 손절 조건
+          const isTakeProfit = (highestProfitPct >= targetProfit && (highestProfitPct - profitPct) >= callback);
+          const isStopLoss = (profitPct <= stopLoss);
+
+          if ((isTakeProfit || isStopLoss) && !isExecutingSellRef.current[slot.slotId]) {
+            isExecutingSellRef.current[slot.slotId] = true;
+            console.log(`🚨 [Auto Sell Triggered] ${slot.slotId}번 슬롯: 수익률 ${profitPct.toFixed(2)}% (익절:${isTakeProfit}, 손절:${isStopLoss})`);
+            
+            sellSlotPosition(slot.slotId)
+              .then(() => {
+                loadData();
+              })
+              .catch(err => {
+                console.error('Auto Sell Error:', err);
+              })
+              .finally(() => {
+                setTimeout(() => {
+                  delete isExecutingSellRef.current[slot.slotId];
+                }, 10000);
+              });
+          }
+        }
+      },
+      onSurge: (tick, buffer) => {
+        if (isExecutingBuyRef.current || pendingSurgeCountdown) return;
+
+        const currentSlots = slotsRef.current || [];
+        const activeUser = currentUserRef.current;
+        const now = Date.now();
+
+        // 🎯 1.2 감시 대기 중(IDLE & isEnabled & tradeAmountKrw >= 5000)인 슬롯 찾기
+        for (const slot of currentSlots) {
+          if (!slot.isEnabled || slot.positionStatus === 'IN_POSITION' || (slot.tradeAmountKrw || 0) < 5000) {
+            continue;
+          }
+
+          const windowSeconds = slot.surgeWindowSeconds || 10;
+          const rateThreshold = slot.surgeRatePct || 0.5;
+          const minVolumeKrw = slot.surgeMinVolumeKrw || 1000000;
+
+          const windowMs = windowSeconds * 1000;
+          const cutoff = now - windowMs;
+          const recentTicks = buffer.filter(t => t.timestamp >= cutoff);
+          if (recentTicks.length < 2) continue;
+
+          const basePrice = recentTicks[0].price;
+          const currentPrice = recentTicks[recentTicks.length - 1].price;
+          const priceDiffRate = ((currentPrice - basePrice) / basePrice) * 100;
+          const totalVolumeKrw = recentTicks.reduce((sum, item) => sum + item.amount, 0);
+
+          // 급등 조건 충족 시: 3초 카운트다운 시작 ➔ 전자동 매수 체결!
+          if (priceDiffRate >= rateThreshold && totalVolumeKrw >= minVolumeKrw) {
+            console.log(`🚨 [Client Surge Trigger] 포착! ${slot.slotId}번 슬롯: ${tick.code} +${priceDiffRate.toFixed(2)}% (${windowSeconds}초간 ${Math.round(totalVolumeKrw).toLocaleString()}원)`);
+
+            setSelectedSlotId(slot.slotId);
+            setPendingSurgeCountdown({
+              slotId: slot.slotId,
+              market: tick.code,
+              price: currentPrice,
+              amount: slot.tradeAmountKrw,
+              rate: priceDiffRate.toFixed(2),
+              secondsLeft: 3
+            });
+
+            let secondsLeft = 3;
+            if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+
+            countdownTimerRef.current = setInterval(async () => {
+              secondsLeft -= 1;
+              if (secondsLeft > 0) {
+                setPendingSurgeCountdown(prev => prev ? { ...prev, secondsLeft } : null);
+              } else {
+                clearInterval(countdownTimerRef.current);
+                countdownTimerRef.current = null;
+                setPendingSurgeCountdown(null);
+                isExecutingBuyRef.current = true;
+
+                try {
+                  const buyRes = await buySlotPosition(slot.slotId, {
+                    userId: activeUser?.id || 1,
+                    market: tick.code,
+                    amountKrw: slot.tradeAmountKrw,
+                    currentPrice: currentPrice
+                  });
+                  console.log('✅ [Auto Buy Success]', buyRes);
+                  await loadData();
+                } catch (buyErr) {
+                  console.error('❌ [Auto Buy Failed]', buyErr);
+                } finally {
+                  setTimeout(() => {
+                    isExecutingBuyRef.current = false;
+                  }, 15000); // 15초 쿨다운
+                }
+              }
+            }, 1000);
+
+            break; // 한 번에 한 슬롯만 트리거
+          }
+        }
+      }
+    });
 
     // 2. 백엔드 WebSocket 연결 (로컬 환경 지원, 실패 시 조용히 무시)
     let ws = null;
@@ -214,55 +361,15 @@ export default function App() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}`;
         ws = new WebSocket(wsUrl);
-
-        ws.onmessage = (event) => {
-          try {
-            const msg = JSON.parse(event.data);
-
-            if (msg.type === 'INIT') {
-              setBotRunning(msg.botRunning);
-              if (msg.settings) setSettings(msg.settings);
-              if (msg.slots) setSlots(msg.slots);
-              if (msg.pendingApproval) setPendingApproval(msg.pendingApproval);
-            } else if (msg.type === 'TICKER_REALTIME') {
-              setLivePrice(msg.data);
-              setLivePriceMap(prev => ({ ...prev, [msg.data.code]: msg.data }));
-            } else if (msg.type === 'TICK') {
-              setCurrentRsi(msg.data.rsi);
-              setCurrentBb(msg.data.bb);
-            } else if (msg.type === 'SLOTS_UPDATED') {
-              setSlots(msg.slots);
-            } else if (msg.type === 'TRADE_SIGNAL') {
-              setPendingApproval(msg.signal);
-              if (msg.signal && msg.signal.slotId) {
-                setSelectedSlotId(msg.signal.slotId);
-              }
-            } else if (msg.type === 'TRADE_EXECUTED') {
-              setPendingApproval(null);
-              setTradeHistory(prev => [msg.signal, ...prev]);
-              loadData();
-            } else if (msg.type === 'SIGNAL_CANCELLED') {
-              setPendingApproval(null);
-            } else if (msg.type === 'BOT_STATE') {
-              setBotRunning(msg.isRunning);
-            } else if (msg.type === 'SETTINGS_UPDATED') {
-              setSettings(msg.settings);
-            } else if (msg.type === 'PANIC_SELL_COMPLETED') {
-              loadData();
-            }
-          } catch (e) {
-            console.error('WS Parse Error:', e);
-          }
-        };
       }
-    } catch (e) {
-      console.warn('WebSocket init skipped:', e);
-    }
+    } catch (e) {}
 
     const interval = setInterval(loadData, 5000);
 
     return () => {
+      upbitClientEngine.destroy();
       if (ws) ws.close();
+      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
       clearInterval(interval);
     };
   }, []);
