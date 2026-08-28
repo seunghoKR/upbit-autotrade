@@ -31,16 +31,18 @@
     <div id="root"></div>
     <!-- 카카오 Javascript SDK (v1 팝업 로그인 지원) -->
     <script src="https://t1.kakaocdn.net/kakao_js_sdk/1.43.0/kakao.min.js"></script>
-    <!-- PWA Service Worker 등록 및 캐시 즉시 갱신 -->
+    <!-- PWA Service Worker 등록 해제 및 캐시 강제 전면 삭제 -->
     <script>
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js?v=' + Date.now())
-            .then((reg) => {
-              reg.update();
-              console.log('Service Worker Registered & Updated:', reg.scope);
-            })
-            .catch((err) => console.warn('Service Worker registration failed:', err));
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for(let registration of registrations) {
+            registration.unregister();
+          }
+        });
+      }
+      if ('caches' in window) {
+        caches.keys().then(function(keys) {
+          keys.forEach(function(key) { caches.delete(key); });
         });
       }
     </script>
