@@ -3,6 +3,7 @@ import { Crown, KeyRound, ShieldCheck, ShieldAlert, LogOut, User, Sparkles, Cloc
 
 export default function SubscriptionCard({ 
   user, 
+  hasApiKey = false,
   onOpenMyPage, 
   onOpenApiModal, 
   onOpenPricing, 
@@ -89,13 +90,13 @@ export default function SubscriptionCard({
                 }`}>
                   {user.role === 'DEVELOPER' ? '👑 개발자' : (user.role === 'OPERATOR' ? '📊 운영자' : (user.role === 'ADMIN' ? '👑 마스터' : (isPending ? '대기' : user.tier)))}
                 </span>
-                {user.hasApiKey ? (
+                {hasApiKey ? (
                   <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-semibold flex items-center gap-0.5 shrink-0 whitespace-nowrap">
-                    <ShieldCheck className="w-2.5 h-2.5" /> API
+                    <ShieldCheck className="w-2.5 h-2.5" /> API 연결됨
                   </span>
                 ) : (
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-800 text-slate-400 border border-slate-700 font-semibold flex items-center gap-0.5 shrink-0 whitespace-nowrap">
-                    <ShieldAlert className="w-2.5 h-2.5" /> 미등록
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 font-semibold flex items-center gap-0.5 shrink-0 whitespace-nowrap">
+                    <ShieldAlert className="w-2.5 h-2.5" /> API 미등록
                   </span>
                 )}
               </div>

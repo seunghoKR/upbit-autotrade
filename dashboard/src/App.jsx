@@ -680,6 +680,7 @@ export default function App() {
         {/* 🟡 유료 회원 구독 상태 & 카카오 온보딩 바 */}
         <SubscriptionCard
           user={currentUser}
+          hasApiKey={!accountError && hasRealAccounts}
           onOpenMyPage={() => setIsMyPageOpen(true)}
           onOpenApiModal={() => setIsApiModalOpen(true)}
           onOpenPricing={() => setIsPricingOpen(true)}
@@ -815,6 +816,7 @@ export default function App() {
         isOpen={isMyPageOpen}
         onClose={() => setIsMyPageOpen(false)}
         user={currentUser}
+        hasApiKey={!accountError && hasRealAccounts}
         slots={slots}
         onUpdateSlot={handleUpdateSlot}
         onOpenApiModal={() => setIsApiModalOpen(true)}

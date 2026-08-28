@@ -46,6 +46,7 @@ export default function MyPageModal({
   isOpen, 
   onClose, 
   user, 
+  hasApiKey = false,
   slots = [], 
   onUpdateSlot, 
   onOpenApiModal,
@@ -457,13 +458,13 @@ export default function MyPageModal({
                   <KeyRound className="w-5 h-5 text-yellow-400" />
                   <h4 className="font-bold text-white text-sm">업비트 Open API 연동</h4>
                 </div>
-                {user?.hasApiKey ? (
+                {hasApiKey ? (
                   <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold flex items-center gap-1">
                     <ShieldCheck className="w-3.5 h-3.5" /> 정상 연결됨
                   </span>
                 ) : (
                   <span className="text-xs px-2.5 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/30 font-bold flex items-center gap-1">
-                    <ShieldAlert className="w-3.5 h-3.5" /> 미등록
+                    <ShieldAlert className="w-3.5 h-3.5" /> 미등록 (연동 필요)
                   </span>
                 )}
               </div>

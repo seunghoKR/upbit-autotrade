@@ -118,6 +118,9 @@ function fetchUpbitAccounts(string $accessKey, string $secretKey, ?string &$erro
         $errorMsg = "업비트 서버 응답 없음 (HTTP {$httpCode})";
     }
 
+    return [];
+}
+
 function executeUpbitOrder(string $accessKey, string $secretKey, array $params, ?string &$errorMsg = null): ?array {
     $queryString = http_build_query($params);
     $jwt = generateUpbitJwt($accessKey, $secretKey, $queryString);
