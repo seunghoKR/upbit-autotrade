@@ -62,19 +62,6 @@ export default function Header({
             <span className="hidden md:inline">매뉴얼</span>
           </button>
 
-          {/* 2FA 상태 (PC에서 표시) */}
-          <button
-            onClick={onOpen2FA}
-            className={`hidden sm:flex p-1.5 rounded-xl text-xs font-medium border transition items-center gap-1 cursor-pointer shrink-0 ${
-              is2FAActive 
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
-                : 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
-            }`}
-            title="2FA 보안"
-          >
-            <ShieldCheck className="w-3.5 h-3.5" />
-          </button>
-
           {/* 새로고침 */}
           <button
             onClick={onRefresh}
