@@ -29,11 +29,19 @@ export default function DevModeSwitcher({
     },
     {
       tier: 'VIP',
+      role: 'USER',
+      name: '💎 VIP',
+      label: 'VIP 마스터 (9슬롯)',
+      maxSlots: 9,
+      badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 hover:bg-cyan-500/30'
+    },
+    {
+      tier: 'VIP',
       role: 'OPERATOR',
       name: '📊 운영자',
       label: '사이트 운영자 (9슬롯)',
       maxSlots: 9,
-      badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
+      badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/50 hover:bg-emerald-500/30'
     },
     {
       tier: 'VIP',
