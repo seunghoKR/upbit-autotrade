@@ -82,9 +82,31 @@ try {
         VALUES (1, 'admin_nurioh_ceo', '누리오 마스터 대표님', 'ceo@nurioh.com', 'ADMIN', 'VIP', '2099-12-31 23:59:59', 5)
         ON DUPLICATE KEY UPDATE `role` = 'ADMIN', `tier` = 'VIP'");
 
+    // 5. 테스트 기록 초기화 (0회, 0%, 0원)
+    try {
+        $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `total_trades` INT DEFAULT 0");
+    } catch (Exception $ex) {}
+    try {
+        $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `win_trades` INT DEFAULT 0");
+    } catch (Exception $ex) {}
+    try {
+        $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `total_realized_profit_krw` DECIMAL(15,2) DEFAULT 0.00");
+    } catch (Exception $ex) {}
+
+    $pdo->exec("UPDATE `nurioh_slots` SET 
+        `position_status` = 'IDLE',
+        `entry_price` = NULL,
+        `entry_volume` = NULL,
+        `entry_amount_krw` = NULL,
+        `highest_price` = NULL,
+        `highest_profit_pct` = 0,
+        `total_trades` = 0,
+        `win_trades` = 0,
+        `total_realized_profit_krw` = 0");
+
     echo json_encode([
         'success' => true,
-        'message' => 'MariaDB Tables created successfully!'
+        'message' => 'MariaDB Tables updated and all test records reset cleanly to 0!'
     ], JSON_UNESCAPED_UNICODE);
 } catch (Exception $e) {
     http_response_code(500);

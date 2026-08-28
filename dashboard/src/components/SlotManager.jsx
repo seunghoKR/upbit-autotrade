@@ -667,19 +667,28 @@ export default function SlotManager({
               <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
                 <span className="text-[11px] text-slate-400 block mb-1">총 거래 횟수</span>
                 <span className="text-base font-bold font-mono text-white">
-                  {selectedStatsSlot.totalTrades || 12}회
+                  {selectedStatsSlot.totalTrades || 0}회
                 </span>
               </div>
               <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
                 <span className="text-[11px] text-slate-400 block mb-1">승률</span>
                 <span className="text-base font-bold font-mono text-emerald-400">
-                  {Math.round(((selectedStatsSlot.winTrades || 10) / (selectedStatsSlot.totalTrades || 12)) * 100)}%
+                  {selectedStatsSlot.totalTrades > 0 
+                    ? `${Math.round(((selectedStatsSlot.winTrades || 0) / selectedStatsSlot.totalTrades) * 100)}%` 
+                    : '-'}
                 </span>
               </div>
               <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
                 <span className="text-[11px] text-slate-400 block mb-1">실현 손익 합계</span>
-                <span className="text-base font-bold font-mono text-rose-400">
-                  +{(selectedStatsSlot.totalRealizedProfitKrw || 145000).toLocaleString()}원
+                <span className={`text-base font-bold font-mono ${
+                  (selectedStatsSlot.totalRealizedProfitKrw || 0) > 0 
+                    ? 'text-rose-400' 
+                    : (selectedStatsSlot.totalRealizedProfitKrw || 0) < 0 
+                    ? 'text-blue-400' 
+                    : 'text-slate-400'
+                }`}>
+                  {(selectedStatsSlot.totalRealizedProfitKrw || 0) > 0 ? '+' : ''}
+                  {Math.round(selectedStatsSlot.totalRealizedProfitKrw || 0).toLocaleString()}원
                 </span>
               </div>
             </div>

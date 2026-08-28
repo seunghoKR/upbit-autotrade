@@ -548,9 +548,9 @@ try {
                 'entryVolume' => $s['entry_volume'] ? (float)$s['entry_volume'] : null,
                 'highestPrice' => $s['highest_price'] ? (float)$s['highest_price'] : null,
                 'highestProfitPct' => (float)($s['highest_profit_pct'] ?? 0),
-                'totalTrades' => (int)($s['total_trades'] ?? 12),
-                'winTrades' => (int)($s['win_trades'] ?? 10),
-                'totalRealizedProfitKrw' => (float)($s['total_realized_profit_krw'] ?? 145000)
+                'totalTrades' => (int)($s['total_trades'] ?? 0),
+                'winTrades' => (int)($s['win_trades'] ?? 0),
+                'totalRealizedProfitKrw' => (float)($s['total_realized_profit_krw'] ?? 0)
             ];
         }, $slots);
 
