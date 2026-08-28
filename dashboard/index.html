@@ -11,6 +11,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="NURIOH" />
     <link rel="manifest" href="/manifest.json" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>NURIOH TRADER | AI 자동매매 시스템</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -28,12 +31,15 @@
     <div id="root"></div>
     <!-- 카카오 Javascript SDK (v1 팝업 로그인 지원) -->
     <script src="https://t1.kakaocdn.net/kakao_js_sdk/1.43.0/kakao.min.js"></script>
-    <!-- PWA Service Worker 등록 (진짜 네이티브 앱 설치 지원) -->
+    <!-- PWA Service Worker 등록 및 캐시 즉시 갱신 -->
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then((reg) => console.log('Service Worker Registered:', reg.scope))
+          navigator.serviceWorker.register('/sw.js?v=' + Date.now())
+            .then((reg) => {
+              reg.update();
+              console.log('Service Worker Registered & Updated:', reg.scope);
+            })
             .catch((err) => console.warn('Service Worker registration failed:', err));
         });
       }

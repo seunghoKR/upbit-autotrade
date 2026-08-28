@@ -1,5 +1,5 @@
-// Service Worker for NURIOH PWA App Installation
-const CACHE_NAME = 'nurioh-pwa-v3';
+// Service Worker for NURIOH PWA App Installation (No-Cache Bypass)
+const CACHE_NAME = 'nurioh-nocache-v4';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -8,17 +8,12 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
-      return Promise.all(
-        keys.map((key) => caches.delete(key))
-      );
+      return Promise.all(keys.map((key) => caches.delete(key)));
     }).then(() => self.clients.claim())
   );
 });
 
 self.addEventListener('fetch', (event) => {
-  // Pass-through fetch for real-time data
-  if (event.request.method !== 'GET') return;
-  event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
-  );
+  // 항상 네트워크 최신 응답 통과
+  event.respondWith(fetch(event.request));
 });
