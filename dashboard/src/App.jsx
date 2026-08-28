@@ -262,8 +262,16 @@ export default function App() {
             isExecutingSellRef.current[slot.slotId] = true;
             console.log(`🚨 [Auto Sell Triggered] ${slot.slotId}번 슬롯: 수익률 ${profitPct.toFixed(2)}% (익절:${isTakeProfit}, 손절:${isStopLoss})`);
             
-            sellSlotPosition(slot.slotId)
-              .then(() => {
+            sellSlotPosition(slot.slotId, { currentPrice })
+              .then((res) => {
+                // 브라우저 웹 푸시 알림 발송
+                if ('Notification' in window && Notification.permission === 'granted') {
+                  const isWin = profitPct >= 0;
+                  new Notification(isWin ? '🟢 [수익 실현 익절 완료]' : '🔴 [손실 제한 손절 완료]', {
+                    body: `${slot.slotId}번 슬롯 (${slot.targetMarket}): 실현수익률 ${isWin ? '+' : ''}${profitPct.toFixed(2)}%`,
+                    icon: '/favicon.png'
+                  });
+                }
                 loadData();
               })
               .catch(err => {
@@ -332,6 +340,23 @@ export default function App() {
                 isExecutingBuyRef.current = true;
 
                 try {
+                  // 슬롯 상태를 IN_POSITION으로 즉시 낙관적 업데이트
+                  setSlots(prevSlots => prevSlots.map(s => {
+                    if (s.slotId === slot.slotId) {
+                      return {
+                        ...s,
+                        positionStatus: 'IN_POSITION',
+                        targetMarket: tick.code,
+                        entryPrice: currentPrice,
+                        entryVolume: slot.tradeAmountKrw / currentPrice,
+                        entryAmountKrw: slot.tradeAmountKrw,
+                        highestPrice: currentPrice,
+                        highestProfitPct: 0
+                      };
+                    }
+                    return s;
+                  }));
+
                   const buyRes = await buySlotPosition(slot.slotId, {
                     userId: activeUser?.id || 1,
                     market: tick.code,
@@ -339,6 +364,15 @@ export default function App() {
                     currentPrice: currentPrice
                   });
                   console.log('✅ [Auto Buy Success]', buyRes);
+
+                  // 브라우저 웹 푸시 알림 발송
+                  if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification('⚡ [급등 감지 자동매수 체결]', {
+                      body: `${slot.slotId}번 슬롯: ${tick.code} ${Math.round(slot.tradeAmountKrw).toLocaleString()}원 매수 체결`,
+                      icon: '/favicon.png'
+                    });
+                  }
+
                   await loadData();
                 } catch (buyErr) {
                   console.error('❌ [Auto Buy Failed]', buyErr);

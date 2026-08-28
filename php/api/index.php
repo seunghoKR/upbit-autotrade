@@ -797,11 +797,15 @@ try {
             exit;
         }
 
-        // 슬롯 상태를 IN_POSITION으로 업데이트
+        $calcPrice = $currentPrice > 0 ? $currentPrice : 1;
+        $calcVolume = $tradeAmount / $calcPrice;
+
+        // 슬롯 상태를 IN_POSITION으로 업데이트 (매수가, 수량, 매수금액, 진입시각 완벽 보존)
         $stmt = $pdo->prepare("UPDATE nurioh_slots SET 
             position_status = 'IN_POSITION',
             target_market = ?,
             entry_price = ?,
+            entry_volume = ?,
             entry_amount_krw = ?,
             highest_price = ?,
             highest_profit_pct = 0,
@@ -809,9 +813,10 @@ try {
             WHERE user_id = ? AND slot_id = ?");
         $stmt->execute([
             $market,
-            $currentPrice > 0 ? $currentPrice : 1,
+            $calcPrice,
+            $calcVolume,
             $tradeAmount,
-            $currentPrice > 0 ? $currentPrice : 1,
+            $calcPrice,
             $userId,
             $slotId
         ]);
@@ -822,13 +827,17 @@ try {
                        "🎰 <b>배정 슬롯:</b> <b>{$slotId}번 슬롯</b>\n" .
                        "📌 <b>매수 코인:</b> <code>{$market}</code>\n" .
                        "💵 <b>매수 금액:</b> " . number_format((int)$tradeAmount) . " KRW\n" .
+                       "📊 <b>진입 단가:</b> " . number_format($calcPrice) . " KRW\n" .
                        "⏱ <b>체결 시각:</b> {$timeStr}\n";
         sendTelegramAdminAlert($buyAlertMsg);
 
         echo json_encode([
             'success' => true,
             'message' => "{$slotId}번 슬롯 {$market} " . number_format((int)$tradeAmount) . "원 시장가 매수 체결 완료!",
-            'order' => $orderRes
+            'order' => $orderRes,
+            'entryPrice' => $calcPrice,
+            'entryVolume' => $calcVolume,
+            'market' => $market
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }
@@ -837,43 +846,97 @@ try {
     if (preg_match('#^slots/([0-9]+)/sell$#', $path, $matches) && $method === 'POST') {
         $slotId = (int)$matches[1];
         $userId = (int)($input['userId'] ?? 1);
+        $currentPrice = (float)($input['currentPrice'] ?? 0);
 
         $slotStmt = $pdo->prepare("SELECT * FROM nurioh_slots WHERE user_id = ? AND slot_id = ?");
         $slotStmt->execute([$userId, $slotId]);
         $slot = $slotStmt->fetch();
 
-        $pdo->prepare("UPDATE nurioh_slots SET position_status = 'IDLE', entry_price = NULL, entry_volume = NULL, highest_price = NULL, highest_profit_pct = 0 WHERE user_id = ? AND slot_id = ?")
-            ->execute([$userId, $slotId]);
+        // 사용자 API 키 조회
+        $keyStmt = $pdo->prepare("SELECT access_key_enc, secret_key_enc FROM nurioh_user_apikeys WHERE user_id = ? AND is_valid = 1");
+        $keyStmt->execute([$userId]);
+        $keyInfo = $keyStmt->fetch();
 
-        // 📢 대표님 요청: 오직 매도 완료 시에만 슬롯별 실현 손익 정산 알림 발송!
-        if ($slot) {
-            $mkt = $slot['target_market'] ?? 'KRW-BTC';
-            $slotName = $slot['slot_name'] ?? "{$slotId}번 슬롯";
-            $entryPrice = (float)($slot['entry_price'] ?? 0);
-            $profitPct = (float)($slot['highest_profit_pct'] ?? 0);
-            $amountKrw = (float)($slot['trade_amount_krw'] ?? 50000);
-            $profitKrw = $amountKrw * ($profitPct / 100);
+        $mkt = $slot['target_market'] ?? 'KRW-BTC';
+        $coinCurrency = str_replace('KRW-', '', $mkt);
+        $orderRes = null;
+        $orderErr = null;
 
-            $isProfit = $profitPct >= 0;
-            $emoji = $isProfit ? '🟢 [수익 실현 매도 완료]' : '🔴 [손실 제한 매도 완료]';
-            $sign = $isProfit ? '+' : '';
-            $pctStr = "{$sign}" . number_format($profitPct, 2) . "%";
-            $krwStr = "{$sign}" . number_format((int)$profitKrw) . " KRW";
-            $timeStr = date('Y-m-d H:i:s');
+        if ($keyInfo && $keyInfo['access_key_enc'] && $keyInfo['secret_key_enc']) {
+            $accessKey = base64_decode($keyInfo['access_key_enc']);
+            $secretKey = base64_decode($keyInfo['secret_key_enc']);
 
-            $alertMsg = "<b>{$emoji}</b>\n\n" .
-                        "🎰 <b>배정 슬롯:</b> <b>{$slotId}번 슬롯 ({$slotName})</b>\n" .
-                        "📌 <b>암호화폐:</b> <code>{$mkt}</code>\n" .
-                        "📈 <b>실현 수익률:</b> <b>{$pctStr}</b>\n" .
-                        "💵 <b>실현 손익금:</b> <b>{$krwStr}</b>\n" .
-                        "⏱ <b>청산 시각:</b> {$timeStr}\n";
+            // 업비트 잔고에서 해당 코인 실제 보유 수량 조회
+            $accounts = fetchUpbitAccounts($accessKey, $secretKey);
+            $coinAcc = null;
+            foreach ($accounts as $acc) {
+                if ($acc['currency'] === $coinCurrency) {
+                    $coinAcc = $acc;
+                    break;
+                }
+            }
 
-            sendTelegramAdminAlert($alertMsg);
+            $coinBalance = (float)($coinAcc['balance'] ?? ($slot['entry_volume'] ?? 0));
+            if ($coinBalance > 0) {
+                $orderParams = [
+                    'market' => $mkt,
+                    'side' => 'ask',
+                    'volume' => (string)$coinBalance,
+                    'ord_type' => 'market'
+                ];
+                $orderRes = executeUpbitOrder($accessKey, $secretKey, $orderParams, $orderErr);
+            }
         }
+
+        $entryPrice = (float)($slot['entry_price'] ?? 0);
+        $amountKrw = (float)($slot['entry_amount_krw'] ?? ($slot['trade_amount_krw'] ?? 5000));
+        $exitPrice = $currentPrice > 0 ? $currentPrice : (float)($slot['highest_price'] ?? $entryPrice);
+        
+        $profitPct = ($entryPrice > 0 && $exitPrice > 0) 
+            ? ((($exitPrice - $entryPrice) / $entryPrice) * 100)
+            : (float)($slot['highest_profit_pct'] ?? 0);
+        
+        $profitKrw = $amountKrw * ($profitPct / 100);
+        $isProfit = $profitPct >= 0;
+
+        // 슬롯 초기화 및 실현 손익 통계 누적
+        $pdo->prepare("UPDATE nurioh_slots SET 
+            position_status = 'IDLE', 
+            entry_price = NULL, 
+            entry_volume = NULL, 
+            entry_amount_krw = NULL,
+            highest_price = NULL, 
+            highest_profit_pct = 0,
+            total_trades = total_trades + 1,
+            win_trades = win_trades + ?,
+            total_realized_profit_krw = total_realized_profit_krw + ?
+            WHERE user_id = ? AND slot_id = ?")
+            ->execute([$isProfit ? 1 : 0, $profitKrw, $userId, $slotId]);
+
+        // 📢 텔레그램 실현 손익 정산 알림 발송
+        $slotName = $slot['slot_name'] ?? "{$slotId}번 슬롯";
+        $emoji = $isProfit ? '🟢 [수익 실현 매도 완료]' : '🔴 [손실 제한 매도 완료]';
+        $sign = $isProfit ? '+' : '';
+        $pctStr = "{$sign}" . number_format($profitPct, 2) . "%";
+        $krwStr = "{$sign}" . number_format((int)$profitKrw) . " KRW";
+        $timeStr = date('Y-m-d H:i:s');
+
+        $alertMsg = "<b>{$emoji}</b>\n\n" .
+                    "🎰 <b>배정 슬롯:</b> <b>{$slotId}번 슬롯 ({$slotName})</b>\n" .
+                    "📌 <b>암호화폐:</b> <code>{$mkt}</code>\n" .
+                    "📈 <b>실현 수익률:</b> <b>{$pctStr}</b>\n" .
+                    "💵 <b>실현 손익금:</b> <b>{$krwStr}</b>\n" .
+                    "⏱ <b>청산 시각:</b> {$timeStr}\n";
+
+        sendTelegramAdminAlert($alertMsg);
 
         echo json_encode([
             'success' => true,
-            'message' => "슬롯 {$slotId}번 매도 정산이 완료되었습니다!"
+            'message' => "슬롯 {$slotId}번 ({$mkt}) 매도 정산 완료! 실현수익률: {$pctStr} ({$krwStr})",
+            'profitPct' => $profitPct,
+            'profitKrw' => $profitKrw,
+            'isProfit' => $isProfit,
+            'order' => $orderRes
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }

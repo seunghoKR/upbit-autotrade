@@ -593,36 +593,58 @@ export default function SlotManager({
                   <div className="grid grid-cols-2 gap-2 bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
                     <div>
                       <div className="flex items-center gap-1.5 mb-1">
-                        <span className="text-[10px] text-slate-400 font-bold">매수금액</span>
-                        {/* ⏱️ 초 단위 급등감지 조건 뱃지 */}
-                        {isSelfStrategy ? (
-                          <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 font-mono font-extrabold border border-purple-500/30 whitespace-nowrap" title={`${slot.surgeWindowSeconds || 5}초 동안 +${slot.surgeRatePct || 1.5}% 상승 & ${Math.round((slot.surgeMinVolumeKrw || 10000000)/10000).toLocaleString()}만원 이상 거래대금 시 자동매수`}>
-                            ⏱️ {slot.surgeWindowSeconds || 5}초 감시
-                          </span>
-                        ) : (
-                          <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-mono font-extrabold border border-emerald-500/30 whitespace-nowrap" title="5초 동안 +1.5% 급등 & 1,000만원 거래대금 감지 시 자동매수">
-                            🎯 5초 추천감시
-                          </span>
+                        <span className="text-[10px] text-slate-400 font-bold">
+                          {hasPosition ? '진입단가 / 수량' : '매수금액'}
+                        </span>
+                        {/* ⏱️ 초 단위 급등감지 조건 뱃지 (미보유 시에만 표시) */}
+                        {!hasPosition && (
+                          isSelfStrategy ? (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 font-mono font-extrabold border border-purple-500/30 whitespace-nowrap" title={`${slot.surgeWindowSeconds || 5}초 동안 +${slot.surgeRatePct || 1.5}% 상승 & ${Math.round((slot.surgeMinVolumeKrw || 10000000)/10000).toLocaleString()}만원 이상 거래대금 시 자동매수`}>
+                              ⏱️ {slot.surgeWindowSeconds || 5}초 감시
+                            </span>
+                          ) : (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-mono font-extrabold border border-emerald-500/30 whitespace-nowrap" title="5초 동안 +1.5% 급등 & 1,000만원 거래대금 감지 시 자동매수">
+                              🎯 5초 추천감시
+                            </span>
+                          )
                         )}
                       </div>
-                      <span className="text-sm font-black font-mono text-white flex items-center gap-1.5">
-                        {Math.round(slot.tradeAmountKrw || 0).toLocaleString()} <span className="text-[10px] font-normal text-slate-400">원</span>
-                        {isZeroAmount && (
-                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800/80 text-amber-300 font-sans font-bold border border-amber-500/20">
-                            미설정
+                      {hasPosition ? (
+                        <div>
+                          <span className="text-sm font-black font-mono text-white block">
+                            {Math.round(slot.entryPrice || currentPrice).toLocaleString()} <span className="text-[10px] font-normal text-slate-400">원</span>
                           </span>
-                        )}
-                      </span>
+                          <span className="text-[10px] font-mono text-slate-400 truncate block mt-0.5" title={`수량: ${slot.entryVolume ? slot.entryVolume.toFixed(6) : ''}`}>
+                            {slot.entryVolume ? slot.entryVolume.toFixed(4) : (slot.entryAmountKrw / currentPrice).toFixed(4)} {(slot.targetMarket || '').replace('KRW-', '')}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-sm font-black font-mono text-white flex items-center gap-1.5">
+                          {Math.round(slot.tradeAmountKrw || 0).toLocaleString()} <span className="text-[10px] font-normal text-slate-400">원</span>
+                          {isZeroAmount && (
+                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800/80 text-amber-300 font-sans font-bold border border-amber-500/20">
+                              미설정
+                            </span>
+                          )}
+                        </span>
+                      )}
                     </div>
                     <div className="text-right">
-                      <span className="text-[10px] text-slate-400 block mb-1">실시간 수익률</span>
-                      <span className={`text-sm font-black font-mono ${
+                      <span className="text-[10px] text-slate-400 block mb-1">
+                        {hasPosition ? '실시간 수익률' : '상태'}
+                      </span>
+                      <span className={`text-sm font-black font-mono block ${
                         hasPosition 
                           ? (isProfit ? 'text-rose-400' : 'text-blue-400')
                           : 'text-slate-500'
                       }`}>
                         {hasPosition ? `${isProfit ? '+' : ''}${profitPct.toFixed(2)}%` : '포지션 대기'}
                       </span>
+                      {hasPosition && (
+                        <span className="text-[10px] font-mono text-slate-400 block mt-0.5">
+                          현재: {Math.round(currentPrice).toLocaleString()}원
+                        </span>
+                      )}
                     </div>
                   </div>
 
