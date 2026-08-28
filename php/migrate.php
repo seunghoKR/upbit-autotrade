@@ -82,7 +82,7 @@ try {
         VALUES (1, 'admin_nurioh_ceo', '누리오 마스터 대표님', 'ceo@nurioh.com', 'ADMIN', 'VIP', '2099-12-31 23:59:59', 5)
         ON DUPLICATE KEY UPDATE `role` = 'ADMIN', `tier` = 'VIP'");
 
-    // 5. 테스트 기록 초기화 (0회, 0%, 0원)
+    // 5. 테스트 기록 초기화 (0회, 0%, 0원) 및 급등감지 파라미터 컬럼 추가
     try {
         $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `total_trades` INT DEFAULT 0");
     } catch (Exception $ex) {}
@@ -91,6 +91,27 @@ try {
     } catch (Exception $ex) {}
     try {
         $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `total_realized_profit_krw` DECIMAL(15,2) DEFAULT 0.00");
+    } catch (Exception $ex) {}
+    try {
+        $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `strategy_type` VARCHAR(20) DEFAULT 'RECOMMENDED'");
+    } catch (Exception $ex) {}
+    try {
+        $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `target_profit_pct` DECIMAL(5,2) DEFAULT 3.00");
+    } catch (Exception $ex) {}
+    try {
+        $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `trailing_callback_pct` DECIMAL(5,2) DEFAULT 1.00");
+    } catch (Exception $ex) {}
+    try {
+        $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `stop_loss_pct` DECIMAL(5,2) DEFAULT 2.00");
+    } catch (Exception $ex) {}
+    try {
+        $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `surge_window_seconds` INT DEFAULT 5");
+    } catch (Exception $ex) {}
+    try {
+        $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `surge_rate_pct` DECIMAL(5,2) DEFAULT 1.50");
+    } catch (Exception $ex) {}
+    try {
+        $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `surge_min_volume_krw` BIGINT DEFAULT 10000000");
     } catch (Exception $ex) {}
 
     $pdo->exec("UPDATE `nurioh_slots` SET 

@@ -62,26 +62,6 @@ export default function Header({
             <span className="hidden md:inline">매뉴얼</span>
           </button>
 
-          {/* ⚙️ 설정 버튼 */}
-          <button
-            onClick={onOpenSettings}
-            className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold transition cursor-pointer flex items-center gap-1 shrink-0"
-            title="상세 매매 설정"
-          >
-            <Settings className="w-3.5 h-3.5 text-slate-300" />
-            <span className="hidden md:inline">설정</span>
-          </button>
-
-          {/* 📊 운영자 대시보드 */}
-          <button
-            onClick={onOpenOperatorDashboard}
-            className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-indigo-950/40 hover:bg-indigo-900/40 border border-indigo-500/30 text-indigo-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer shrink-0"
-            title="운영 콘솔"
-          >
-            <BarChart3 className="w-3.5 h-3.5 text-indigo-400" />
-            <span className="hidden md:inline">운영</span>
-          </button>
-
           {/* 2FA 상태 (PC에서 표시) */}
           <button
             onClick={onOpen2FA}
@@ -102,19 +82,6 @@ export default function Header({
             title="새로고침"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-          </button>
-
-          {/* 봇 가동/정지 토글 */}
-          <button
-            onClick={onToggleBot}
-            className={`px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition shadow-md flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 ${
-              botRunning
-                ? 'bg-emerald-500 text-black hover:bg-emerald-400 shadow-emerald-500/20'
-                : 'bg-rose-500/20 border border-rose-500/40 text-rose-300 hover:bg-rose-500/30'
-            }`}
-          >
-            <span className={`w-2 h-2 rounded-full ${botRunning ? 'bg-black animate-ping' : 'bg-rose-400'}`}></span>
-            <span>{botRunning ? '가동중' : '정지'}</span>
           </button>
         </div>
 

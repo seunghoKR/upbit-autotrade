@@ -540,6 +540,9 @@ try {
                 'targetMarket' => $s['target_market'],
                 'tradeAmountKrw' => (float)$s['trade_amount_krw'],
                 'strategyType' => $s['strategy_type'] ?: 'RECOMMENDED',
+                'surgeWindowSeconds' => (int)($s['surge_window_seconds'] ?? 5),
+                'surgeRatePct' => (float)($s['surge_rate_pct'] ?? 1.5),
+                'surgeMinVolumeKrw' => (float)($s['surge_min_volume_krw'] ?? 10000000),
                 'targetProfitPct' => (float)($s['target_profit_pct'] ?? 3.0),
                 'trailingCallbackPct' => (float)($s['trailing_callback_pct'] ?? 1.0),
                 'stopLossPct' => (float)($s['stop_loss_pct'] ?? 2.0),
@@ -665,6 +668,9 @@ try {
         $tradeAmount = (float)($input['tradeAmountKrw'] ?? 0);
         $isEnabled = isset($input['isEnabled']) ? (int)$input['isEnabled'] : 1;
         $strategyType = $input['strategyType'] ?? 'RECOMMENDED';
+        $surgeWindowSeconds = (int)($input['surgeWindowSeconds'] ?? 5);
+        $surgeRatePct = (float)($input['surgeRatePct'] ?? 1.5);
+        $surgeMinVolumeKrw = (float)($input['surgeMinVolumeKrw'] ?? 10000000);
         $targetProfitPct = (float)($input['targetProfitPct'] ?? 3.0);
         $trailingCallbackPct = (float)($input['trailingCallbackPct'] ?? 1.0);
         $stopLossPct = (float)($input['stopLossPct'] ?? 2.0);
@@ -674,6 +680,9 @@ try {
             trade_amount_krw = ?, 
             is_enabled = ?,
             strategy_type = ?,
+            surge_window_seconds = ?,
+            surge_rate_pct = ?,
+            surge_min_volume_krw = ?,
             target_profit_pct = ?,
             trailing_callback_pct = ?,
             stop_loss_pct = ?
@@ -683,6 +692,9 @@ try {
             $tradeAmount, 
             $isEnabled, 
             $strategyType,
+            $surgeWindowSeconds,
+            $surgeRatePct,
+            $surgeMinVolumeKrw,
             $targetProfitPct,
             $trailingCallbackPct,
             $stopLossPct,
