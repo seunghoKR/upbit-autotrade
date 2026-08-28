@@ -522,7 +522,7 @@ export default function SlotManager({
                           </div>
                         </div>
                         <div className="bg-slate-900/80 p-1.5 rounded-lg border border-slate-800">
-                          <label className="text-[9px] text-slate-400 block mb-0.5 font-bold">최소대금(원)</label>
+                          <label className="text-[9px] text-slate-400 block mb-0.5 font-bold whitespace-nowrap">최소거래대금(원)</label>
                           <input
                             type="number"
                             step="1000000"
