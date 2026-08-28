@@ -46,6 +46,7 @@ export default function SlotManager({
   botRunning = false,
   onToggleBot,
   onTriggerMockSurge,
+  pendingSurgeCountdown = null,
   selectedSlotId = 1,
   onSelectSlot,
   krwBalance = 1000000,
@@ -171,6 +172,37 @@ export default function SlotManager({
         </div>
       </div>
 
+      {/* ⚡ 실시간 급등 감지 레이더 상단 실시간 3초 카운트다운 알림 바 */}
+      {pendingSurgeCountdown && (
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-500/25 via-yellow-500/20 to-amber-500/25 border-2 border-amber-400 text-amber-300 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xl shadow-amber-500/20 animate-in fade-in">
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-black text-lg shrink-0 animate-bounce shadow">
+              ⚡
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black tracking-wide">
+                  급등 레이더 포착
+                </span>
+                <h3 className="font-extrabold text-white text-sm sm:text-base">
+                  {formatMarketName(pendingSurgeCountdown.market)} 급등 포착!
+                </h3>
+              </div>
+              <p className="text-xs text-amber-200 mt-0.5">
+                <strong>{pendingSurgeCountdown.slotId}번 슬롯</strong>에 <strong>{pendingSurgeCountdown.secondsLeft}초 후 전자동 시장가 매수 주문</strong>이 실행됩니다.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+            <div className="px-4 py-2 rounded-xl bg-amber-400 text-slate-950 font-mono font-black text-sm flex items-center gap-1.5 shadow-lg animate-pulse">
+              <Clock className="w-4 h-4" />
+              <span>{pendingSurgeCountdown.secondsLeft}초 후 자동 매수...</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 2. 슬롯 탭 바 (2개 이상 슬롯일 때만 표시, 모바일 가로 스크롤) */}
       {displaySlots.length > 1 && (
         <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1.5 scrollbar-none border-b border-slate-800/60">
@@ -208,6 +240,7 @@ export default function SlotManager({
           const isSelected = (selectedSlotId === slot.slotId);
           const isEditing = (editingSlotId === slot.slotId);
           const hasPosition = (slot.positionStatus === 'IN_POSITION');
+          const isSurgeCounting = (pendingSurgeCountdown && pendingSurgeCountdown.slotId === slot.slotId);
           const marketData = livePriceMap[slot.targetMarket] || {};
           const currentPrice = marketData.trade_price || slot.entryPrice || 0;
           const profitPct = (slot.entryPrice && currentPrice) 
@@ -229,7 +262,9 @@ export default function SlotManager({
               className={`rounded-2xl p-3.5 sm:p-5 border transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between space-y-3 ${
                 displaySlots.length === 1 ? 'max-w-xl w-full ' : ''
               }${
-                isSelfStrategy
+                isSurgeCounting
+                  ? 'bg-amber-950/40 border-amber-400 ring-2 ring-amber-400 shadow-2xl shadow-amber-500/30 animate-pulse'
+                  : isSelfStrategy
                   ? (isSelected
                       ? 'bg-gradient-to-br from-purple-950/50 via-slate-900/95 to-slate-950 border-purple-400 shadow-xl shadow-purple-500/25 ring-1 ring-purple-400/50'
                       : 'bg-gradient-to-br from-purple-950/30 via-slate-900/90 to-slate-950 border-purple-500/60 hover:border-purple-400 hover:shadow-lg hover:shadow-purple-500/15')
@@ -238,6 +273,20 @@ export default function SlotManager({
                       : 'bg-gradient-to-br from-emerald-950/25 via-slate-900/90 to-slate-950 border-emerald-500/50 hover:border-emerald-400 hover:shadow-lg hover:shadow-emerald-500/15')
               }`}
             >
+              {/* ⚡ 급등 감지 3초 카운트다운 알림 신호 바 */}
+              {isSurgeCounting && (
+                <div className="p-2.5 rounded-xl bg-amber-500/20 border border-amber-400 text-amber-300 text-xs font-black flex items-center justify-between animate-pulse shadow-md">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <Zap className="w-4 h-4 text-amber-400 animate-bounce shrink-0" />
+                    <span className="truncate">
+                      🚨 급등 감지! <strong>{pendingSurgeCountdown.market}</strong> (+{pendingSurgeCountdown.rate || '2.6'}%)
+                    </span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-md bg-amber-400 text-slate-950 font-mono font-black text-xs shrink-0 shadow">
+                    {pendingSurgeCountdown.secondsLeft}초 뒤 매수
+                  </span>
+                </div>
+              )}
               {/* 🔒 [무료방문자 승인 대기] 락 오버레이 */}
               {isPendingApproval && (
                 <div 

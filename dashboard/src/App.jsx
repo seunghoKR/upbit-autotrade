@@ -373,8 +373,12 @@ export default function App() {
     loadData();
   };
 
-  // ⚡ 모의 급등 신호 테스트 핸들러 (100% 전자동 즉시 매수 체결)
-  const handleTriggerMockSurge = async (targetMarket = 'RANDOM') => {
+  // ⚡ 실시간 급등 감지 3초 카운트다운 상태
+  const [pendingSurgeCountdown, setPendingSurgeCountdown] = useState(null);
+  const countdownTimerRef = useRef(null);
+
+  // ⚡ 모의 급등 신호 테스트 핸들러 (급등 감지 신호 발생 후 3초 카운트다운 ➔ 자동 매수 주문 실행)
+  const handleTriggerMockSurge = (targetMarket = 'RANDOM') => {
     try {
       const candidateMarkets = ['KRW-STX', 'KRW-SUI', 'KRW-NEAR', 'KRW-SOL', 'KRW-DOGE', 'KRW-ADA', 'KRW-AVAX', 'KRW-XRP'];
       const chosenMarket = (targetMarket === 'RANDOM' || !targetMarket)
@@ -388,48 +392,75 @@ export default function App() {
       const currentPrice = livePriceMap[chosenMarket]?.trade_price || 
         (chosenMarket === 'KRW-SOL' ? 245000 : (chosenMarket === 'KRW-SUI' ? 4250 : (chosenMarket === 'KRW-STX' ? 2890 : 850)));
 
-      // 1. 프론트엔드 슬롯 상태 즉시 체결(IN_POSITION)로 업데이트
-      setSlots(prevSlots => prevSlots.map(s => {
-        if (s.slotId === slotId) {
-          return {
-            ...s,
-            targetMarket: chosenMarket,
-            positionStatus: 'IN_POSITION',
-            entryPrice: currentPrice,
-            entryVolume: tradeAmount / currentPrice,
-            highestPrice: currentPrice,
-            highestProfitPct: 0
-          };
-        }
-        return s;
-      }));
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
+      }
 
-      // 2. 체결 이력에 즉시 추가 (수동 승인 불필요)
-      const executedSignal = {
-        id: `SIG-${Date.now()}`,
-        type: 'BUY',
-        slotId: slotId,
+      // 1. 해당 슬롯 선택 및 3초 카운트다운 알림 신호 시작!
+      setSelectedSlotId(slotId);
+      let secondsLeft = 3;
+      setPendingSurgeCountdown({
+        slotId,
         market: chosenMarket,
         price: currentPrice,
         amount: tradeAmount,
-        reason: `[실시간 급등 감시 레이더] ${chosenMarket} +2.6% 급등 포착 (전자동 즉시 매수 체결)`,
-        status: 'EXECUTED',
-        executedAt: new Date().toISOString()
-      };
-      setTradeHistory(prev => [executedSignal, ...prev]);
-      setPendingApproval(null);
-      setSelectedSlotId(slotId);
+        rate: '2.6',
+        secondsLeft: 3
+      });
 
-      // 3. 백엔드 API 호출하여 DB 동기화
-      try {
-        await triggerMockSurge(chosenMarket);
-      } catch (e) {
-        console.log('백엔드 API 호출 결과:', e.message);
-      }
+      countdownTimerRef.current = setInterval(async () => {
+        secondsLeft -= 1;
+        if (secondsLeft > 0) {
+          setPendingSurgeCountdown(prev => prev ? { ...prev, secondsLeft } : null);
+        } else {
+          // 2. 3초 종료 시점: 즉시 전자동 매수 체결!
+          clearInterval(countdownTimerRef.current);
+          countdownTimerRef.current = null;
+          setPendingSurgeCountdown(null);
 
-      await loadData();
+          // 프론트엔드 슬롯 상태 IN_POSITION으로 업데이트
+          setSlots(prevSlots => prevSlots.map(s => {
+            if (s.slotId === slotId) {
+              return {
+                ...s,
+                targetMarket: chosenMarket,
+                positionStatus: 'IN_POSITION',
+                entryPrice: currentPrice,
+                entryVolume: tradeAmount / currentPrice,
+                highestPrice: currentPrice,
+                highestProfitPct: 0
+              };
+            }
+            return s;
+          }));
+
+          // 체결 이력에 기록
+          const executedSignal = {
+            id: `SIG-${Date.now()}`,
+            type: 'BUY',
+            slotId: slotId,
+            market: chosenMarket,
+            price: currentPrice,
+            amount: tradeAmount,
+            reason: `[실시간 급등 감시 레이더] ${chosenMarket} +2.6% 급등 포착 (3초 알림 후 전자동 매수 체결)`,
+            status: 'EXECUTED',
+            executedAt: new Date().toISOString()
+          };
+          setTradeHistory(prev => [executedSignal, ...prev]);
+
+          // 백엔드 API 호출하여 DB 동기화
+          try {
+            await triggerMockSurge(chosenMarket);
+          } catch (e) {
+            console.log('백엔드 체결 동기화:', e.message);
+          }
+
+          await loadData();
+        }
+      }, 1000);
+
     } catch (err) {
-      console.error('Mock surge auto execution error:', err);
+      console.error('Mock surge countdown error:', err);
     }
   };
 
@@ -550,6 +581,7 @@ export default function App() {
           botRunning={botRunning}
           onToggleBot={handleToggleBot}
           onTriggerMockSurge={handleTriggerMockSurge}
+          pendingSurgeCountdown={pendingSurgeCountdown}
           selectedSlotId={selectedSlotId}
           onSelectSlot={setSelectedSlotId}
           krwBalance={parseFloat(accounts.find(a => a.currency === 'KRW')?.balance || '0')}
