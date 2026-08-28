@@ -337,28 +337,46 @@ export default function App() {
     return res;
   };
 
-  // 봇 가동 토글
+  // 봇 가동 토글 (즉각적인 Optimistic UI 반응)
   const handleToggleBot = async () => {
-    if (botRunning) {
-      await stopBot();
-      setBotRunning(false);
-    } else {
-      await startBot();
-      setBotRunning(true);
+    const nextRunning = !botRunning;
+    setBotRunning(nextRunning); // ⚡ 0.001초 즉시 반응!
+    try {
+      if (nextRunning) {
+        await startBot();
+      } else {
+        await stopBot();
+      }
+    } catch (err) {
+      console.error('Bot toggle error:', err);
+      setBotRunning(!nextRunning);
     }
   };
 
   // 전략 설정 저장
   const handleSaveSettings = async (newSettings) => {
-    await updateSettings(newSettings);
     setSettings(newSettings);
+    await updateSettings(newSettings);
   };
 
-  // 슬롯 설정 수정
+  // 슬롯 설정 수정 (즉각적인 Optimistic UI 반영)
   const handleUpdateSlot = async (slotId, slotData) => {
-    const userId = currentUser?.id || 1;
-    await updateSlotConfig(slotId, { ...slotData, userId });
-    await loadData();
+    // ⚡ 1. 프론트엔드 상태를 0.001초 만에 즉시 업데이트하여 버튼 및 UI가 딜레이 없이 즉각 전환!
+    setSlots(prevSlots => prevSlots.map(s => {
+      if (s.slotId === slotId) {
+        return { ...s, ...slotData };
+      }
+      return s;
+    }));
+
+    // ⚡ 2. 백그라운드에서 백엔드 DB 저장 동기화
+    try {
+      const userId = currentUser?.id || 1;
+      await updateSlotConfig(slotId, { ...slotData, userId });
+    } catch (err) {
+      console.error('Slot update error:', err);
+      await loadData();
+    }
   };
 
   // 슬롯 개별 매도
