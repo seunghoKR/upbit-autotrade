@@ -179,6 +179,13 @@ $input = json_decode(file_get_contents('php://input'), true) ?? [];
 try {
     $pdo = Database::getConnection();
     $pdo->exec("SET NAMES utf8mb4");
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(['error' => 'DB Connection failed: ' . $e->getMessage()]);
+    exit;
+}
+
+try {
 
     // 🛠️ DB 테이블 컬럼 마이그레이션
     try {
