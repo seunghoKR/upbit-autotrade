@@ -859,7 +859,7 @@ try {
         exit;
     }
 
-    // 15. POST test/surge-signal : 모의 급등 신호 발생 (슬롯 배정 및 감시 테스트)
+    // 15. POST test/surge-signal : 모의 급등 신호 발생 & 100% 전자동 즉시 매수 체결
     if ($path === 'test/surge-signal' && $method === 'POST') {
         $userId = (int)($input['userId'] ?? 1);
         $candidateMarkets = ['KRW-STX', 'KRW-SUI', 'KRW-NEAR', 'KRW-SOL', 'KRW-DOGE', 'KRW-ADA', 'KRW-AVAX', 'KRW-XRP'];
@@ -883,19 +883,46 @@ try {
         $tradeAmount = $slot ? (float)$slot['trade_amount_krw'] : 50000;
         if ($tradeAmount <= 0) $tradeAmount = 50000;
 
+        $basePrices = [
+            'KRW-BTC' => 135000000,
+            'KRW-ETH' => 4200000,
+            'KRW-SOL' => 245000,
+            'KRW-STX' => 2890,
+            'KRW-SUI' => 4250,
+            'KRW-NEAR' => 7600,
+            'KRW-DOGE' => 285,
+            'KRW-XRP' => 880,
+            'KRW-ADA' => 820,
+            'KRW-AVAX' => 38000
+        ];
+        $price = (float)($input['price'] ?? $basePrices[$market] ?? 2500);
+        $volume = ($price > 0) ? ($tradeAmount / $price) : 1;
+
+        // 🚀 즉시 전자동 슬롯 포지션 체결!
+        $stmt = $pdo->prepare("UPDATE nurioh_slots SET 
+            target_market = ?, 
+            position_status = 'IN_POSITION', 
+            entry_price = ?, 
+            entry_volume = ?, 
+            highest_price = ?, 
+            highest_profit_pct = 0 
+            WHERE user_id = ? AND slot_id = ?");
+        $stmt->execute([$market, $price, $volume, $price, $userId, $slotId]);
+
         echo json_encode([
             'success' => true,
-            'message' => "[{$market}] 급등 감지 신호가 {$slotId}번 슬롯에 발생했습니다.",
-            'signal' => [
+            'message' => "[{$market}] 급등 감지 즉시 {$slotId}번 슬롯에 자동 매수 체결되었습니다! 🚀",
+            'executedTrade' => [
                 'id' => 'SIG-' . round(microtime(true) * 1000),
                 'type' => 'BUY',
                 'slotId' => $slotId,
                 'market' => $market,
+                'price' => $price,
+                'volume' => $volume,
                 'amount' => $tradeAmount,
-                'reason' => "[실시간 급등 레이더 포착] {$market} 5초간 +2.6% 급등 (거래대금 1,850만원 폭증)",
-                'status' => 'PENDING_APPROVAL',
-                'timeoutSeconds' => 30,
-                'createdAt' => date('c')
+                'reason' => "[실시간 급등 레이더 포착] {$market} 5초간 +2.6% 급등 (전자동 시장가 매수 체결)",
+                'status' => 'EXECUTED',
+                'executedAt' => date('c')
             ]
         ], JSON_UNESCAPED_UNICODE);
         exit;

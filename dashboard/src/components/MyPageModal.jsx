@@ -9,7 +9,10 @@ import {
   ShieldAlert, 
   AlertTriangle, 
   CheckCircle2, 
-  Sparkles,
+  Sparkles, 
+  Crown, 
+  Copy, 
+  Check, 
   ExternalLink,
   ChevronRight,
   Clock,
@@ -252,13 +255,13 @@ export default function MyPageModal({
           </button>
         </div>
 
-        {/* 2. 탭 네비게이션 (모바일/PC 1줄 완벽 4분할 정돈) */}
+        {/* 2. 탭 네비게이션 (모바일/PC 1줄 5분할 정돈) */}
         {isApproved ? (
-          <div className="grid grid-cols-4 gap-1.5 border-b border-slate-800 pb-3">
+          <div className="grid grid-cols-5 gap-1 sm:gap-1.5 border-b border-slate-800 pb-3">
             {/* 1) 👤 내 정보 */}
             <button
               onClick={() => setActiveTab('PROFILE')}
-              className={`py-2 px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap truncate text-xs sm:text-sm font-bold ${
+              className={`py-2 px-1 sm:px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap truncate text-xs sm:text-sm font-bold ${
                 activeTab === 'PROFILE'
                   ? 'bg-indigo-600 text-white font-black shadow-md shadow-indigo-600/30'
                   : 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
@@ -272,7 +275,7 @@ export default function MyPageModal({
             {/* 2) 🔑 API 키 */}
             <button
               onClick={() => setActiveTab('API_SECURITY')}
-              className={`py-2 px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap truncate text-xs sm:text-sm font-bold ${
+              className={`py-2 px-1 sm:px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap truncate text-xs sm:text-sm font-bold ${
                 activeTab === 'API_SECURITY'
                   ? 'bg-yellow-400 text-slate-950 font-black shadow-md shadow-yellow-400/30'
                   : 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
@@ -286,29 +289,43 @@ export default function MyPageModal({
             {/* 3) ✈️ 텔레그램 */}
             <button
               onClick={() => setActiveTab('TELEGRAM')}
-              className={`py-2 px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap truncate text-xs sm:text-sm font-bold ${
+              className={`py-2 px-1 sm:px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap truncate text-xs sm:text-sm font-bold ${
                 activeTab === 'TELEGRAM'
                   ? 'bg-indigo-600 text-white font-black shadow-md shadow-indigo-600/30'
                   : 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
               }`}
             >
               <Send className="w-3.5 h-3.5 shrink-0" />
-              <span className="sm:hidden">텔레그램</span>
+              <span className="sm:hidden">텔레</span>
               <span className="hidden sm:inline">텔레그램</span>
             </button>
 
             {/* 4) ⚡ 슬롯 설정 */}
             <button
               onClick={() => setActiveTab('AUTO_TRADING')}
-              className={`py-2 px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap truncate text-xs sm:text-sm font-bold ${
+              className={`py-2 px-1 sm:px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap truncate text-xs sm:text-sm font-bold ${
                 activeTab === 'AUTO_TRADING'
                   ? 'bg-indigo-600 text-white font-black shadow-md shadow-indigo-600/30'
                   : 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
               }`}
             >
               <Zap className="w-3.5 h-3.5 shrink-0" />
-              <span className="sm:hidden">한도설정</span>
+              <span className="sm:hidden">슬롯</span>
               <span className="hidden sm:inline">슬롯 설정</span>
+            </button>
+
+            {/* 5) 👑 플랜 */}
+            <button
+              onClick={() => setActiveTab('PRICING')}
+              className={`py-2 px-1 sm:px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap truncate text-xs sm:text-sm font-bold ${
+                activeTab === 'PRICING'
+                  ? 'bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/30'
+                  : 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
+              }`}
+            >
+              <Crown className="w-3.5 h-3.5 shrink-0" />
+              <span className="sm:hidden">플랜</span>
+              <span className="hidden sm:inline">멤버십 플랜</span>
             </button>
           </div>
         ) : (
@@ -578,6 +595,89 @@ export default function MyPageModal({
                 className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition flex items-center gap-2 cursor-pointer shadow-lg shadow-indigo-600/20 disabled:opacity-50"
               >
                 <span>{isSaving ? '저장 중...' : '슬롯 한도 설정 저장'}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* TAB 5: 👑 멤버십 플랜 안내 (승인 회원 전용) */}
+        {/* ========================================================= */}
+        {activeTab === 'PRICING' && isApproved && (
+          <div className="space-y-4 animate-in fade-in text-sm text-slate-200">
+            <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <Crown className="w-4 h-4 text-amber-400" />
+                <span className="text-xs text-slate-300 font-bold">
+                  현재 이용 플랜: <strong className="text-amber-400">{user?.role === 'DEVELOPER' ? '👑 개발자 최고권한' : user?.tier}</strong> ({user?.maxSlots || 9}슬롯)
+                </span>
+              </div>
+              <span className="text-xs text-indigo-300 bg-indigo-500/10 border border-indigo-500/30 px-2.5 py-0.5 rounded-full font-semibold">
+                {user?.role === 'DEVELOPER' || user?.role === 'ADMIN' ? '평생 무제한 라이선스' : `D-${user?.remainingDays || 30}일`}
+              </span>
+            </div>
+
+            {/* 플랜 3종 카드 그리드 */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* 1) Free Trial */}
+              <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 flex flex-col justify-between space-y-3">
+                <div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">체험용</span>
+                  <h5 className="font-extrabold text-white text-sm mt-1.5">무료 체험</h5>
+                  <div className="text-lg font-black text-slate-100 mt-1">0원 <span className="text-xs font-normal text-slate-400">/ 3일</span></div>
+                  <ul className="text-xs text-slate-400 space-y-1 mt-2.5">
+                    <li>✓ 1개 독립 슬롯</li>
+                    <li>✓ 검증 추천전략 자동 적용</li>
+                    <li>✓ 텔레그램 실시간 매도 정산</li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* 2) Pro */}
+              <div className="bg-indigo-950/40 p-3.5 rounded-2xl border border-indigo-500/40 flex flex-col justify-between space-y-3 relative overflow-hidden">
+                <div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">인기 👍</span>
+                  <h5 className="font-extrabold text-white text-sm mt-1.5">프로 (Pro Trader)</h5>
+                  <div className="text-lg font-black text-indigo-300 mt-1">1,000,000원 <span className="text-xs font-normal text-slate-400">/ 월</span></div>
+                  <ul className="text-xs text-slate-300 space-y-1 mt-2.5">
+                    <li>✓ 3개 멀티 슬롯 동시 운영</li>
+                    <li>✓ 실시간 전종목 급등 스캔</li>
+                    <li>✓ 트레일링 스탑 자동 익절</li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* 3) VIP */}
+              <div className="bg-amber-950/30 p-3.5 rounded-2xl border border-amber-500/40 flex flex-col justify-between space-y-3">
+                <div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">최고급 👑</span>
+                  <h5 className="font-extrabold text-white text-sm mt-1.5">VIP 마스터</h5>
+                  <div className="text-lg font-black text-amber-300 mt-1">2,000,000원 <span className="text-xs font-normal text-slate-400">/ 월</span></div>
+                  <ul className="text-xs text-slate-300 space-y-1 mt-2.5">
+                    <li>✓ 9개 슬롯 풀 가동 (3x3 분산)</li>
+                    <li>✓ 초단타 스캘핑 & 긴급매도</li>
+                    <li>✓ 1:1 전용 기술지원 배정</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* 무통장 결제 안내 박스 */}
+            <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-2">
+              <div className="text-xs text-slate-300">
+                <span className="text-slate-400 block text-[10px]">입금 계좌 안내:</span>
+                <strong>국민은행 123-456-789012 (예금주: 누리오)</strong>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText('국민은행 123-456-789012 (예금주: 누리오)');
+                  alert('계좌번호가 복사되었습니다!');
+                }}
+                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 transition flex items-center gap-1 cursor-pointer shrink-0"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>복사</span>
               </button>
             </div>
           </div>

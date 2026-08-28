@@ -120,53 +120,28 @@ export default function SubscriptionCard({
           </button>
         </div>
 
-        {/* 우측: 액션 버튼들 (모바일 1줄 균등 배치, 글자 깨짐 100% 방지) */}
-        <div className={`grid ${isAdmin ? 'grid-cols-4' : 'grid-cols-3'} sm:flex items-center gap-1.5 w-full md:w-auto`}>
+        {/* 우측: 액션 버튼들 (모바일 1줄 균등 배치) */}
+        <div className="flex items-center gap-1.5 w-full md:w-auto justify-end">
           {/* 👤 마이페이지 / 무료 사용 신청 버튼 */}
           <button
             onClick={onOpenMyPage}
-            className={`py-2 px-2 sm:px-3.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 cursor-pointer shadow-md whitespace-nowrap truncate ${
+            className={`py-2 px-3 sm:px-4 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md whitespace-nowrap truncate ${
               isPending
                 ? 'bg-yellow-400 hover:bg-yellow-300 text-slate-950 shadow-yellow-400/25 animate-pulse'
                 : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-indigo-600/25'
             }`}
           >
-            {isPending ? <Gift className="w-3 h-3 shrink-0" /> : <User className="w-3 h-3 text-cyan-300 shrink-0" />}
-            <span className="sm:hidden">{isPending ? '무료신청' : '마이'}</span>
-            <span className="hidden sm:inline">{isPending ? '🎁 3일 무료 사용 신청' : '마이페이지'}</span>
+            {isPending ? <Gift className="w-3.5 h-3.5 shrink-0" /> : <User className="w-3.5 h-3.5 text-cyan-300 shrink-0" />}
+            <span>{isPending ? '🎁 3일 무료 사용 신청' : '👤 마이페이지'}</span>
           </button>
 
-          {/* API 키 관리 */}
-          <button
-            onClick={handleApiClick}
-            className={`py-2 px-2 sm:px-3.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap truncate ${
-              user.hasApiKey
-                ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
-                : (isPending ? 'bg-slate-800/80 text-slate-400 border border-slate-700' : 'bg-yellow-400 hover:bg-yellow-300 text-black shadow-md')
-            }`}
-          >
-            <KeyRound className="w-3 h-3 shrink-0" />
-            <span className="sm:hidden">API</span>
-            <span className="hidden sm:inline">API키</span>
-          </button>
-
-          {/* 멤버십 플랜 */}
-          <button
-            onClick={onOpenPricing}
-            className="py-2 px-2 sm:px-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap truncate"
-          >
-            <Crown className="w-3 h-3 text-amber-300 shrink-0" />
-            <span>플랜</span>
-          </button>
-
-          {/* 마스터 관리자 (ADMIN 전용) */}
+          {/* 마스터 관리자 (ADMIN / DEVELOPER 전용) */}
           {isAdmin && (
             <button
               onClick={onOpenAdmin}
-              className="py-2 px-2 sm:px-3.5 rounded-xl bg-amber-600/90 hover:bg-amber-600 text-white text-xs font-extrabold transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap truncate"
+              className="py-2 px-3 sm:px-4 rounded-xl bg-amber-600/90 hover:bg-amber-600 text-white text-xs font-extrabold transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap truncate shadow-md"
             >
-              <span className="sm:hidden">👑 회원</span>
-              <span className="hidden sm:inline">👑 회원관리</span>
+              <span>👑 회원관리</span>
             </button>
           )}
 

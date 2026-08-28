@@ -373,7 +373,7 @@ export default function App() {
     loadData();
   };
 
-  // ⚡ 모의 급등 신호 테스트 핸들러
+  // ⚡ 모의 급등 신호 테스트 핸들러 (100% 전자동 즉시 매수 체결)
   const handleTriggerMockSurge = async (targetMarket = 'RANDOM') => {
     try {
       const candidateMarkets = ['KRW-STX', 'KRW-SUI', 'KRW-NEAR', 'KRW-SOL', 'KRW-DOGE', 'KRW-ADA', 'KRW-AVAX', 'KRW-XRP'];
@@ -388,33 +388,48 @@ export default function App() {
       const currentPrice = livePriceMap[chosenMarket]?.trade_price || 
         (chosenMarket === 'KRW-SOL' ? 245000 : (chosenMarket === 'KRW-SUI' ? 4250 : (chosenMarket === 'KRW-STX' ? 2890 : 850)));
 
-      const mockSignal = {
+      // 1. 프론트엔드 슬롯 상태 즉시 체결(IN_POSITION)로 업데이트
+      setSlots(prevSlots => prevSlots.map(s => {
+        if (s.slotId === slotId) {
+          return {
+            ...s,
+            targetMarket: chosenMarket,
+            positionStatus: 'IN_POSITION',
+            entryPrice: currentPrice,
+            entryVolume: tradeAmount / currentPrice,
+            highestPrice: currentPrice,
+            highestProfitPct: 0
+          };
+        }
+        return s;
+      }));
+
+      // 2. 체결 이력에 즉시 추가 (수동 승인 불필요)
+      const executedSignal = {
         id: `SIG-${Date.now()}`,
         type: 'BUY',
         slotId: slotId,
         market: chosenMarket,
         price: currentPrice,
         amount: tradeAmount,
-        reason: `[실시간 급등 레이더 포착] ${chosenMarket} 5초간 +2.6% 급등 (순간 거래대금 1,850만원 폭증)`,
-        status: 'PENDING_APPROVAL',
-        timeoutSeconds: 30,
-        createdAt: new Date().toISOString()
+        reason: `[실시간 급등 감시 레이더] ${chosenMarket} +2.6% 급등 포착 (전자동 즉시 매수 체결)`,
+        status: 'EXECUTED',
+        executedAt: new Date().toISOString()
       };
+      setTradeHistory(prev => [executedSignal, ...prev]);
+      setPendingApproval(null);
+      setSelectedSlotId(slotId);
 
+      // 3. 백엔드 API 호출하여 DB 동기화
       try {
-        const res = await triggerMockSurge(chosenMarket);
-        if (res?.signal) {
-          setPendingApproval(res.signal);
-        } else {
-          setPendingApproval(mockSignal);
-        }
+        await triggerMockSurge(chosenMarket);
       } catch (e) {
-        setPendingApproval(mockSignal);
+        console.log('백엔드 API 호출 결과:', e.message);
       }
 
-      setSelectedSlotId(slotId);
+      await loadData();
     } catch (err) {
-      console.error('Mock surge error:', err);
+      console.error('Mock surge auto execution error:', err);
     }
   };
 
