@@ -205,13 +205,15 @@ export default function SlotManager({
               >
                 <span>{slot.slotId}번</span>
                 <span className="text-[11px] font-normal truncate max-w-[80px]">
-                  {!slot.isEnabled ? '정지' : (slot.targetMarket ? slot.targetMarket.replace('KRW-', '') : '대기')}
+                  {!slot.isEnabled ? '정지' : (hasPosition && slot.targetMarket ? slot.targetMarket.replace('KRW-', '') : '대기')}
                 </span>
                 {!slot.isEnabled ? (
                   <span className="text-[10px] text-slate-500 font-mono">⏸️</span>
                 ) : hasPosition ? (
                   <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse"></span>
-                ) : null}
+                ) : (
+                  <span className="text-[10px] text-emerald-400">⚡</span>
+                )}
               </button>
             );
           })}
@@ -318,8 +320,10 @@ export default function SlotManager({
                         <span className="text-slate-500 font-bold">⏸️ 슬롯 정지됨 (감시 중단)</span>
                       ) : isSurgeCounting ? (
                         <span className="text-amber-300 font-bold animate-pulse">⚡ 급등 포착: {formatMarketName(pendingSurgeCountdown.market)}</span>
+                      ) : hasPosition ? (
+                        <span className="text-white font-bold">🪙 {formatMarketName(slot.targetMarket)} 보유 중</span>
                       ) : (
-                        formatMarketName(slot.targetMarket)
+                        <span className="text-slate-400">전종목 급등 포착 대기</span>
                       )}
                     </span>
                   </div>
