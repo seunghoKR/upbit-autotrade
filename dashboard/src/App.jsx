@@ -124,6 +124,8 @@ export default function App() {
 
   const [accounts, setAccounts] = useState([]);
   const [accountError, setAccountError] = useState(null);
+  const hasRealAccounts = Array.isArray(accounts) && accounts.length > 0 && accounts.some(a => parseFloat(a.balance || 0) > 0 || parseFloat(a.locked || 0) > 0);
+  const isApiConnected = !accountError && hasRealAccounts;
   const [slots, setSlots] = useState(DEFAULT_SLOTS);
   const [candles, setCandles] = useState([]);
   const [pendingApproval, setPendingApproval] = useState(null);
