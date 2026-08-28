@@ -373,11 +373,65 @@ export default function App() {
     loadData();
   };
 
+  // ⚡ 모의 급등 신호 테스트 핸들러
+  const handleTriggerMockSurge = async (targetMarket = 'RANDOM') => {
+    try {
+      const candidateMarkets = ['KRW-STX', 'KRW-SUI', 'KRW-NEAR', 'KRW-SOL', 'KRW-DOGE', 'KRW-ADA', 'KRW-AVAX', 'KRW-XRP'];
+      const chosenMarket = (targetMarket === 'RANDOM' || !targetMarket)
+        ? candidateMarkets[Math.floor(Math.random() * candidateMarkets.length)]
+        : targetMarket;
+
+      const availableSlot = slots.find(s => s.isEnabled && s.positionStatus !== 'IN_POSITION') || slots[0];
+      const slotId = availableSlot ? availableSlot.slotId : 1;
+      const tradeAmount = (availableSlot && availableSlot.tradeAmountKrw > 0) ? availableSlot.tradeAmountKrw : 50000;
+
+      const currentPrice = livePriceMap[chosenMarket]?.trade_price || 
+        (chosenMarket === 'KRW-SOL' ? 245000 : (chosenMarket === 'KRW-SUI' ? 4250 : (chosenMarket === 'KRW-STX' ? 2890 : 850)));
+
+      const mockSignal = {
+        id: `SIG-${Date.now()}`,
+        type: 'BUY',
+        slotId: slotId,
+        market: chosenMarket,
+        price: currentPrice,
+        amount: tradeAmount,
+        reason: `[실시간 급등 레이더 포착] ${chosenMarket} 5초간 +2.6% 급등 (순간 거래대금 1,850만원 폭증)`,
+        status: 'PENDING_APPROVAL',
+        timeoutSeconds: 30,
+        createdAt: new Date().toISOString()
+      };
+
+      try {
+        const res = await triggerMockSurge(chosenMarket);
+        if (res?.signal) {
+          setPendingApproval(res.signal);
+        } else {
+          setPendingApproval(mockSignal);
+        }
+      } catch (e) {
+        setPendingApproval(mockSignal);
+      }
+
+      setSelectedSlotId(slotId);
+    } catch (err) {
+      console.error('Mock surge error:', err);
+    }
+  };
+
   // 수동 승인
   const handleApprove = async (signalId) => {
-    await approveTrade(signalId);
+    const signal = pendingApproval;
+    const userId = currentUser?.id || 1;
+    await approveTrade({
+      signalId,
+      userId,
+      slotId: signal?.slotId || 1,
+      market: signal?.market || 'KRW-BTC',
+      price: signal?.price || 50000,
+      amount: signal?.amount || 50000
+    });
     setPendingApproval(null);
-    loadData();
+    await loadData();
   };
 
   // 수동 취소
@@ -480,7 +534,7 @@ export default function App() {
           livePriceMap={livePriceMap}
           botRunning={botRunning}
           onToggleBot={handleToggleBot}
-          onTriggerMockSurge={triggerMockSurge}
+          onTriggerMockSurge={handleTriggerMockSurge}
           selectedSlotId={selectedSlotId}
           onSelectSlot={setSelectedSlotId}
           krwBalance={parseFloat(accounts.find(a => a.currency === 'KRW')?.balance || '0')}

@@ -113,8 +113,9 @@ export const panicSellAll = async () => {
   return res.data;
 };
 
-export const approveTrade = async (signalId) => {
-  const res = await axios.post(`${API_BASE}/trade/approve`, { signalId });
+export const approveTrade = async (signalData) => {
+  const payload = typeof signalData === 'object' ? signalData : { signalId: signalData };
+  const res = await axios.post(`${API_BASE}/trade/approve`, payload);
   return res.data;
 };
 

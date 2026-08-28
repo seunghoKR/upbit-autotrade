@@ -787,6 +787,80 @@ try {
         exit;
     }
 
+    // 15. POST test/surge-signal : 모의 급등 신호 발생 (슬롯 배정 및 감시 테스트)
+    if ($path === 'test/surge-signal' && $method === 'POST') {
+        $userId = (int)($input['userId'] ?? 1);
+        $candidateMarkets = ['KRW-STX', 'KRW-SUI', 'KRW-NEAR', 'KRW-SOL', 'KRW-DOGE', 'KRW-ADA', 'KRW-AVAX', 'KRW-XRP'];
+        $market = $input['market'] ?? 'RANDOM';
+        if ($market === 'RANDOM' || empty($market)) {
+            $market = $candidateMarkets[array_rand($candidateMarkets)];
+        }
+
+        // 빈 슬롯 찾기
+        $stmt = $pdo->prepare("SELECT * FROM nurioh_slots WHERE user_id = ? AND is_enabled = 1 AND position_status = 'IDLE' ORDER BY slot_id ASC LIMIT 1");
+        $stmt->execute([$userId]);
+        $slot = $stmt->fetch();
+
+        if (!$slot) {
+            $stmt = $pdo->prepare("SELECT * FROM nurioh_slots WHERE user_id = ? ORDER BY slot_id ASC LIMIT 1");
+            $stmt->execute([$userId]);
+            $slot = $stmt->fetch();
+        }
+
+        $slotId = $slot ? (int)$slot['slot_id'] : 1;
+        $tradeAmount = $slot ? (float)$slot['trade_amount_krw'] : 50000;
+        if ($tradeAmount <= 0) $tradeAmount = 50000;
+
+        echo json_encode([
+            'success' => true,
+            'message' => "[{$market}] 급등 감지 신호가 {$slotId}번 슬롯에 발생했습니다.",
+            'signal' => [
+                'id' => 'SIG-' . round(microtime(true) * 1000),
+                'type' => 'BUY',
+                'slotId' => $slotId,
+                'market' => $market,
+                'amount' => $tradeAmount,
+                'reason' => "[실시간 급등 레이더 포착] {$market} 5초간 +2.6% 급등 (거래대금 1,850만원 폭증)",
+                'status' => 'PENDING_APPROVAL',
+                'timeoutSeconds' => 30,
+                'createdAt' => date('c')
+            ]
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // 16. POST trade/approve : 매수 승인 및 슬롯 포지션 할당
+    if ($path === 'trade/approve' && $method === 'POST') {
+        $userId = (int)($input['userId'] ?? 1);
+        $slotId = (int)($input['slotId'] ?? 1);
+        $market = $input['market'] ?? 'KRW-BTC';
+        $price = (float)($input['price'] ?? 50000);
+        $amount = (float)($input['amount'] ?? 50000);
+        $volume = ($price > 0) ? ($amount / $price) : 1;
+
+        $stmt = $pdo->prepare("UPDATE nurioh_slots SET 
+            target_market = ?, 
+            position_status = 'IN_POSITION', 
+            entry_price = ?, 
+            entry_volume = ?, 
+            highest_price = ?, 
+            highest_profit_pct = 0 
+            WHERE user_id = ? AND slot_id = ?");
+        $stmt->execute([$market, $price, $volume, $price, $userId, $slotId]);
+
+        echo json_encode([
+            'success' => true,
+            'message' => "{$slotId}번 슬롯에 [{$market}] 포지션이 체결되었습니다."
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // 17. POST trade/reject : 매수 신호 취소
+    if ($path === 'trade/reject' && $method === 'POST') {
+        echo json_encode(['success' => true, 'message' => '매수 신호가 취소되었습니다.'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
     http_response_code(200);
     echo json_encode([
         'success' => true,
