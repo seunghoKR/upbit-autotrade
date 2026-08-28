@@ -8,7 +8,7 @@ class SurgeDetector {
   constructor() {
     this.tickBuffers = new Map(); // market -> Array<{ price, volume, amount, timestamp }>
     this.lastSurgeTime = new Map(); // market -> timestamp (쿨다운용)
-    this.cooldownMs = 30000; // 동일 종목 급등 재감지 쿨다운 (30초)
+    this.cooldownMs = 15000; // 동일 종목 급등 재감지 쿨다운 (15초)
     this.listeners = new Set();
   }
 
@@ -30,16 +30,16 @@ class SurgeDetector {
   /**
    * 실시간 체결/틱 데이터 유입 처리
    * @param {Object} tick { code: 'KRW-BTC', trade_price, trade_volume, prev_closing_price, timestamp }
-   * @param {Object} settings { SURGE_CHECK_SECONDS: 5, SURGE_RATE_THRESHOLD: 1.5, SURGE_MIN_VOLUME_KRW: 10000000 }
+   * @param {Object} settings { SURGE_CHECK_SECONDS: 5, SURGE_RATE_THRESHOLD: 0.8, SURGE_MIN_VOLUME_KRW: 1000000 }
    */
-  processTick(tick, settings) {
+  processTick(tick, settings = {}) {
     const market = tick.code;
-    const price = tick.trade_price;
-    const volume = tick.trade_volume || 0;
+    const price = Number(tick.trade_price);
+    const volume = Number(tick.trade_volume || 0);
     const amount = price * volume;
     const now = Date.now();
 
-    if (!market || !price) return;
+    if (!market || !price || isNaN(price)) return;
 
     if (!this.tickBuffers.has(market)) {
       this.tickBuffers.set(market, []);
@@ -48,8 +48,9 @@ class SurgeDetector {
     const buffer = this.tickBuffers.get(market);
     buffer.push({ price, volume, amount, timestamp: now });
 
-    // 설정된 감시 시간(초) 이전 데이터 정리
-    const windowMs = (settings.SURGE_CHECK_SECONDS || 5) * 1000;
+    // 설정된 감시 시간(초) 이전 데이터 정리 (기본 5초)
+    const windowSeconds = Number(settings.SURGE_CHECK_SECONDS) || 5;
+    const windowMs = windowSeconds * 1000;
     const cutoff = now - windowMs;
     while (buffer.length > 0 && buffer[0].timestamp < cutoff) {
       buffer.shift();
@@ -57,16 +58,19 @@ class SurgeDetector {
 
     if (buffer.length < 2) return;
 
-    // 윈도우 내 기준 가격(가장 오래된 틱 가격 또는 최저가)
-    const basePrice = buffer[0].price;
+    // 윈도우 내 최저가 및 최신가 비교
+    let minPrice = buffer[0].price;
+    for (let i = 0; i < buffer.length; i++) {
+      if (buffer[i].price < minPrice) minPrice = buffer[i].price;
+    }
     const currentPrice = buffer[buffer.length - 1].price;
-    const priceDiffRate = ((currentPrice - basePrice) / basePrice) * 100;
+    const priceDiffRate = ((currentPrice - minPrice) / minPrice) * 100;
 
     // 윈도우 내 총 누적 거래대금 (KRW)
     const totalVolumeKrw = buffer.reduce((sum, item) => sum + item.amount, 0);
 
-    const thresholdRate = settings.SURGE_RATE_THRESHOLD || 1.5;
-    const minVolumeKrw = settings.SURGE_MIN_VOLUME_KRW || 10000000;
+    const thresholdRate = Number(settings.SURGE_RATE_THRESHOLD !== undefined ? settings.SURGE_RATE_THRESHOLD : 0.8);
+    const minVolumeKrw = Number(settings.SURGE_MIN_VOLUME_KRW !== undefined ? settings.SURGE_MIN_VOLUME_KRW : 1000000);
 
     // 쿨다운 검사
     const lastSurge = this.lastSurgeTime.get(market) || 0;
@@ -80,16 +84,16 @@ class SurgeDetector {
 
       const surgeInfo = {
         market,
-        basePrice,
+        basePrice: minPrice,
         currentPrice,
         priceDiffRate: Number(priceDiffRate.toFixed(2)),
         totalVolumeKrw: Math.round(totalVolumeKrw),
-        durationSeconds: settings.SURGE_CHECK_SECONDS || 5,
+        durationSeconds: windowSeconds,
         detectedAt: new Date().toISOString(),
-        reason: `[급등 감지] ${settings.SURGE_CHECK_SECONDS || 5}초간 +${priceDiffRate.toFixed(2)}% 상승 (거래대금: ${Math.round(totalVolumeKrw).toLocaleString()}원)`
+        reason: `[급등 감지] ${windowSeconds}초간 +${priceDiffRate.toFixed(2)}% 상승 (거래대금: ${Math.round(totalVolumeKrw).toLocaleString()}원)`
       };
 
-      console.log(`🚨 SURGE DETECTED: ${market} +${priceDiffRate.toFixed(2)}% in ${settings.SURGE_CHECK_SECONDS}s!`);
+      console.log(`🚨 [SURGE DETECTED] ${market} +${priceDiffRate.toFixed(2)}% in ${windowSeconds}s (거래대금: ${Math.round(totalVolumeKrw).toLocaleString()}원)`);
       this.emitSurge(surgeInfo);
     }
   }

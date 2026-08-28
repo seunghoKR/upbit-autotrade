@@ -94,6 +94,10 @@ export default function SlotManager({
   };
 
   const handleSaveEdit = async (slotId) => {
+    if (editForm.tradeAmountKrw > 0 && editForm.tradeAmountKrw < 5000) {
+      alert('업비트 원화 마켓의 최소 주문 가능 금액은 5,000원입니다.\n1회 매수금액을 5,000원 이상으로 설정해 주세요!');
+      return;
+    }
     if (onUpdateSlot) {
       await onUpdateSlot(slotId, editForm);
     }
@@ -151,6 +155,18 @@ export default function SlotManager({
           </div>
         </div>
       </div>
+
+      {/* 💡 주문 가능 원화 잔고 부족 시 친절한 안내 배너 (최소 5,000원 이상 필요) */}
+      {krwBalance < 5000 && (
+        <div className="p-3 sm:p-3.5 rounded-2xl bg-amber-950/40 border border-amber-500/30 text-amber-300 flex items-center justify-between gap-2 text-xs animate-in fade-in">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
+            <span>
+              <strong>원화 잔고 안내:</strong> 현재 주문 가능 원화(<strong>{Math.round(krwBalance).toLocaleString()}원</strong>)가 업비트 최소 주문금액(<strong>5,000원</strong>)보다 부족합니다. 원화를 조금만 충전하시면 슬롯이 즉시 자동 가동됩니다! ✨
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* ⚡ 실시간 급등 감지 레이더 상단 실시간 3초 카운트다운 알림 바 */}
       {pendingSurgeCountdown && (
@@ -470,10 +486,10 @@ export default function SlotManager({
                       <input
                         type="number"
                         min="0"
-                        step="10000"
+                        step="5000"
                         value={editForm.tradeAmountKrw}
                         onChange={(e) => setEditForm(prev => ({ ...prev, tradeAmountKrw: Number(e.target.value) }))}
-                        placeholder="0"
+                        placeholder="최소 5,000원 이상"
                         className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-white font-mono text-xs font-bold focus:outline-none focus:border-emerald-400"
                       />
                       <button
@@ -484,6 +500,12 @@ export default function SlotManager({
                         최대
                       </button>
                     </div>
+                    {editForm.tradeAmountKrw > 0 && editForm.tradeAmountKrw < 5000 && (
+                      <p className="text-[10px] text-rose-400 font-bold flex items-center gap-1 pt-0.5">
+                        <AlertTriangle className="w-3 h-3 shrink-0" />
+                        <span>업비트 최소 주문금액은 5,000원 이상이어야 합니다.</span>
+                      </p>
+                    )}
                   </div>
 
                   {/* 🛠️ 셀프전략 전용 상세 옵션 (급등 감지 기준 & 익절/손절) */}

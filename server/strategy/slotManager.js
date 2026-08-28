@@ -1,56 +1,20 @@
 /**
- * NURIOH TRADER - Multi-Slot Manager (1~5번 슬롯 및 트레일링 스탑 관리자)
- * 업비트 120개 전종목 실시간 급등 포착 시 빈 슬롯에 자동 탑승 및 트레일링 스탑 집행
+ * NURIOH TRADER - Multi-Slot Manager (1~9번 독립 멀티 슬롯 및 트레일링 스탑 관리자)
+ * 업비트 전종목 실시간 급등 포착 시 빈 슬롯에 자동 탑승 및 트레일링 스탑 익절/손절 집행
  */
 
 class SlotManager {
   constructor() {
     this.slots = [
-      {
-        slotId: 1,
-        name: '슬롯 1',
-        isEnabled: true,
-        targetMarket: null, // 급등 신호 포착 시 실시간 자동 배정
-        tradeAmountKrw: 50000,
-        positionStatus: 'IDLE',
-        position: null
-      },
-      {
-        slotId: 2,
-        name: '슬롯 2',
-        isEnabled: true,
-        targetMarket: null,
-        tradeAmountKrw: 50000,
-        positionStatus: 'IDLE',
-        position: null
-      },
-      {
-        slotId: 3,
-        name: '슬롯 3',
-        isEnabled: true,
-        targetMarket: null,
-        tradeAmountKrw: 30000,
-        positionStatus: 'IDLE',
-        position: null
-      },
-      {
-        slotId: 4,
-        name: '슬롯 4',
-        isEnabled: true,
-        targetMarket: null,
-        tradeAmountKrw: 30000,
-        positionStatus: 'IDLE',
-        position: null
-      },
-      {
-        slotId: 5,
-        name: '슬롯 5',
-        isEnabled: true,
-        targetMarket: null,
-        tradeAmountKrw: 20000,
-        positionStatus: 'IDLE',
-        position: null
-      }
+      { slotId: 1, name: '1번 주력 슬롯', isEnabled: true, targetMarket: null, tradeAmountKrw: 50000, positionStatus: 'IDLE', position: null, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
+      { slotId: 2, name: '2번 알트 슬롯', isEnabled: true, targetMarket: null, tradeAmountKrw: 50000, positionStatus: 'IDLE', position: null, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
+      { slotId: 3, name: '3번 급등 슬롯', isEnabled: true, targetMarket: null, tradeAmountKrw: 30000, positionStatus: 'IDLE', position: null, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
+      { slotId: 4, name: '4번 리플 슬롯', isEnabled: true, targetMarket: null, tradeAmountKrw: 30000, positionStatus: 'IDLE', position: null, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
+      { slotId: 5, name: '5번 보조 슬롯', isEnabled: true, targetMarket: null, tradeAmountKrw: 20000, positionStatus: 'IDLE', position: null, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
+      { slotId: 6, name: '6번 보조 슬롯', isEnabled: true, targetMarket: null, tradeAmountKrw: 20000, positionStatus: 'IDLE', position: null, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
+      { slotId: 7, name: '7번 보조 슬롯', isEnabled: true, targetMarket: null, tradeAmountKrw: 20000, positionStatus: 'IDLE', position: null, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
+      { slotId: 8, name: '8번 보조 슬롯', isEnabled: true, targetMarket: null, tradeAmountKrw: 20000, positionStatus: 'IDLE', position: null, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
+      { slotId: 9, name: '9번 보조 슬롯', isEnabled: true, targetMarket: null, tradeAmountKrw: 20000, positionStatus: 'IDLE', position: null, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 }
     ];
 
     this.listeners = new Set();
@@ -91,7 +55,10 @@ class SlotManager {
         currentPrice,
         profitRate: Number(profitRate.toFixed(2)),
         profitKrw: Math.round(profitKrw),
-        currentValuation: Math.round(currentValuation)
+        currentValuation: Math.round(currentValuation),
+        totalTrades: slot.totalTrades || 0,
+        winTrades: slot.winTrades || 0,
+        totalRealizedProfitKrw: slot.totalRealizedProfitKrw || 0
       };
     });
   }
@@ -104,13 +71,16 @@ class SlotManager {
     if (updateData.isEnabled !== undefined) slot.isEnabled = Boolean(updateData.isEnabled);
     if (updateData.targetMarket !== undefined) slot.targetMarket = updateData.targetMarket;
     if (updateData.tradeAmountKrw !== undefined) slot.tradeAmountKrw = Number(updateData.tradeAmountKrw);
+    if (updateData.totalTrades !== undefined) slot.totalTrades = Number(updateData.totalTrades);
+    if (updateData.winTrades !== undefined) slot.winTrades = Number(updateData.winTrades);
+    if (updateData.totalRealizedProfitKrw !== undefined) slot.totalRealizedProfitKrw = Number(updateData.totalRealizedProfitKrw);
 
     this.emitSlotEvent({ type: 'SLOT_CONFIG_UPDATED', slotId: slot.slotId, slot });
     return slot;
   }
 
   getAvailableSlot(market) {
-    // 1순위: 해당 마켓이 지정되어 있고 활성화된 IDLE 슬롯
+    // 1순위: 해당 마켓이 명시적으로 지정되어 있고 활성화된 IDLE 슬롯
     let slot = this.slots.find(s => s.isEnabled && s.targetMarket === market && s.positionStatus === 'IDLE');
     if (slot) return slot;
 
@@ -134,16 +104,16 @@ class SlotManager {
     slot.targetMarket = market;
     slot.positionStatus = 'HOLDING';
     slot.position = {
-      entryPrice,
-      entryVolume,
-      entryAmountKrw: entryAmountKrw || (entryPrice * entryVolume),
+      entryPrice: Number(entryPrice),
+      entryVolume: Number(entryVolume),
+      entryAmountKrw: Number(entryAmountKrw) || (entryPrice * entryVolume),
       enteredAt: new Date().toISOString(),
-      highestPrice: entryPrice,
+      highestPrice: Number(entryPrice),
       highestProfitPct: 0.0,
       trailingActivatedAt: null
     };
 
-    console.log(`📌 [Slot ${slotId}] Position Assigned: ${market} @ ${entryPrice.toLocaleString()} KRW`);
+    console.log(`📌 [Slot ${slotId}] Position Assigned: ${market} @ ${Number(entryPrice).toLocaleString()} KRW (수량: ${entryVolume})`);
     this.emitSlotEvent({ type: 'SLOT_POSITION_ASSIGNED', slotId, slot });
   }
 
@@ -155,17 +125,34 @@ class SlotManager {
     slot.position = null;
     slot.targetMarket = null; // 포지션 청산 완료 시 다시 전종목 급등 포착 대기 상태로 복귀
 
-    console.log(`🧹 [Slot ${slotId}] Position Cleared -> 급등 포착 대기 모드로 복귀.`);
+    console.log(`🧹 [Slot ${slotId}] Position Cleared -> 전종목 급등 포착 대기 모드로 복귀.`);
     this.emitSlotEvent({ type: 'SLOT_POSITION_CLEARED', slotId, slot });
+  }
+
+  /**
+   * 📊 매도 청산 시 슬롯 통계 실시간 누적 기록
+   */
+  recordTrade(slotId, isProfit, profitKrw) {
+    const slot = this.slots.find(s => s.slotId === Number(slotId));
+    if (!slot) return;
+
+    slot.totalTrades = (slot.totalTrades || 0) + 1;
+    if (isProfit) {
+      slot.winTrades = (slot.winTrades || 0) + 1;
+    }
+    slot.totalRealizedProfitKrw = (slot.totalRealizedProfitKrw || 0) + Math.round(Number(profitKrw) || 0);
+
+    console.log(`📊 [Slot ${slotId} 통계 갱신] 총 거래: ${slot.totalTrades}회 (승: ${slot.winTrades}회) | 실현 손익: ${slot.totalRealizedProfitKrw.toLocaleString()}원`);
+    this.emitSlotEvent({ type: 'SLOT_STATS_UPDATED', slotId, slot });
   }
 
   /**
    * 실시간 가격 수신 시 트레일링 스탑 및 손절 로직 평가
    */
   evaluatePrice(market, currentPrice, settings) {
-    const targetProfitPct = settings.TRAILING_TARGET_PROFIT_PCT || 3.0; // 감시 익절 발동 기준 (%)
+    const targetProfitPct = settings.TRAILING_TARGET_PROFIT_PCT || 2.0; // 감시 익절 발동 기준 (%)
     const callbackPct = settings.TRAILING_CALLBACK_PCT || 1.0; // 고점 대비 하락 폭 (%)
-    const stopLossPct = settings.STOP_LOSS_PCT || 2.0; // 기본 손절선 (%)
+    const stopLossPct = settings.STOP_LOSS_PCT || 1.0; // 기본 손절선 (%)
 
     for (const slot of this.slots) {
       if (!slot.isEnabled || slot.positionStatus === 'IDLE' || !slot.position) continue;
@@ -174,7 +161,7 @@ class SlotManager {
       const pos = slot.position;
       const profitRate = ((currentPrice - pos.entryPrice) / pos.entryPrice) * 100;
 
-      // 1. 고점 갱신
+      // 1. 최고가 갱신
       if (currentPrice > pos.highestPrice) {
         pos.highestPrice = currentPrice;
         pos.highestProfitPct = profitRate;
@@ -203,9 +190,11 @@ class SlotManager {
             action: 'TRAILING_STOP_SELL',
             slotId: slot.slotId,
             market,
+            entryPrice: pos.entryPrice,
             currentPrice,
             volume: pos.entryVolume,
             profitRate,
+            profitKrw: ((currentPrice - pos.entryPrice) * pos.entryVolume),
             highestProfitPct: pos.highestProfitPct,
             reason: `[트레일링 스탑 익절] 최고수익률 +${pos.highestProfitPct.toFixed(2)}% 달성 후 고점대비 -${dropFromPeak.toFixed(2)}% 하락 시점 이익 실현`
           };
@@ -219,9 +208,11 @@ class SlotManager {
           action: 'STOP_LOSS_SELL',
           slotId: slot.slotId,
           market,
+          entryPrice: pos.entryPrice,
           currentPrice,
           volume: pos.entryVolume,
           profitRate,
+          profitKrw: ((currentPrice - pos.entryPrice) * pos.entryVolume),
           highestProfitPct: pos.highestProfitPct,
           reason: `[손절매 실행] 손실률 ${profitRate.toFixed(2)}% (손절 기준: -${stopLossPct}%)`
         };
