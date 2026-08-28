@@ -39,7 +39,19 @@ async function main() {
   console.log('🚀 Starting FTP Deployment to iwinv hosting server...');
 
   // 1. Upload .htaccess
-  const htaccessContent = `<IfModule mod_rewrite.c>
+  const htaccessContent = `<IfModule mod_headers.c>
+    # HTML, JS, JSON 캐시 방지 (항상 최신 버전 보장)
+    <FilesMatch "\\.(html|htm|json)$">
+        Header set Cache-Control "max-age=0, no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
+        Header set Expires "Wed, 11 Jan 1984 05:00:00 GMT"
+    </FilesMatch>
+    <FilesMatch "^sw\\.js$">
+        Header set Cache-Control "max-age=0, no-cache, no-store, must-revalidate"
+    </FilesMatch>
+</IfModule>
+
+<IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /
 

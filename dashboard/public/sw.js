@@ -1,12 +1,18 @@
-﻿// Service Worker for NURIOH PWA App Installation
-const CACHE_NAME = 'nurioh-pwa-v1';
+// Service Worker for NURIOH PWA App Installation
+const CACHE_NAME = 'nurioh-pwa-v3';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.map((key) => caches.delete(key))
+      );
+    }).then(() => self.clients.claim())
+  );
 });
 
 self.addEventListener('fetch', (event) => {
