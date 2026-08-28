@@ -29,17 +29,17 @@ export default function DevModeSwitcher({
     },
     {
       tier: 'VIP',
-      role: 'USER',
-      name: '💎 VIP',
-      label: 'VIP회원 (9슬롯)',
+      role: 'OPERATOR',
+      name: '📊 운영자',
+      label: '사이트 운영자 (9슬롯)',
       maxSlots: 9,
-      badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-500/40 hover:bg-purple-500/30'
+      badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
     },
     {
       tier: 'VIP',
-      role: 'ADMIN',
-      name: '👑 마스터',
-      label: '대표님 최고권한 (9슬롯)',
+      role: 'DEVELOPER',
+      name: '👑 개발자',
+      label: '대표님 최고 개발자 권한 (9슬롯)',
       maxSlots: 9,
       badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
     }
@@ -58,7 +58,7 @@ export default function DevModeSwitcher({
               <Wrench className="w-2.5 h-2.5" />
             </span>
             <span className="font-extrabold text-slate-300 text-[10px]">
-              DEV ({currentRole === 'ADMIN' ? '마스터' : currentTier})
+              DEV ({currentRole === 'DEVELOPER' ? '개발자' : (currentRole === 'OPERATOR' || currentRole === 'ADMIN' ? '운영자' : currentTier)})
             </span>
             {isExpanded ? <ChevronDown className="w-2.5 h-2.5 text-slate-400" /> : <ChevronUp className="w-2.5 h-2.5 text-slate-400" />}
           </button>

@@ -80,12 +80,14 @@ export default function MyPageModal({
   const [isSaved, setIsSaved] = useState(false);
 
   useEffect(() => {
-    if (user) {
+    if (isOpen && user) {
       setName(user.name || user.nickname || '');
       setPhone(user.phone && user.phone !== '010-0000-0000' ? formatPhoneNumber(user.phone) : '');
       setEmail(user.email || '');
       setNickname(user.nickname || '');
       setTelegramId(user.telegramId || '');
+      setProfileSuccessMsg('');
+      setProfileErrorMsg('');
 
       if (!isApproved) {
         setActiveTab('APPLY');
@@ -96,17 +98,17 @@ export default function MyPageModal({
         setMaxTotalLimitKrw(user.autoTrading.maxTotalLimitKrw ?? 1000000);
         setExecutionMode(user.autoTrading.executionMode || 'AUTO');
         if (user.autoTrading.slotLimits) {
-          setSlotLimits(prev => ({ ...prev, ...user.autoTrading.slotLimits }));
+          setSlotLimits(user.autoTrading.slotLimits);
         }
       } else if (slots && slots.length > 0) {
         const limits = {};
         slots.forEach(s => {
-          limits[s.slotId] = s.tradeAmountKrw || 50000;
+          limits[s.slotId] = s.tradeAmountKrw !== undefined ? s.tradeAmountKrw : 50000;
         });
         setSlotLimits(limits);
       }
     }
-  }, [user, slots, isOpen, isApproved]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

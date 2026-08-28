@@ -269,13 +269,13 @@ export default function App() {
 
   // 개발자용 등급 모드 수동 전환 (자동 변경 없이 대표님이 선택한 상태 영구 유지)
   const handleSwitchDevMode = (tier, role, maxSlots) => {
-    const remainingDays = role === 'ADMIN' ? 9999 : (tier === 'FREE_TRIAL' ? 7 : 30);
+    const remainingDays = (role === 'DEVELOPER' || role === 'ADMIN') ? 9999 : (tier === 'FREE_TRIAL' ? 7 : 30);
     const override = { tier, role, maxSlots, remainingDays };
     setDevModeOverride(override);
     devModeRef.current = override;
 
     setCurrentUser(prev => ({
-      ...(prev || { id: 1, nickname: '누리오 회원' }),
+      ...(prev || { id: 1, nickname: '이승호 대표님' }),
       ...override
     }));
   };

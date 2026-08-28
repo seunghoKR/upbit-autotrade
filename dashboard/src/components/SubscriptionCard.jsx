@@ -77,15 +77,17 @@ export default function SubscriptionCard({
               <div className="flex items-center gap-1.5 flex-nowrap overflow-hidden">
                 <span className="font-bold text-xs sm:text-sm text-slate-100 whitespace-nowrap truncate">{displayName}</span>
                 <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full border shrink-0 whitespace-nowrap ${
-                  isAdmin
-                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                  user.role === 'DEVELOPER'
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm'
+                    : (user.role === 'OPERATOR' || user.role === 'ADMIN')
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm'
                     : isVip
                     ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
                     : isPro
                     ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
                     : 'bg-yellow-500/10 text-yellow-300 border-yellow-500/30'
                 }`}>
-                  {isAdmin ? '마스터' : (isPending ? '대기' : user.tier)}
+                  {user.role === 'DEVELOPER' ? '👑 개발자' : (user.role === 'OPERATOR' ? '📊 운영자' : (user.role === 'ADMIN' ? '👑 마스터' : (isPending ? '대기' : user.tier)))}
                 </span>
                 {user.hasApiKey ? (
                   <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-semibold flex items-center gap-0.5 shrink-0 whitespace-nowrap">

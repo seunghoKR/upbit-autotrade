@@ -136,7 +136,22 @@ try {
 
     // 🛠️ DB 테이블 컬럼 마이그레이션
     try {
-        $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN approval_status VARCHAR(32) DEFAULT 'PENDING' AFTER is_active");
+        $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN name VARCHAR(100) DEFAULT NULL AFTER kakao_id");
+    } catch (Exception $e) {}
+    try {
+        $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN phone VARCHAR(50) DEFAULT NULL AFTER email");
+    } catch (Exception $e) {}
+    try {
+        $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN birthyear VARCHAR(10) DEFAULT '1990' AFTER phone");
+    } catch (Exception $e) {}
+    try {
+        $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN auto_trading TEXT DEFAULT NULL AFTER agreed_terms");
+    } catch (Exception $e) {}
+    try {
+        $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN approval_status VARCHAR(32) DEFAULT 'APPROVED' AFTER is_active");
+    } catch (Exception $e) {}
+    try {
+        $pdo->exec("ALTER TABLE nurioh_users MODIFY COLUMN role VARCHAR(32) DEFAULT 'USER'");
     } catch (Exception $e) {}
     try {
         $pdo->exec("ALTER TABLE nurioh_settings ADD COLUMN excluded_markets TEXT DEFAULT NULL AFTER surge_min_volume_krw");
@@ -144,7 +159,7 @@ try {
 
     // 🧹 더미 테스트 계정 정리 및 대표님 단일 계정 확정
     $pdo->exec("DELETE FROM nurioh_users WHERE kakao_id = 'kakao_test_12345'");
-    $pdo->exec("UPDATE nurioh_users SET role='DEVELOPER', tier='VIP', max_slots=9, approval_status='APPROVED', subscription_expires_at='2099-12-31 23:59:59' WHERE email='leeshkr@kakao.com'");
+    $pdo->exec("UPDATE nurioh_users SET role='DEVELOPER', tier='VIP', max_slots=9, approval_status='APPROVED', subscription_expires_at='2099-12-31 23:59:59' WHERE email='leeshkr@kakao.com' OR id=1");
 
     // 1. POST auth/kakao : 로그인 / 회원가입
     if ($path === 'auth/kakao' && $method === 'POST') {
@@ -161,11 +176,11 @@ try {
             $nickname = $name ?: ($email ? explode('@', $email)[0] : '누리오 회원');
         }
 
-        $isDeveloper = in_array(strtolower($email), $developerEmails, true) || $kakaoId === 'admin_nurioh_ceo' || str_contains($kakaoId, '5059461126');
+        $isDeveloper = in_array(strtolower($email), $developerEmails, true) || $kakaoId === 'admin_nurioh_ceo' || str_contains($kakaoId, '5059461126') || $email === 'leeshkr@kakao.com';
         $assignedRole = $isDeveloper ? 'DEVELOPER' : 'USER';
         $assignedTier = $isDeveloper ? 'VIP' : 'FREE_TRIAL';
         $assignedSlots = $isDeveloper ? 9 : 1;
-        $assignedApproval = $isDeveloper ? 'APPROVED' : 'PENDING'; // 무료 방문자는 기본 승인 대기(PENDING)
+        $assignedApproval = $isDeveloper ? 'APPROVED' : 'PENDING';
         $assignedExpires = $isDeveloper ? '2099-12-31 23:59:59' : date('Y-m-d H:i:s', strtotime('+3 days'));
 
         $stmt = $pdo->prepare("SELECT * FROM nurioh_users WHERE kakao_id = ?");
@@ -180,9 +195,9 @@ try {
 
         if (!$user) {
             $insert = $pdo->prepare("INSERT INTO nurioh_users 
-                (kakao_id, nickname, email, profile_image, role, tier, subscription_expires_at, max_slots, approval_status, telegram_chat_id) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $insert->execute([$kakaoId, $nickname, $email, $profileImage, $assignedRole, $assignedTier, $assignedExpires, $assignedSlots, $assignedApproval, $telegramId]);
+                (kakao_id, name, nickname, email, phone, birthyear, profile_image, role, tier, subscription_expires_at, max_slots, approval_status, telegram_chat_id) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $insert->execute([$kakaoId, $name ?: $nickname, $nickname, $email, $phone, $birthyear, $profileImage, $assignedRole, $assignedTier, $assignedExpires, $assignedSlots, $assignedApproval, $telegramId]);
             $userId = (int)$pdo->lastInsertId();
 
             $markets = [
@@ -203,10 +218,14 @@ try {
         } else {
             $newNick = ($user['nickname'] === '??' || !$user['nickname']) ? $nickname : $user['nickname'];
             $newImg = $profileImage ?: $user['profile_image'];
+            $newName = $name ?: ($user['name'] ?? $newNick);
+            $newPhone = $phone ?: ($user['phone'] ?? '');
             
             $upd = $pdo->prepare("UPDATE nurioh_users SET 
                 kakao_id = ?,
+                name = ?,
                 nickname = ?, 
+                phone = ?,
                 profile_image = ?, 
                 role = ?, 
                 tier = ?, 
@@ -216,7 +235,9 @@ try {
                 WHERE id = ?");
             $upd->execute([
                 $kakaoId ?: $user['kakao_id'],
+                $newName,
                 $newNick,
+                $newPhone,
                 $newImg,
                 $isDeveloper ? 'DEVELOPER' : ($user['role'] ?: 'USER'),
                 $isDeveloper ? 'VIP' : ($user['tier'] ?: 'FREE_TRIAL'),
@@ -233,27 +254,31 @@ try {
 
         $expires = strtotime($user['subscription_expires_at'] ?? date('Y-m-d'));
         $remainingDays = max(0, (int)ceil(($expires - time()) / 86400));
-        if ($user['role'] === 'DEVELOPER') $remainingDays = 9999;
+        if ($isDeveloper || $user['role'] === 'DEVELOPER') $remainingDays = 9999;
 
         $keyStmt = $pdo->prepare("SELECT is_valid FROM nurioh_user_apikeys WHERE user_id = ?");
         $keyStmt->execute([$user['id']]);
         $keyInfo = $keyStmt->fetch();
-        $hasApiKey = (bool)($keyInfo['is_valid'] ?? false) || ($user['role'] === 'DEVELOPER');
+        $hasApiKey = (bool)($keyInfo['is_valid'] ?? false) || ($isDeveloper || $user['role'] === 'DEVELOPER');
+
+        $autoTrading = !empty($user['auto_trading']) ? json_decode($user['auto_trading'], true) : null;
 
         $userProfile = [
             'id' => (int)$user['id'],
             'kakaoId' => $user['kakao_id'],
-            'name' => $name ?: $user['nickname'],
+            'name' => $user['name'] ?: $user['nickname'],
             'nickname' => $user['nickname'],
-            'phone' => $phone,
+            'phone' => $user['phone'] ?: '',
             'email' => $user['email'],
-            'birthyear' => $birthyear,
-            'role' => $user['role'], // DEVELOPER | OPERATOR | USER
-            'tier' => $user['tier'], // VIP | PRO | FREE_TRIAL
-            'approvalStatus' => $user['approval_status'] ?? 'PENDING', // APPROVED | PENDING
-            'maxSlots' => (int)$user['max_slots'],
+            'birthyear' => $user['birthyear'] ?: '1990',
+            'telegramId' => $user['telegram_chat_id'] ?: '',
+            'role' => $isDeveloper ? 'DEVELOPER' : $user['role'],
+            'tier' => $isDeveloper ? 'VIP' : $user['tier'],
+            'approvalStatus' => $isDeveloper ? 'APPROVED' : ($user['approval_status'] ?? 'PENDING'),
+            'maxSlots' => $isDeveloper ? 9 : (int)$user['max_slots'],
             'remainingDays' => $remainingDays,
             'hasApiKey' => $hasApiKey,
+            'autoTrading' => $autoTrading,
             'profileImage' => $user['profile_image'] ?: 'https://t1.kakaocdn.net/together_image/common/avatar/avatar.png'
         ];
 
@@ -284,61 +309,101 @@ try {
             exit;
         }
 
-        $isDev = in_array(strtolower($email ?: $user['email']), $developerEmails, true) || $user['role'] === 'DEVELOPER';
+        $isDev = in_array(strtolower($email ?: $user['email']), $developerEmails, true) || $user['role'] === 'DEVELOPER' || $user['email'] === 'leeshkr@kakao.com' || $userId === 1;
+        $newRole = $isDev ? 'DEVELOPER' : ($user['role'] ?: 'USER');
+        $newTier = $isDev ? 'VIP' : ($user['tier'] ?: 'FREE_TRIAL');
+        $newSlots = $isDev ? 9 : ($user['max_slots'] ?: 1);
         $newApproval = $isDev ? 'APPROVED' : ($user['approval_status'] === 'APPROVED' ? 'APPROVED' : 'PENDING');
+        $newExpires = $isDev ? '2099-12-31 23:59:59' : $user['subscription_expires_at'];
 
         $upd = $pdo->prepare("UPDATE nurioh_users SET 
+            name = ?,
             nickname = ?, 
+            phone = ?,
             email = ?, 
-            approval_status = ? 
+            telegram_chat_id = ?,
+            role = ?,
+            tier = ?,
+            max_slots = ?,
+            approval_status = ?,
+            subscription_expires_at = ?
             WHERE id = ?");
         $upd->execute([
+            $name ?: ($user['name'] ?: $nickname),
             $nickname ?: $user['nickname'],
+            $phone ?: ($user['phone'] ?: ''),
             $email ?: $user['email'],
+            $telegramId ?: ($user['telegram_chat_id'] ?: null),
+            $newRole,
+            $newTier,
+            $newSlots,
             $newApproval,
+            $newExpires,
             $userId
         ]);
-
-        // 텔레그램 운영자 알림 발송
-        $msg = "<b>🎉 [NURIOH] 신규 회원 무료 사용 승인 요청</b>\n\n";
-        $msg .= "👤 <b>이름:</b> " . htmlspecialchars($name ?: $nickname) . "\n";
-        $msg .= "📞 <b>연락처:</b> " . htmlspecialchars($phone ?: '미입력') . "\n";
-        $msg .= "📧 <b>이메일:</b> " . htmlspecialchars($email ?: $user['email']) . "\n";
-        $msg .= "🏷️ <b>닉네임:</b> " . htmlspecialchars($nickname) . "\n";
-        if ($telegramId) $msg .= "✈️ <b>텔레그램:</b> @" . htmlspecialchars($telegramId) . "\n";
-        $msg .= "⏰ <b>신청시각:</b> " . date('Y-m-d H:i:s') . "\n\n";
-        $msg .= "👉 <i>운영자 패널에서 즉시 승인(APPROVED) 처리하실 수 있습니다.</i>";
-
-        sendTelegramAdminAlert($msg);
 
         // 업데이트된 유저 반환
         $stmt = $pdo->prepare("SELECT * FROM nurioh_users WHERE id = ?");
         $stmt->execute([$userId]);
         $updatedUser = $stmt->fetch();
 
-        $expires = strtotime($updatedUser['subscription_expires_at'] ?? date('Y-m-d'));
-        $remainingDays = max(0, (int)ceil(($expires - time()) / 86400));
-        if ($updatedUser['role'] === 'DEVELOPER') $remainingDays = 9999;
+        $autoTrading = !empty($updatedUser['auto_trading']) ? json_decode($updatedUser['auto_trading'], true) : null;
 
         echo json_encode([
             'success' => true,
-            'message' => '회원 정보가 저장되었으며, 운영자에게 무료 사용 승인 요청이 성공적으로 접수되었습니다!',
+            'message' => '회원 정보가 성공적으로 수정되었습니다!',
             'user' => [
                 'id' => (int)$updatedUser['id'],
                 'kakaoId' => $updatedUser['kakao_id'],
-                'name' => $name ?: $updatedUser['nickname'],
+                'name' => $updatedUser['name'] ?: $updatedUser['nickname'],
                 'nickname' => $updatedUser['nickname'],
-                'phone' => $phone,
+                'phone' => $updatedUser['phone'] ?: '',
                 'email' => $updatedUser['email'],
-                'birthyear' => $birthyear,
+                'birthyear' => $updatedUser['birthyear'] ?: '1990',
+                'telegramId' => $updatedUser['telegram_chat_id'] ?: '',
                 'role' => $updatedUser['role'],
                 'tier' => $updatedUser['tier'],
-                'approvalStatus' => $updatedUser['approval_status'] ?? 'PENDING',
+                'approvalStatus' => $updatedUser['approval_status'] ?? 'APPROVED',
                 'maxSlots' => (int)$updatedUser['max_slots'],
-                'remainingDays' => $remainingDays,
-                'hasApiKey' => false,
+                'remainingDays' => $isDev ? 9999 : 30,
+                'hasApiKey' => true,
+                'autoTrading' => $autoTrading,
                 'profileImage' => $updatedUser['profile_image'] ?: 'https://t1.kakaocdn.net/together_image/common/avatar/avatar.png'
             ]
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // 1-C. POST user/auto-trading : 마이페이지 슬롯 한도 및 자동매매 설정 저장
+    if ($path === 'user/auto-trading' && $method === 'POST') {
+        $userId = (int)($input['userId'] ?? 1);
+        $isAgreed = isset($input['isAgreed']) ? (int)$input['isAgreed'] : 1;
+        $maxTotalLimitKrw = (float)($input['maxTotalLimitKrw'] ?? 1000000);
+        $executionMode = (string)($input['executionMode'] ?? 'AUTO');
+        $slotLimits = $input['slotLimits'] ?? [];
+
+        $autoData = json_encode([
+            'isAgreed' => (bool)$isAgreed,
+            'maxTotalLimitKrw' => $maxTotalLimitKrw,
+            'executionMode' => $executionMode,
+            'slotLimits' => $slotLimits
+        ], JSON_UNESCAPED_UNICODE);
+
+        $pdo->prepare("UPDATE nurioh_users SET auto_trading = ? WHERE id = ?")->execute([$autoData, $userId]);
+
+        // 슬롯별 금액 업데이트
+        if (is_array($slotLimits)) {
+            foreach ($slotLimits as $sId => $amount) {
+                $slotNum = (int)$sId;
+                $slotAmt = (float)$amount;
+                $pdo->prepare("UPDATE nurioh_slots SET trade_amount_krw = ? WHERE user_id = ? AND slot_id = ?")
+                    ->execute([$slotAmt, $userId, $slotNum]);
+            }
+        }
+
+        echo json_encode([
+            'success' => true,
+            'message' => '자동매매 한도 및 슬롯 설정이 안전하게 저장되었습니다.'
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }
@@ -356,7 +421,7 @@ try {
             exit;
         }
 
-        $isDeveloper = in_array(strtolower($user['email'] ?? ''), $developerEmails, true);
+        $isDeveloper = in_array(strtolower($user['email'] ?? ''), $developerEmails, true) || ($user['email'] ?? '') === 'leeshkr@kakao.com' || ($user['role'] ?? '') === 'DEVELOPER' || $userId === 1;
         if ($isDeveloper && ($user['role'] !== 'DEVELOPER' || (int)$user['max_slots'] !== 9 || $user['approval_status'] !== 'APPROVED')) {
             $realNick = ($user['nickname'] === '??') ? '이승호 대표님' : $user['nickname'];
             $pdo->prepare("UPDATE nurioh_users SET nickname = ?, role='DEVELOPER', tier='VIP', max_slots=9, approval_status='APPROVED', subscription_expires_at='2099-12-31 23:59:59' WHERE id = ?")
@@ -370,26 +435,33 @@ try {
 
         $expires = strtotime($user['subscription_expires_at'] ?? date('Y-m-d'));
         $remainingDays = max(0, (int)ceil(($expires - time()) / 86400));
-        if ($user['role'] === 'DEVELOPER') $remainingDays = 9999;
+        if ($isDeveloper) $remainingDays = 9999;
 
         $keyStmt = $pdo->prepare("SELECT is_valid FROM nurioh_user_apikeys WHERE user_id = ?");
         $keyStmt->execute([$user['id']]);
         $keyInfo = $keyStmt->fetch();
-        $hasApiKey = (bool)($keyInfo['is_valid'] ?? false) || ($user['role'] === 'DEVELOPER');
+        $hasApiKey = (bool)($keyInfo['is_valid'] ?? false) || $isDeveloper;
+
+        $autoTrading = !empty($user['auto_trading']) ? json_decode($user['auto_trading'], true) : null;
 
         echo json_encode([
             'success' => true,
             'user' => [
                 'id' => (int)$user['id'],
                 'kakaoId' => $user['kakao_id'],
+                'name' => $user['name'] ?: $user['nickname'],
                 'nickname' => $user['nickname'],
+                'phone' => $user['phone'] ?: '',
                 'email' => $user['email'],
-                'role' => $user['role'],
-                'tier' => $user['tier'],
-                'approvalStatus' => $user['approval_status'] ?? 'PENDING',
-                'maxSlots' => (int)$user['max_slots'],
+                'birthyear' => $user['birthyear'] ?: '1990',
+                'telegramId' => $user['telegram_chat_id'] ?: '',
+                'role' => $isDeveloper ? 'DEVELOPER' : $user['role'],
+                'tier' => $isDeveloper ? 'VIP' : $user['tier'],
+                'approvalStatus' => $isDeveloper ? 'APPROVED' : ($user['approval_status'] ?? 'PENDING'),
+                'maxSlots' => $isDeveloper ? 9 : (int)$user['max_slots'],
                 'remainingDays' => $remainingDays,
                 'hasApiKey' => $hasApiKey,
+                'autoTrading' => $autoTrading,
                 'profileImage' => $user['profile_image'] ?: 'https://t1.kakaocdn.net/together_image/common/avatar/avatar.png'
             ]
         ], JSON_UNESCAPED_UNICODE);
