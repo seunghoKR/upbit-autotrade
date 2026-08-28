@@ -216,18 +216,22 @@ export default function SlotManager({
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all border cursor-pointer whitespace-nowrap ${
                   isSelected
                     ? 'bg-emerald-500 text-black border-emerald-400 shadow-lg shadow-emerald-500/20 scale-105'
-                    : hasPosition
+                    : !slot.isEnabled
+                      ? 'bg-slate-900/60 text-slate-500 border-slate-800'
+                      : hasPosition
                       ? 'bg-slate-800/90 text-emerald-300 border-emerald-500/30'
                       : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white hover:bg-slate-800'
                 }`}
               >
                 <span>{slot.slotId}번</span>
                 <span className="text-[11px] font-normal truncate max-w-[80px]">
-                  {slot.targetMarket ? slot.targetMarket.replace('KRW-', '') : '대기'}
+                  {!slot.isEnabled ? '정지' : (slot.targetMarket ? slot.targetMarket.replace('KRW-', '') : '대기')}
                 </span>
-                {hasPosition && (
+                {!slot.isEnabled ? (
+                  <span className="text-[10px] text-slate-500 font-mono">⏸️</span>
+                ) : hasPosition ? (
                   <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse"></span>
-                )}
+                ) : null}
               </button>
             );
           })}
@@ -262,7 +266,9 @@ export default function SlotManager({
               className={`rounded-2xl p-4 sm:p-5 border transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between min-h-[255px] select-none ${
                 displaySlots.length === 1 ? 'max-w-xl w-full ' : ''
               }${
-                isSurgeCounting
+                !slot.isEnabled
+                  ? 'bg-slate-950/90 border-slate-800/80 opacity-60 grayscale-[25%]'
+                  : isSurgeCounting
                   ? 'bg-amber-950/40 border-amber-400 ring-2 ring-amber-400 shadow-2xl shadow-amber-500/30 animate-pulse'
                   : isSelfStrategy
                   ? (isSelected
@@ -301,7 +307,9 @@ export default function SlotManager({
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${
-                    hasPosition 
+                    !slot.isEnabled
+                      ? 'bg-slate-800 text-slate-500 border border-slate-700'
+                      : hasPosition 
                       ? 'bg-rose-500/25 text-rose-300 border border-rose-500/40' 
                       : (isSelfStrategy 
                           ? 'bg-purple-500/25 text-purple-200 border border-purple-400/40' 
@@ -315,16 +323,20 @@ export default function SlotManager({
                         {slot.slotName || `${slot.slotId}번 슬롯`}
                       </span>
                       <span className={`text-[9px] sm:text-[10px] px-1.5 py-0.2 rounded-full font-extrabold tracking-tight border shadow-sm shrink-0 whitespace-nowrap ${
-                        isSelfStrategy 
+                        !slot.isEnabled
+                          ? 'bg-slate-800 text-slate-400 border-slate-700'
+                          : isSelfStrategy 
                           ? 'bg-purple-500/30 text-purple-200 border-purple-400/60 shadow-purple-500/20' 
                           : 'bg-emerald-500/20 text-emerald-300 border-emerald-400/50 shadow-emerald-500/20'
                       }`}>
-                        <span className="sm:hidden">{isSelfStrategy ? '셀프' : '추천'}</span>
-                        <span className="hidden sm:inline">{isSelfStrategy ? '🛠️ 셀프전략' : '🎯 추천전략'}</span>
+                        <span className="sm:hidden">{!slot.isEnabled ? '정지' : (isSelfStrategy ? '셀프' : '추천')}</span>
+                        <span className="hidden sm:inline">{!slot.isEnabled ? '⏸️ 정지' : (isSelfStrategy ? '🛠️ 셀프' : '🎯 추천')}</span>
                       </span>
                     </div>
                     <span className="text-[11px] sm:text-xs text-slate-400 whitespace-nowrap truncate block">
-                      {isSurgeCounting ? (
+                      {!slot.isEnabled ? (
+                        <span className="text-slate-500 font-bold">⏸️ 슬롯 정지됨 (감시 중단)</span>
+                      ) : isSurgeCounting ? (
                         <span className="text-amber-300 font-bold animate-pulse">⚡ 급등 포착: {formatMarketName(pendingSurgeCountdown.market)}</span>
                       ) : (
                         formatMarketName(slot.targetMarket)
@@ -335,6 +347,27 @@ export default function SlotManager({
 
                 {/* 상태 뱃지 & 액션 버튼 */}
                 <div className="flex items-center gap-1 shrink-0">
+                  {/* ⚡ 개별 슬롯 자동매매 ON/OFF 토글 스위치 */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onUpdateSlot && onUpdateSlot(slot.slotId, {
+                        ...slot,
+                        isEnabled: !slot.isEnabled
+                      });
+                    }}
+                    className={`px-2 py-1 rounded-lg text-[10px] font-black flex items-center gap-1 border transition shadow-sm cursor-pointer whitespace-nowrap ${
+                      slot.isEnabled
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/50 hover:bg-emerald-500/30'
+                        : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white hover:bg-slate-700'
+                    }`}
+                    title={slot.isEnabled ? '슬롯 자동매매 일시정지' : '슬롯 자동매매 가동 시작'}
+                  >
+                    <Power className={`w-3 h-3 ${slot.isEnabled ? 'text-emerald-400 animate-pulse' : 'text-slate-500'}`} />
+                    <span>{slot.isEnabled ? '가동' : '정지'}</span>
+                  </button>
+
                   {isEditing ? (
                     <button
                       onClick={(e) => {
@@ -576,9 +609,9 @@ export default function SlotManager({
                 ) : (
                   <>
                     <span className="text-[11px] text-slate-400 flex items-center gap-1.5">
-                      <span className={`w-2 h-2 rounded-full ${hasPosition ? 'bg-emerald-400 animate-ping' : (isSurgeCounting ? 'bg-amber-400 animate-ping' : (isZeroAmount ? 'bg-amber-400' : 'bg-slate-500'))}`}></span>
-                      <strong className={hasPosition ? 'text-emerald-300' : (isSurgeCounting ? 'text-amber-300' : (isZeroAmount ? 'text-amber-400/90' : 'text-slate-400'))}>
-                        {hasPosition ? '포지션 보유 (수익 추적)' : (isSurgeCounting ? '급등 포착! 자동 매수 대기' : (isZeroAmount ? '매수금액 설정 대기 (0원)' : '급등 신호 감시 중'))}
+                      <span className={`w-2 h-2 rounded-full ${!slot.isEnabled ? 'bg-slate-600' : hasPosition ? 'bg-emerald-400 animate-ping' : (isSurgeCounting ? 'bg-amber-400 animate-ping' : (isZeroAmount ? 'bg-amber-400' : 'bg-slate-500'))}`}></span>
+                      <strong className={!slot.isEnabled ? 'text-slate-500' : hasPosition ? 'text-emerald-300' : (isSurgeCounting ? 'text-amber-300' : (isZeroAmount ? 'text-amber-400/90' : 'text-slate-400'))}>
+                        {!slot.isEnabled ? '⏸️ 슬롯 가동 중지됨 (감시 중단)' : hasPosition ? '포지션 보유 (수익 추적)' : (isSurgeCounting ? '급등 포착! 자동 매수 대기' : (isZeroAmount ? '매수금액 설정 대기 (0원)' : '급등 신호 감시 중'))}
                       </strong>
                     </span>
 
