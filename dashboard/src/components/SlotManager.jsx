@@ -145,18 +145,8 @@ export default function SlotManager({
           </div>
         </div>
 
-        {/* 봇 가동 토글 및 모의 급등 테스트 버튼 */}
+        {/* 봇 가동 토글 버튼 */}
         <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
-          {/* ⚡ 모의 급등 테스트 버튼 */}
-          <button
-            onClick={() => onTriggerMockSurge && onTriggerMockSurge('RANDOM')}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-amber-500/40 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 hover:border-amber-400 font-bold text-xs sm:text-sm transition shadow-lg cursor-pointer whitespace-nowrap active:scale-95"
-            title="실시간 급등 감시 알고리즘 & 슬롯 자동 배정 시뮬레이션을 즉시 테스트합니다"
-          >
-            <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 animate-bounce" />
-            <span>⚡ 모의 급등 테스트</span>
-          </button>
-
           {/* 봇 가동 토글 버튼 */}
           <button
             onClick={onToggleBot}
