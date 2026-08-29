@@ -576,7 +576,7 @@ export default function App() {
     }
   };
 
-  // 슬롯 개별 매도
+  // 슬롯 개별 긴급 매도
   const handleSellSlot = async (slotId) => {
     const slot = slots.find(s => s.slotId === slotId);
     const targetMkt = slot?.targetMarket || 'KRW-BTC';
@@ -599,16 +599,29 @@ export default function App() {
     }));
 
     try {
-      await sellSlotPosition(slotId, { userId, currentPrice });
+      const res = await sellSlotPosition(slotId, { userId, currentPrice });
+      if (res?.order?.uuid) {
+        alert(`⚡ [업비트 실주문 접수 완료]\n${res.message}\n\n• 거래소 주문번호: ${res.order.uuid}\n• 매도 수량: ${res.order.volume}`);
+      } else if (res?.upbitError) {
+        alert(`⚠️ [업비트 주문 전송 결과]\n${res.upbitError}\n\n(${res.message})`);
+      } else {
+        alert(`✅ ${res?.message || '슬롯이 매도 청산되었습니다.'}`);
+      }
     } catch (err) {
       console.error('Sell slot error:', err);
+      alert('매도 처리 중 오류가 발생했습니다: ' + (err.response?.data?.error || err.message));
     }
     await loadData();
   };
 
   // 🚨 Panic Sell 전량 매도
   const handlePanicSellAll = async () => {
-    await panicSellAll();
+    try {
+      const res = await panicSellAll();
+      alert(`🚨 [전 슬롯 긴급 매도]\n${res?.message || '모든 슬롯의 매도 청산이 완료되었습니다.'}`);
+    } catch (err) {
+      alert('전량 매도 오류: ' + err.message);
+    }
     loadData();
   };
 

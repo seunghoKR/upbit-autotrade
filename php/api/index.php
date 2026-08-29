@@ -970,7 +970,8 @@ try {
             $secretKey = base64_decode($keyInfo['secret_key_enc']);
 
             // 업비트 잔고에서 해당 코인 실제 보유 수량 조회
-            $accounts = fetchUpbitAccounts($accessKey, $secretKey);
+            $accErr = null;
+            $accounts = fetchUpbitAccounts($accessKey, $secretKey, $accErr);
             $coinAcc = null;
             foreach ($accounts as $acc) {
                 if ($acc['currency'] === $coinCurrency) {
@@ -981,14 +982,20 @@ try {
 
             $coinBalance = (float)($coinAcc['balance'] ?? ($slot['entry_volume'] ?? 0));
             if ($coinBalance > 0) {
+                // 부동소수점 지수 표기 방지 (최대 소수점 8자리)
+                $formattedVolume = rtrim(rtrim(sprintf('%.8f', $coinBalance), '0'), '.');
                 $orderParams = [
                     'market' => $mkt,
                     'side' => 'ask',
-                    'volume' => (string)$coinBalance,
+                    'volume' => $formattedVolume,
                     'ord_type' => 'market'
                 ];
                 $orderRes = executeUpbitOrder($accessKey, $secretKey, $orderParams, $orderErr);
+            } else {
+                $orderErr = "업비트 계좌에 [{$coinCurrency}] 보유 잔고가 0이어서 거래소 주문은 생략되었습니다. ({$accErr})";
             }
+        } else {
+            $orderErr = "등록된 업비트 API 키가 없거나 비활성화 상태입니다.";
         }
 
         $entryPrice = (float)($slot['entry_price'] ?? 0);
@@ -1024,22 +1031,25 @@ try {
         $krwStr = "{$sign}" . number_format((int)$profitKrw) . " KRW";
         $timeStr = date('Y-m-d H:i:s');
 
+        $upbitOrderInfo = $orderRes ? "주문번호: {$orderRes['uuid']}" : ($orderErr ?: "모의 정산");
         $alertMsg = "<b>{$emoji}</b>\n\n" .
                     "🎰 <b>배정 슬롯:</b> <b>{$slotId}번 슬롯 ({$slotName})</b>\n" .
                     "📌 <b>암호화폐:</b> <code>{$mkt}</code>\n" .
                     "📈 <b>실현 수익률:</b> <b>{$pctStr}</b>\n" .
                     "💵 <b>실현 손익금:</b> <b>{$krwStr}</b>\n" .
+                    "⚡ <b>업비트 주문:</b> {$upbitOrderInfo}\n" .
                     "⏱ <b>청산 시각:</b> {$timeStr}\n";
 
         sendTelegramAdminAlert($alertMsg);
 
         echo json_encode([
             'success' => true,
-            'message' => "슬롯 {$slotId}번 ({$mkt}) 매도 정산 완료! 실현수익률: {$pctStr} ({$krwStr})",
+            'message' => "슬롯 {$slotId}번 ({$mkt}) 긴급 매도 처리 완료! 실현수익률: {$pctStr} ({$krwStr})",
             'profitPct' => $profitPct,
             'profitKrw' => $profitKrw,
             'isProfit' => $isProfit,
-            'order' => $orderRes
+            'order' => $orderRes,
+            'upbitError' => $orderErr
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }
