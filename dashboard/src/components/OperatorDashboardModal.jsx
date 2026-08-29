@@ -460,189 +460,87 @@ export default function OperatorDashboardModal({
                 </div>
               </div>
 
-              {/* 단일 추천전략 상세 파라미터 폼 */}
-              <form onSubmit={handleSaveRecommendedStrategy} className="bg-slate-950/80 p-5 sm:p-6 rounded-2xl border-2 border-indigo-500/40 space-y-5 shadow-xl">
+              {/* 단일 추천전략 상세 파라미터 폼 (급등 포착 조건 단일 관리) */}
+              <form onSubmit={handleSaveRecommendedStrategy} className="bg-slate-950/80 p-5 sm:p-7 rounded-2xl border-2 border-indigo-500/40 space-y-6 shadow-xl max-w-2xl mx-auto">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                   <div className="flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-amber-400" />
-                    <h5 className="font-extrabold text-slate-100 text-sm">
+                    <Zap className="w-5 h-5 text-amber-400" />
+                    <h5 className="font-extrabold text-slate-100 text-base">
                       {recommendedStrategy.name}
                     </h5>
                   </div>
-                  <span className="text-[11px] text-slate-400 font-medium">
-                    {recommendedStrategy.description}
+                  <span className="text-xs text-emerald-400 font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30">
+                    전체 추천 슬롯 자동 연동
                   </span>
                 </div>
 
-                {/* 세부 파라미터 3대 그리드 */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* 1. 실시간 급등 감지 파라미터 */}
-                  <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
-                    <div className="font-bold text-amber-400 flex items-center gap-1.5 border-b border-slate-800 pb-2">
+                {/* 단일 핵심 파라미터: 급등 포착 조건 (Surge Engine) */}
+                <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 space-y-4">
+                  <div className="font-bold text-amber-400 flex items-center justify-between border-b border-slate-800 pb-2.5">
+                    <span className="flex items-center gap-2 text-sm">
                       <Zap className="w-4 h-4" />
-                      <span>1. 급등 포착 조건 (Surge Engine)</span>
-                    </div>
+                      급등 포착 조건 (Surge Engine)
+                    </span>
+                    <span className="text-[11px] text-slate-400 font-normal">
+                      조건 만족 시 봇이 즉시 자동 포착
+                    </span>
+                  </div>
 
-                    <div>
-                      <label className="text-slate-300 block mb-1 text-[11px] font-bold">감시 시간 (초)</label>
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="number"
-                          min="1"
-                          max="60"
-                          value={recommendedStrategy.SURGE_CHECK_SECONDS}
-                          onChange={(e) => setRecommendedStrategy({ ...recommendedStrategy, SURGE_CHECK_SECONDS: Number(e.target.value) })}
-                          className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 font-mono font-bold focus:outline-none focus:border-amber-400"
-                        />
-                        <span className="text-slate-400 text-xs shrink-0">초간</span>
-                      </div>
-                      <p className="text-[10px] text-slate-500 mt-1">예: 최근 5초 동안의 틱 시세 분석</p>
-                    </div>
-
-                    <div>
-                      <label className="text-slate-300 block mb-1 text-[11px] font-bold">상승률 기준 (%)</label>
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="number"
-                          step="0.1"
-                          min="0.1"
-                          value={recommendedStrategy.SURGE_RATE_THRESHOLD}
-                          onChange={(e) => setRecommendedStrategy({ ...recommendedStrategy, SURGE_RATE_THRESHOLD: Number(e.target.value) })}
-                          className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-rose-300 font-mono font-bold focus:outline-none focus:border-rose-400"
-                        />
-                        <span className="text-slate-400 text-xs shrink-0">% 이상</span>
-                      </div>
-                      <p className="text-[10px] text-slate-500 mt-1">지정 시간 내 최저가 대비 상승폭</p>
-                    </div>
-
-                    <div>
-                      <label className="text-slate-300 block mb-1 text-[11px] font-bold">최소 거래대금 필터 (원)</label>
+                  <div>
+                    <label className="text-slate-200 block mb-1.5 text-xs font-bold">감시 시간 (초)</label>
+                    <div className="flex items-center gap-2">
                       <input
                         type="number"
-                        step="1000000"
-                        value={recommendedStrategy.SURGE_MIN_VOLUME_KRW}
-                        onChange={(e) => setRecommendedStrategy({ ...recommendedStrategy, SURGE_MIN_VOLUME_KRW: Number(e.target.value) })}
-                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-emerald-300 font-mono font-bold focus:outline-none focus:border-emerald-400"
+                        min="1"
+                        max="300"
+                        value={recommendedStrategy.SURGE_CHECK_SECONDS}
+                        onChange={(e) => setRecommendedStrategy({ ...recommendedStrategy, SURGE_CHECK_SECONDS: Number(e.target.value) })}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 font-mono text-sm font-bold focus:outline-none focus:border-amber-400"
                       />
-                      <p className="text-[10px] text-slate-400 mt-1 font-mono font-bold">
-                        {(Number(recommendedStrategy.SURGE_MIN_VOLUME_KRW || 0) / 10000).toLocaleString()}만원 이상 수급 시 유효
-                      </p>
+                      <span className="text-slate-300 text-xs font-bold shrink-0">초간</span>
                     </div>
+                    <p className="text-[11px] text-slate-500 mt-1">예: 최근 60초 또는 5초 동안의 틱 시세를 롤링 분석</p>
                   </div>
 
-                  {/* 2. 트레일링 스탑 & 손절매 조건 */}
-                  <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
-                    <div className="font-bold text-purple-400 flex items-center gap-1.5 border-b border-slate-800 pb-2">
-                      <Flame className="w-4 h-4" />
-                      <span>2. 트레일링 스탑 &amp; 리스크 제어</span>
+                  <div>
+                    <label className="text-slate-200 block mb-1.5 text-xs font-bold">상승률 기준 (%)</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0.1"
+                        value={recommendedStrategy.SURGE_RATE_THRESHOLD}
+                        onChange={(e) => setRecommendedStrategy({ ...recommendedStrategy, SURGE_RATE_THRESHOLD: Number(e.target.value) })}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-rose-300 font-mono text-sm font-bold focus:outline-none focus:border-rose-400"
+                      />
+                      <span className="text-slate-300 text-xs font-bold shrink-0">% 이상</span>
                     </div>
-
-                    <div>
-                      <label className="text-slate-300 block mb-1 text-[11px] font-bold">추적 시작 수익률 (%)</label>
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="number"
-                          step="0.1"
-                          value={recommendedStrategy.TRAILING_TARGET_PROFIT_PCT}
-                          onChange={(e) => setRecommendedStrategy({ ...recommendedStrategy, TRAILING_TARGET_PROFIT_PCT: Number(e.target.value) })}
-                          className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-purple-300 font-mono font-bold focus:outline-none focus:border-purple-400"
-                        />
-                        <span className="text-slate-400 text-xs shrink-0">%</span>
-                      </div>
-                      <p className="text-[10px] text-slate-500 mt-1">이 수익률 도달 이후부터 최고가 실시간 추적</p>
-                    </div>
-
-                    <div>
-                      <label className="text-slate-300 block mb-1 text-[11px] font-bold">고점 대비 하락폭 (Callback %)</label>
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="number"
-                          step="0.1"
-                          value={recommendedStrategy.TRAILING_CALLBACK_PCT}
-                          onChange={(e) => setRecommendedStrategy({ ...recommendedStrategy, TRAILING_CALLBACK_PCT: Number(e.target.value) })}
-                          className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-cyan-300 font-mono font-bold focus:outline-none focus:border-cyan-400"
-                        />
-                        <span className="text-slate-400 text-xs shrink-0">%</span>
-                      </div>
-                      <p className="text-[10px] text-slate-500 mt-1">최고가 찍고 하락 시 0.1초 즉시 익절 매도</p>
-                    </div>
-
-                    <div>
-                      <label className="text-slate-300 block mb-1 text-[11px] font-bold">손절선 (Stop-Loss, %)</label>
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="number"
-                          step="0.1"
-                          value={recommendedStrategy.STOP_LOSS_PCT}
-                          onChange={(e) => setRecommendedStrategy({ ...recommendedStrategy, STOP_LOSS_PCT: Number(e.target.value) })}
-                          className="w-full bg-slate-950 border border-rose-900/80 rounded-lg px-3 py-1.5 text-rose-300 font-mono font-bold focus:outline-none focus:border-rose-500"
-                        />
-                        <span className="text-rose-400 text-xs shrink-0">%</span>
-                      </div>
-                      <p className="text-[10px] text-rose-400 mt-1 font-mono font-bold">
-                        -{recommendedStrategy.STOP_LOSS_PCT}% 도달 시 원금 보호 즉각 손절매
-                      </p>
-                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1">지정 시간 내 최저가 대비 순간 상승폭</p>
                   </div>
 
-                  {/* 3. 승인 정책 & 안전 장치 */}
-                  <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
-                    <div className="font-bold text-indigo-400 flex items-center gap-1.5 border-b border-slate-800 pb-2">
-                      <Clock className="w-4 h-4" />
-                      <span>3. 주문 집행 및 안전 정책</span>
-                    </div>
-
-                    <div>
-                      <label className="text-slate-300 block mb-1 text-[11px] font-bold">승인 대기 제한시간 (초)</label>
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="number"
-                          value={recommendedStrategy.APPROVAL_TIMEOUT_SECONDS}
-                          onChange={(e) => setRecommendedStrategy({ ...recommendedStrategy, APPROVAL_TIMEOUT_SECONDS: Number(e.target.value) })}
-                          className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-200 font-mono font-bold"
-                        />
-                        <span className="text-slate-400 text-xs shrink-0">초</span>
-                      </div>
-                      <p className="text-[10px] text-slate-500 mt-1">0초 설정 시 지연 없이 즉시 전자동 매수</p>
-                    </div>
-
-                    <div className="pt-2">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="text-slate-300 font-bold block text-[11px]">타임아웃 시 자동 주문</span>
-                          <span className="text-[10px] text-slate-500">시간 초과 시 자동 집행</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setRecommendedStrategy({ ...recommendedStrategy, AUTO_EXECUTE_ON_TIMEOUT: !recommendedStrategy.AUTO_EXECUTE_ON_TIMEOUT })}
-                          className={`w-11 h-6 rounded-full p-0.5 transition-colors cursor-pointer ${
-                            recommendedStrategy.AUTO_EXECUTE_ON_TIMEOUT ? 'bg-indigo-600' : 'bg-slate-700'
-                          }`}
-                        >
-                          <div className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                            recommendedStrategy.AUTO_EXECUTE_ON_TIMEOUT ? 'translate-x-5' : 'translate-x-0'
-                          }`} />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="p-3 rounded-xl bg-slate-950/70 border border-indigo-500/20 text-[10px] text-slate-400 space-y-1">
-                      <span className="text-indigo-300 font-bold block">💡 슬롯 운영 원칙:</span>
-                      <p>
-                        사용자는 각 슬롯에서 <strong>추천전략</strong> 또는 <strong>셀프전략</strong> 중 1가지를 선택하여 운용합니다.
-                      </p>
-                    </div>
+                  <div>
+                    <label className="text-slate-200 block mb-1.5 text-xs font-bold">최소 거래대금 필터 (원)</label>
+                    <input
+                      type="number"
+                      step="1000000"
+                      value={recommendedStrategy.SURGE_MIN_VOLUME_KRW}
+                      onChange={(e) => setRecommendedStrategy({ ...recommendedStrategy, SURGE_MIN_VOLUME_KRW: Number(e.target.value) })}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-emerald-300 font-mono text-sm font-bold focus:outline-none focus:border-emerald-400"
+                    />
+                    <p className="text-xs text-slate-400 mt-1.5 font-mono font-bold">
+                      {Math.round(Number(recommendedStrategy.SURGE_MIN_VOLUME_KRW || 0)).toLocaleString()}원 ({(Number(recommendedStrategy.SURGE_MIN_VOLUME_KRW || 0) / 10000).toLocaleString()}만원) 이상 수급 시 유효
+                    </p>
                   </div>
                 </div>
 
                 {/* 하단 저장 버튼 */}
-                <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                <div className="flex items-center justify-end pt-2">
                   <button
                     type="submit"
-                    className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs transition flex items-center gap-2 shadow-xl shadow-indigo-600/30 cursor-pointer"
+                    className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-sm transition flex items-center justify-center gap-2 shadow-xl shadow-indigo-600/40 cursor-pointer"
                   >
-                    <Save className="w-4 h-4" />
-                    <span>🎯 마스터 추천전략 저장 및 전체 봇 일괄 적용하기</span>
+                    <Save className="w-5 h-5" />
+                    <span>💾 마스터 추천전략 저장 및 전체 봇 일괄 적용하기</span>
                   </button>
                 </div>
               </form>
