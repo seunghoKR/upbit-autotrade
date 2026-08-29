@@ -358,9 +358,18 @@ export default function App() {
         const activeUser = currentUserRef.current;
         const now = Date.now();
 
+        // 🛡️ 실제 주문 가능 원화 잔고 확인 (잔고 부족 시 매수 시도 원천 차단)
+        const krwAccount = (accounts || []).find(a => a.currency === 'KRW');
+        const availableKrw = parseFloat(krwAccount?.balance || 0);
+
         // 🎯 1.2 감시 대기 중(IDLE & isEnabled & tradeAmountKrw >= 5000)인 슬롯 찾기
         for (const slot of currentSlots) {
           if (!slot.isEnabled || slot.positionStatus === 'IN_POSITION' || (slot.tradeAmountKrw || 0) < 5000) {
+            continue;
+          }
+
+          // 🛡️ 원화 잔고가 슬롯 1회 매수 설정액보다 부족하면 감시 및 매수 진행 금지!
+          if (hasRealAccounts && availableKrw < (slot.tradeAmountKrw || 5000)) {
             continue;
           }
 

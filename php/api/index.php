@@ -1142,13 +1142,33 @@ try {
         $keyInfo = $keyStmt->fetch();
 
         $orderRes = null;
-        $orderErr = null;
-
         if ($keyInfo && $keyInfo['access_key_enc'] && $keyInfo['secret_key_enc']) {
             $accessKey = base64_decode($keyInfo['access_key_enc']);
             $secretKey = base64_decode($keyInfo['secret_key_enc']);
 
-            // 업비트 시장가 매수 주문 (side: bid, ord_type: price, price: 매수원화금액)
+            // 🛡️ 1차 잔고 검증: 업비트 실계좌 잔고 조회
+            $accErr = null;
+            $accounts = fetchUpbitAccounts($accessKey, $secretKey, $accErr);
+            $krwAccount = null;
+            foreach ($accounts as $acc) {
+                if ($acc['currency'] === 'KRW') {
+                    $krwAccount = $acc;
+                    break;
+                }
+            }
+            $availableKrw = (float)($krwAccount['balance'] ?? 0);
+            if ($availableKrw < $tradeAmount) {
+                http_response_code(400);
+                echo json_encode([
+                    'success' => false,
+                    'error' => "업비트 원화 잔고가 부족합니다 (보유: " . number_format((int)$availableKrw) . "원 / 필요: " . number_format((int)$tradeAmount) . "원).",
+                    'availableKrw' => $availableKrw,
+                    'requiredKrw' => $tradeAmount
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+            // 🚀 업비트 시장가 매수 주문 (side: bid, ord_type: price, price: 매수원화금액)
             $orderParams = [
                 'market' => $market,
                 'side' => 'bid',
@@ -1156,13 +1176,23 @@ try {
                 'ord_type' => 'price'
             ];
             $orderRes = executeUpbitOrder($accessKey, $secretKey, $orderParams, $orderErr);
+
+            // ❌ 실제 주문 실패(업비트 거부, 잔고 부족 등) 시 체결 알림 발송 차단 및 에러 반환!
+            if (!empty($orderErr) || empty($orderRes['uuid'])) {
+                http_response_code(400);
+                echo json_encode([
+                    'success' => false,
+                    'error' => "업비트 매수 주문 실패: " . ($orderErr ?: ($orderRes['error']['message'] ?? '주문이 거부되었습니다.')),
+                    'details' => $orderRes
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
         }
 
-        // 주문 오류가 발생해도 슬롯 상태는 시뮬레이션/기록 보존을 위해 정상 업데이트
         $calcPrice = $currentPrice > 0 ? $currentPrice : 1;
         $calcVolume = $tradeAmount / $calcPrice;
 
-        // 슬롯 상태를 IN_POSITION으로 업데이트 (매수가, 수량, 매수금액, 진입시각 완벽 보존)
+        // 슬롯 상태를 IN_POSITION으로 업데이트 (실제 체결 성공 시에만 반영!)
         $stmt = $pdo->prepare("UPDATE nurioh_slots SET 
             position_status = 'IN_POSITION',
             target_market = ?,
@@ -1183,19 +1213,20 @@ try {
             $slotId
         ]);
 
-        // 텔레그램 매수 알림 (유저 등록 Telegram ID + 관리자 모두 전송)
+        // 텔레그램 매수 체결 알림 (실제 업비트 주문 성공 시에만 발송!)
         $uStmt = $pdo->prepare("SELECT telegram_chat_id FROM nurioh_users WHERE id = ?");
         $uStmt->execute([$userId]);
         $uRow = $uStmt->fetch();
         $userChatId = $uRow['telegram_chat_id'] ?? null;
 
         $timeStr = date('Y-m-d H:i:s');
-        $buyAlertMsg = "<b>⚡ [실시간 급등 감지 매수 체결]</b>\n\n" .
+        $buyAlertMsg = "<b>✅ [누리오 트레이더] 매수 체결 완료</b>\n\n" .
                        "🎰 <b>배정 슬롯:</b> <b>{$slotId}번 슬롯</b>\n" .
                        "📌 <b>매수 코인:</b> <code>{$market}</code>\n" .
                        "💵 <b>매수 금액:</b> " . number_format((int)$tradeAmount) . " KRW\n" .
                        "📊 <b>진입 단가:</b> " . number_format($calcPrice) . " KRW\n" .
-                       "⏱ <b>체결 시각:</b> {$timeStr}\n";
+                       "⏱ <b>체결 시각:</b> {$timeStr}\n\n" .
+                       "🎯 <i>실시간 트레일링 스탑 익절 감시가 시작되었습니다.</i>";
         sendTelegramAdminAlert($buyAlertMsg, $userChatId);
 
         echo json_encode([
