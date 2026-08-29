@@ -177,21 +177,6 @@ export default function OperatorDashboardModal({
     AUTO_EXECUTE_ON_TIMEOUT: currentSettings?.AUTO_EXECUTE_ON_TIMEOUT !== undefined ? currentSettings.AUTO_EXECUTE_ON_TIMEOUT : false
   });
 
-  // 비즈니스 입금 대기열
-  const [pendingDeposits, setPendingDeposits] = useState([
-    { id: 101, nickname: '강남트레이더', kakaoId: 'kakao_99182', tier: 'VIP', period: '1개월', amount: 99000, depositedAt: '방금 전' },
-    { id: 102, nickname: '비트불스', kakaoId: 'kakao_77219', tier: 'PRO', period: '1개월', amount: 49000, depositedAt: '12분 전' },
-    { id: 103, nickname: '퀀트초보_민수', kakaoId: 'kakao_33412', tier: 'VIP', period: '3개월', amount: 267000, depositedAt: '45분 전' }
-  ]);
-
-  const [liveTradingFeed] = useState([
-    { id: 1, user: '스마트트레이더_길동', market: 'KRW-BTC', profitRate: '+3.42%', profitKrw: '+1,710원', time: '방금' },
-    { id: 2, user: '알트수익왕', market: 'KRW-SOL', profitRate: '+5.18%', profitKrw: '+5,180원', time: '1분 전' },
-    { id: 3, user: '누리오_마스터', market: 'KRW-ETH', profitRate: '+2.80%', profitKrw: '+14,000원', time: '3분 전' },
-    { id: 4, user: '비트코인_불장', market: 'KRW-XRP', profitRate: '-0.95%', profitKrw: '-475원', time: '5분 전' },
-    { id: 5, user: '골든크로스', market: 'KRW-DOGE', profitRate: '+4.12%', profitKrw: '+2,060원', time: '7분 전' }
-  ]);
-
   const loadData = async () => {
     setIsLoading(true);
     try {
@@ -337,32 +322,9 @@ export default function OperatorDashboardModal({
     }
   };
 
-  // 입금 승인
-  const handleApproveDeposit = async (depId) => {
-    const dep = pendingDeposits.find(d => d.id === depId);
-    if (!dep) return;
-
-    try {
-      const targetUser = users.find(u => u.kakaoId === dep.kakaoId || u.nickname === dep.nickname);
-      if (targetUser) {
-        await updateUserTier(targetUser.id, dep.tier, dep.period.includes('3') ? 90 : 30);
-      }
-      setPendingDeposits(prev => prev.filter(d => d.id !== depId));
-      alert(`[${dep.nickname}] 님의 ${dep.tier} 입금 확인 및 멤버십 승급이 완료되었습니다! ✨`);
-      loadData();
-    } catch (err) {
-      alert('승인 처리 실패: ' + err.message);
-    }
-  };
-
-  const totalMembers = users.length > 0 ? users.length + 47 : 48;
-  const vipCount = users.filter(u => u.tier === 'VIP').length + 23;
-  const proCount = users.filter(u => u.tier === 'PRO').length + 20;
-  const mrrEstimated = (vipCount * 99000) + (proCount * 49000);
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in">
-      <div className="bg-slate-900 border border-indigo-500/60 rounded-2xl max-w-6xl w-full p-6 sm:p-7 shadow-2xl relative overflow-hidden max-h-[92vh] flex flex-col">
+      <div className="bg-slate-900 border border-indigo-500/60 rounded-2xl max-w-5xl w-full p-6 sm:p-7 shadow-2xl relative overflow-hidden max-h-[92vh] flex flex-col">
         {/* 상단 헤더 및 탭 메뉴 */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-3">
@@ -379,17 +341,17 @@ export default function OperatorDashboardModal({
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                추천전략 단일 제어, 감시/매매 제외 코인(블랙리스트) 관리 및 회원 비즈니스를 총괄합니다.
+                추천전략 단일 제어 및 감시/매매 제외 코인(블랙리스트)을 총괄 관리합니다.
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* 3대 메인 탭 전환 버튼 */}
+            {/* 2대 메인 실무 탭 전환 버튼 */}
             <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
               <button
                 onClick={() => setActiveTab('STRATEGY')}
-                className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3.5 py-2 rounded-lg font-bold transition flex items-center gap-1.5 cursor-pointer ${
                   activeTab === 'STRATEGY'
                     ? 'bg-indigo-600 text-white shadow-md'
                     : 'text-slate-400 hover:text-slate-200'
@@ -401,7 +363,7 @@ export default function OperatorDashboardModal({
 
               <button
                 onClick={() => setActiveTab('EXCLUDED')}
-                className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3.5 py-2 rounded-lg font-bold transition flex items-center gap-1.5 cursor-pointer ${
                   activeTab === 'EXCLUDED'
                     ? 'bg-rose-600 text-white shadow-md'
                     : 'text-slate-400 hover:text-slate-200'
@@ -409,18 +371,6 @@ export default function OperatorDashboardModal({
               >
                 <Ban className="w-3.5 h-3.5 text-rose-300" />
                 <span>🚫 제외 코인 ({excludedMarkets.length})</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('BUSINESS')}
-                className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                  activeTab === 'BUSINESS'
-                    ? 'bg-indigo-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
-                <span>📊 비즈니스</span>
               </button>
             </div>
 
@@ -807,166 +757,9 @@ export default function OperatorDashboardModal({
             </div>
           )}
 
-          {/* ========================================================================= */}
-          {/* TAB 3: 📊 비즈니스 지표 & 무통장 입금 승인 대시보드 */}
-          {/* ========================================================================= */}
-          {activeTab === 'BUSINESS' && (
-            <div className="space-y-5">
-              {/* 1. 4대 비즈니스 핵심 지표 (KPIs) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* 총 회원수 */}
-                <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 space-y-2">
-                  <div className="flex justify-between items-center text-slate-400">
-                    <span>총 유치 회원수</span>
-                    <Users className="w-4 h-4 text-indigo-400" />
-                  </div>
-                  <div className="text-2xl font-extrabold text-slate-100">
-                    {totalMembers}<span className="text-xs font-normal text-slate-400 ml-1">명</span>
-                  </div>
-                  <div className="text-[11px] text-emerald-400 flex items-center gap-1 font-semibold">
-                    <ArrowUpRight className="w-3.5 h-3.5" /> 이번 달 신규 +14명
-                  </div>
-                </div>
-
-                {/* 예상 월간 반복 매출 (MRR) */}
-                <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 space-y-2">
-                  <div className="flex justify-between items-center text-slate-400">
-                    <span>예상 월 매출 (MRR)</span>
-                    <DollarSign className="w-4 h-4 text-emerald-400" />
-                  </div>
-                  <div className="text-2xl font-extrabold text-emerald-400 font-mono">
-                    {(mrrEstimated / 10000).toFixed(0)}<span className="text-xs font-normal text-slate-400 ml-1">만원</span>
-                  </div>
-                  <div className="text-[11px] text-slate-400">
-                    VIP {vipCount}명 + Pro {proCount}명
-                  </div>
-                </div>
-
-                {/* 실시간 가동 봇 */}
-                <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 space-y-2">
-                  <div className="flex justify-between items-center text-slate-400">
-                    <span>실시간 가동 트레이딩 봇</span>
-                    <Zap className="w-4 h-4 text-amber-400 animate-pulse" />
-                  </div>
-                  <div className="text-2xl font-extrabold text-amber-400">
-                    36<span className="text-xs font-normal text-slate-400 ml-1">대 온라인</span>
-                  </div>
-                  <div className="text-[11px] text-slate-400 flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span> 24시간 무중단 자동매매 중
-                  </div>
-                </div>
-
-                {/* 총 거래대금 & 승률 */}
-                <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 space-y-2">
-                  <div className="flex justify-between items-center text-slate-400">
-                    <span>시스템 누적 거래대금</span>
-                    <TrendingUp className="w-4 h-4 text-cyan-400" />
-                  </div>
-                  <div className="text-2xl font-extrabold text-cyan-400 font-mono">
-                    184.5<span className="text-xs font-normal text-slate-400 ml-1">백만원</span>
-                  </div>
-                  <div className="text-[11px] text-emerald-400 font-semibold">
-                    트레일링 익절 승률: 84.2%
-                  </div>
-                </div>
-              </div>
-
-              {/* 2. 신규 입금 확인 & 구독 승인 대기열 */}
-              <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800 space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                  <div className="flex items-center gap-2">
-                    <CreditCard className="w-4 h-4 text-amber-400" />
-                    <h4 className="font-bold text-slate-100 text-sm">
-                      신규 무통장 입금 확인 &amp; 멤버십 승급 대기열 ({pendingDeposits.length}건)
-                    </h4>
-                  </div>
-                  <span className="text-[11px] text-slate-400">입금자명 확인 후 [승인] 시 기간 연장 및 슬롯이 즉시 개방됩니다.</span>
-                </div>
-
-                {pendingDeposits.length > 0 ? (
-                  <div className="space-y-2">
-                    {pendingDeposits.map((dep) => (
-                      <div
-                        key={dep.id}
-                        className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 hover:border-slate-700 transition"
-                      >
-                        <div className="flex items-center gap-3 w-full sm:w-auto">
-                          <span className="p-2.5 rounded-xl bg-yellow-400/10 text-yellow-400 font-bold text-xs font-mono">
-                            {dep.tier}
-                          </span>
-                          <div>
-                            <div className="font-bold text-slate-200 flex items-center gap-2">
-                              {dep.nickname}
-                              <span className="text-[10px] text-slate-500 font-mono">({dep.kakaoId})</span>
-                            </div>
-                            <div className="text-[11px] text-slate-400">
-                              신청 플랜: <strong className="text-slate-300">{dep.tier} ({dep.period})</strong> • 신청금액: <strong className="text-amber-400">{dep.amount.toLocaleString()}원</strong> ({dep.depositedAt})
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                          <button
-                            onClick={() => handleApproveDeposit(dep.id)}
-                            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-lg shadow-emerald-600/20 cursor-pointer"
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                            <span>입금확인 및 승급 승인</span>
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="py-6 text-center text-slate-500">
-                    현재 대기 중인 입금 확인 요청이 없습니다. 모두 정상 처리되었습니다! ✨
-                  </div>
-                )}
-              </div>
-
-              {/* 3. 실시간 전체 회원 체결 스트림 피드 */}
-              <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800 space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                  <div className="flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-cyan-400" />
-                    <h4 className="font-bold text-slate-100 text-sm">실시간 회원 급등 매수 &amp; 트레일링 익절 스트림 피드</h4>
-                  </div>
-                  <span className="flex items-center gap-1.5 text-xs text-emerald-400">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    실시간 라이브 피드
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                  {liveTradingFeed.map((item) => (
-                    <div key={item.id} className="p-3 rounded-xl bg-slate-900 border border-slate-800/80 flex items-center justify-between text-xs hover:border-slate-700 transition">
-                      <div className="flex items-center gap-2.5">
-                        <span className="p-1.5 rounded-lg bg-slate-800 text-slate-300 font-bold">
-                          <Flame className="w-3.5 h-3.5 text-purple-400" />
-                        </span>
-                        <div>
-                          <span className="font-bold text-slate-200 block">{item.user}</span>
-                          <span className="text-[11px] text-slate-400 font-mono">{item.market}</span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className={`font-extrabold text-sm block ${
-                          item.profitRate.startsWith('+') ? 'text-emerald-400' : item.profitRate.startsWith('-') ? 'text-rose-400' : 'text-blue-400'
-                        }`}>
-                          {item.profitRate}
-                        </span>
-                        <span className="text-[10px] text-slate-500">
-                          {item.profitKrw} ({item.time})
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
   );
 }
+
