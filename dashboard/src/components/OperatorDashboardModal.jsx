@@ -26,7 +26,7 @@ import {
   Search,
   ChevronRight
 } from 'lucide-react';
-import { getAdminUsers, updateUserTier, updateSettings, updateExcludedMarkets } from '../services/api';
+import { getAdminUsers, updateUserTier, updateSettings, updateExcludedMarkets, syncUpbitWarningMarkets } from '../services/api';
 
 // 🪙 업비트 원화 마켓 전종목 메타데이터 사전 (자동완성 및 오타 방지용)
 const ALL_UPBIT_COINS = [
@@ -159,6 +159,8 @@ export default function OperatorDashboardModal({
   const [excludedMarkets, setExcludedMarkets] = useState(currentSettings?.EXCLUDED_MARKETS || []);
   const [newExcludedInput, setNewExcludedInput] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isSyncingWarnings, setIsSyncingWarnings] = useState(false);
+  const [upbitWarningCoins, setUpbitWarningCoins] = useState([]);
   const dropdownRef = useRef(null);
 
   // 👑 운영자 단일 추천 전략 (1개의 마스터 추천전략)
@@ -312,6 +314,26 @@ export default function OperatorDashboardModal({
       setTimeout(() => setSaveSuccessMsg(''), 4000);
     } catch (err) {
       alert('제외 코인 삭제 실패: ' + err.message);
+    }
+  };
+
+  // 🚨 업비트 공식 유의/상폐위험 종목 원클릭 자동 동기화
+  const handleSyncUpbitWarnings = async () => {
+    setIsSyncingWarnings(true);
+    try {
+      const res = await syncUpbitWarningMarkets();
+      if (res && res.success) {
+        setUpbitWarningCoins(res.warningCoins || []);
+        if (res.mergedExcludedMarkets) {
+          setExcludedMarkets(res.mergedExcludedMarkets);
+        }
+        setSaveSuccessMsg(`🚨 업비트 공식 유의종목 ${res.warningCount}개가 감시/매매 제외 목록에 자동으로 동기화되었습니다! ✨`);
+        setTimeout(() => setSaveSuccessMsg(''), 5000);
+      }
+    } catch (err) {
+      alert('업비트 유의종목 동기화 실패: ' + err.message);
+    } finally {
+      setIsSyncingWarnings(false);
     }
   };
 
@@ -548,23 +570,41 @@ export default function OperatorDashboardModal({
           )}
 
           {/* ========================================================================= */}
-          {/* TAB 2: 🚫 감시/매매 제외 코인 관리 (Blacklist + 실시간 검색 자동완성) */}
+          {/* TAB 2: 🚫 감시/매매 제외 코인 관리 (Blacklist + 실시간 검색 자동완성 + 업비트 유의종목 자동 동기화) */}
           {/* ========================================================================= */}
           {activeTab === 'EXCLUDED' && (
             <div className="space-y-6">
-              {/* 상단 설명 배너 */}
-              <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-950/40 via-slate-900 to-slate-900 border border-rose-500/30 flex items-start gap-3">
-                <div className="p-2 rounded-xl bg-rose-500/20 text-rose-300 shrink-0">
-                  <Ban className="w-5 h-5" />
+              {/* 상단 설명 배너 & 업비트 유의종목 자동 동기화 버튼 */}
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-950/50 via-slate-900 to-slate-900 border border-rose-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2.5 rounded-xl bg-rose-500/20 text-rose-300 shrink-0">
+                    <Ban className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-white text-sm flex items-center gap-2">
+                      <span>전종목 자동 감시 중 특정 코인 제외 (Blacklist)</span>
+                      <span className="text-[10px] px-2 py-0.2 rounded-full bg-rose-500/20 text-rose-300 font-bold border border-rose-500/30">
+                        레이더 100% 차단
+                      </span>
+                    </h4>
+                    <p className="text-xs text-slate-300 leading-relaxed mt-1">
+                      업비트 원화마켓 전종목 실시간 감시 중, <strong>유의종목(상폐위험)이나 급변동/특정 코인</strong>을 등록하면 
+                      <strong>급등 레이더 포착 및 자동 매수 대상에서 즉시 제외</strong>됩니다.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-extrabold text-white text-sm">전종목 자동 감시 중 특정 코인 제외 (Blacklist)</h4>
-                  <p className="text-xs text-slate-300 leading-relaxed mt-0.5">
-                    자동매매 봇은 업비트 원화마켓 전종목을 24시간 실시간 감시하지만, 
-                    <strong>유의종목, 급변동 종목 또는 운영자가 원치 않는 특정 코인</strong>을 등록하면 
-                    <strong>급등 감시 레이더 포착 및 자동 매수 대상에서 즉시 100% 제외</strong>됩니다.
-                  </p>
-                </div>
+
+                {/* 🚨 업비트 유의종목 원클릭 자동 동기화 스마트 버튼 */}
+                <button
+                  type="button"
+                  onClick={handleSyncUpbitWarnings}
+                  disabled={isSyncingWarnings}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 text-slate-950 font-black text-xs transition flex items-center justify-center gap-1.5 shadow-lg shadow-rose-900/30 shrink-0 cursor-pointer disabled:opacity-50"
+                  title="업비트 공식 OpenAPI를 실시간 조회하여 현재 유의종목/투자경고 종목을 자동으로 제외 목록에 추가합니다."
+                >
+                  <ShieldAlert className={`w-4 h-4 ${isSyncingWarnings ? 'animate-spin' : ''}`} />
+                  <span>{isSyncingWarnings ? '유의종목 조회 중...' : '🚨 업비트 유의(상폐위험) 코인 자동 동기화'}</span>
+                </button>
               </div>
 
               {/* 코인 등록 입력창 (실시간 알파벳/한글 자동완성 드롭다운 탑재) */}
@@ -731,23 +771,36 @@ export default function OperatorDashboardModal({
                   </div>
                 ) : (
                   <div className="flex flex-wrap gap-2 pt-2">
-                    {excludedMarkets.map((market) => (
-                      <div
-                        key={market}
-                        className="px-3.5 py-2 rounded-xl bg-rose-950/40 border border-rose-500/40 text-rose-200 font-mono text-xs font-black flex items-center gap-2 shadow-sm"
-                      >
-                        <Ban className="w-3.5 h-3.5 text-rose-400" />
-                        <span>{market}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveExcludedMarket(market)}
-                          className="p-1 rounded-lg hover:bg-rose-900/60 text-rose-400 hover:text-white transition cursor-pointer"
-                          title="제외 해제 (감시 정상 재개)"
+                    {excludedMarkets.map((market) => {
+                      const isWarning = upbitWarningCoins.some(w => w.market === market) || ['KRW-BONK', 'KRW-RVN', 'KRW-MANTRA', 'KRW-SAND', 'KRW-TT', 'KRW-STORJ', 'KRW-ZIL', 'KRW-ICX'].includes(market);
+                      return (
+                        <div
+                          key={market}
+                          className={`px-3.5 py-2 rounded-xl border text-xs font-black flex items-center gap-2 shadow-sm ${
+                            isWarning 
+                              ? 'bg-amber-950/40 border-amber-500/50 text-amber-200 ring-1 ring-amber-500/20' 
+                              : 'bg-rose-950/40 border border-rose-500/40 text-rose-200 font-mono'
+                          }`}
                         >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
+                          {isWarning ? (
+                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30 whitespace-nowrap">
+                              🚨 업비트 유의
+                            </span>
+                          ) : (
+                            <Ban className="w-3.5 h-3.5 text-rose-400" />
+                          )}
+                          <span className="font-mono">{market}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveExcludedMarket(market)}
+                            className="p-1 rounded-lg hover:bg-rose-900/60 text-rose-400 hover:text-white transition cursor-pointer"
+                            title="제외 해제 (감시 정상 재개)"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

@@ -165,3 +165,10 @@ export const updateExcludedMarkets = async (markets) => {
   const res = await axios.post(`${API_BASE}/admin/excluded-markets`, { markets });
   return res.data;
 };
+
+// 🚨 업비트 유의/주의(상폐위험) 종목 실시간 자동 조회 및 동기화
+export const syncUpbitWarningMarkets = async () => {
+  const res = await axios.post(`${API_BASE}/admin/sync-warning-markets`);
+  return res.data;
+};
+

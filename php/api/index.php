@@ -760,6 +760,60 @@ try {
         exit;
     }
 
+    // 6-1. GET/POST admin/sync-warning-markets : 업비트 유의/주의(상폐위험) 종목 실시간 자동 감지 & 동기화
+    if ($path === 'admin/sync-warning-markets') {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, 'https://api.upbit.com/v1/market/all?isDetails=true');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 6);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Accept: application/json', 'User-Agent: NURIOH-TRADER']);
+        $rawRes = curl_exec($ch);
+        curl_close($ch);
+
+        $warningCoins = [];
+        if ($rawRes) {
+            $allMarkets = json_decode($rawRes, true) ?: [];
+            foreach ($allMarkets as $m) {
+                if (!str_starts_with($m['market'] ?? '', 'KRW-')) continue;
+                $isWarning = !empty($m['market_event']['warning']) || ($m['market_warning'] ?? '') === 'WARNING' || ($m['market_warning'] ?? '') === 'CAUTION';
+                if ($isWarning) {
+                    $warningCoins[] = [
+                        'market' => $m['market'],
+                        'nameKo' => $m['korean_name'] ?? '',
+                        'nameEn' => $m['english_name'] ?? '',
+                        'warning' => true,
+                        'caution' => $m['market_event']['caution'] ?? []
+                    ];
+                }
+            }
+        }
+
+        // DB에 저장된 기존 제외 코인 가져오기
+        $setStmt = $pdo->query("SELECT excluded_markets FROM nurioh_settings WHERE id = 1");
+        $curSettings = $setStmt->fetch() ?: [];
+        $existingExcluded = !empty($curSettings['excluded_markets']) ? json_decode($curSettings['excluded_markets'], true) : [];
+        if (!is_array($existingExcluded)) $existingExcluded = [];
+
+        // 유의 코인 자동 병합
+        $newWarningMarkets = array_column($warningCoins, 'market');
+        $merged = array_values(array_unique(array_merge($existingExcluded, $newWarningMarkets)));
+
+        if ($method === 'POST') {
+            $encoded = json_encode($merged, JSON_UNESCAPED_UNICODE);
+            $pdo->prepare("UPDATE nurioh_settings SET excluded_markets = ? WHERE id = 1")->execute([$encoded]);
+        }
+
+        echo json_encode([
+            'success' => true,
+            'warningCount' => count($warningCoins),
+            'warningCoins' => $warningCoins,
+            'mergedExcludedMarkets' => $merged
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
     // 7. POST slots/{id} : 개별 슬롯 설정 저장
     if (preg_match('#^slots/([0-9]+)$#', $path, $matches) && $method === 'POST') {
         $slotId = (int)$matches[1];
