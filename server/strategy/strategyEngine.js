@@ -45,31 +45,57 @@ class StrategyEngine {
         tradeAmount = 5000;
       }
 
-      const buySignal = {
-        id: `SIG-BUY-${Date.now()}`,
-        type: 'BUY',
+      // ----------------------------------------------------
+      // [1단계] 🚨 급등 코인 발견 알림 & 슬롯 예약 (3초 카운트다운 시작)
+      // ----------------------------------------------------
+      slotManager.reserveSurgeSlot(availableSlot.slotId, {
+        market: surge.market,
+        surgeInfo: surge,
+        countdownSeconds: 3
+      });
+
+      this.emitSignal({
+        type: 'SURGE_DISCOVERED',
         slotId: availableSlot.slotId,
         slotName: availableSlot.name,
         market: surge.market,
-        price: surge.currentPrice,
-        amount: tradeAmount,
-        reason: `${availableSlot.name}: ${surge.reason}`,
         surgeInfo: surge,
-        createdAt: new Date().toISOString()
-      };
+        countdown: 3,
+        message: `🚨 [급등 포착] ${surge.market} ${surge.reason} ➔ 3초 후 슬롯 ${availableSlot.slotId}번에 자동 매수 진입합니다!`
+      });
 
-      console.log(`⚡ [급등 매수 트리거] 슬롯 ${availableSlot.slotId}번 -> ${surge.market} (${tradeAmount.toLocaleString()}원) 매수 실행!`);
-
-      // 0.1초 즉시 전자동 매수 실행
-      if (this.settings.AUTO_EXECUTE_ON_TIMEOUT !== false) {
-        try {
-          await this.executeTrade(buySignal, 'AUTO_BUY_SURGE');
-        } catch (err) {
-          console.error(`❌ [매수 실패] ${surge.market}:`, err.message);
+      // ----------------------------------------------------
+      // [2단계] ⏱️ 발견 알림 후 정확히 3초 뒤 시장가 매수 실행 (체결 시 알림)
+      // ----------------------------------------------------
+      setTimeout(async () => {
+        // 3초 후 슬롯 상태 재확인 (엔진 정지 여부 체크)
+        if (!this.isRunning) {
+          slotManager.clearPosition(availableSlot.slotId);
+          return;
         }
-      } else {
-        this.triggerSignal(buySignal);
-      }
+
+        const buySignal = {
+          id: `SIG-BUY-${Date.now()}`,
+          type: 'BUY',
+          slotId: availableSlot.slotId,
+          slotName: availableSlot.name,
+          market: surge.market,
+          price: surge.currentPrice,
+          amount: tradeAmount,
+          reason: `${availableSlot.name}: ${surge.reason}`,
+          surgeInfo: surge,
+          createdAt: new Date().toISOString()
+        };
+
+        console.log(`⚡ [3초 딜레이 만료] 슬롯 ${availableSlot.slotId}번 -> ${surge.market} (${tradeAmount.toLocaleString()}원) 시장가 매수 집행!`);
+
+        try {
+          await this.executeTrade(buySignal, 'AUTO_BUY_SURGE_3S_DELAY');
+        } catch (err) {
+          console.error(`❌ [매수 실행 실패] ${surge.market}:`, err.message);
+          slotManager.clearPosition(availableSlot.slotId);
+        }
+      }, 3000);
     });
 
     // 2. 슬롯 이벤트 전파
@@ -303,16 +329,34 @@ class StrategyEngine {
     try {
       if (targetSlotId !== null) {
         const slot = slotManager.getSlotById(targetSlotId);
-        if (slot && slot.position && slot.position.entryVolume > 0) {
-          const res = await upbitClient.createOrder({
-            market: slot.targetMarket,
-            side: 'ask',
-            volume: slot.position.entryVolume,
-            ord_type: 'market'
-          }).catch(err => ({ error: err.message }));
+        if (slot && (slot.positionStatus !== 'IDLE' || (slot.position && slot.position.entryVolume > 0))) {
+          const targetMarket = slot.targetMarket || 'KRW-BTC';
+          let sellVolume = slot.position?.entryVolume || 0;
+
+          // 실제 업비트 계좌의 잔고를 조회하여 정확한 실보유 수량으로 매도
+          try {
+            const accounts = await upbitClient.getAccounts();
+            const currency = targetMarket.replace('KRW-', '');
+            const coinAcc = accounts.find(a => a.currency === currency);
+            if (coinAcc && Number(coinAcc.balance) > 0) {
+              sellVolume = Number(coinAcc.balance);
+            }
+          } catch (accErr) {
+            console.warn(`[PanicSell Slot ${targetSlotId}] 잔고 조회 실패, 슬롯 기록 수량 사용:`, accErr.message);
+          }
+
+          let res = null;
+          if (sellVolume > 0) {
+            res = await upbitClient.createOrder({
+              market: targetMarket,
+              side: 'ask',
+              volume: sellVolume,
+              ord_type: 'market'
+            }).catch(err => ({ error: err.message || err }));
+          }
 
           slotManager.clearPosition(targetSlotId);
-          results.push({ slotId: targetSlotId, result: res });
+          results.push({ slotId: targetSlotId, market: targetMarket, volume: sellVolume, result: res });
         }
       } else {
         const accounts = await upbitClient.getAccounts();
@@ -324,9 +368,9 @@ class StrategyEngine {
             side: 'ask',
             volume: acc.balance,
             ord_type: 'market'
-          }).catch(err => ({ error: err.message }));
+          }).catch(err => ({ error: err.message || err }));
 
-          results.push({ market, result: res });
+          results.push({ market, volume: acc.balance, result: res });
         }
 
         for (const slot of slotManager.slots) {

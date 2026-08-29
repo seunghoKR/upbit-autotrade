@@ -82,6 +82,28 @@ app.post('/api/auth/telegram', (req, res) => {
   res.json({ success });
 });
 
+// 마이페이지 회원 정보 수정 & 무료 사용 신청
+app.post('/api/user/profile-request', async (req, res) => {
+  try {
+    const { userId = 1, name, nickname, phone, email, telegramId, birthyear } = req.body;
+    const updated = userManager.updateUserProfile(Number(userId), {
+      name,
+      nickname,
+      phone,
+      email,
+      telegramChatId: telegramId,
+      birthyear
+    });
+    res.json({
+      success: true,
+      message: '회원 정보가 성공적으로 수정되었습니다!',
+      user: updated
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
 // ==========================================
 // 2. 마스터 관리자 패널 API (Super Admin)
 // ==========================================
@@ -290,9 +312,20 @@ app.post('/api/slots/:slotId/sell', async (req, res) => {
   try {
     const result = await strategyEngine.panicSell(Number(slotId));
     broadcast({ type: 'SLOTS_UPDATED', slots: slotManager.getSlots(livePriceMap) });
-    res.json({ success: true, result });
+    const firstRes = result[0];
+    const orderData = firstRes?.result;
+    const isUpbitError = orderData?.error;
+    res.json({
+      success: true,
+      message: isUpbitError
+        ? `슬롯 ${slotId}번 포지션이 로컬에서 초기화되었으나, 업비트 주문 응답: ${typeof isUpbitError === 'object' ? JSON.stringify(isUpbitError) : isUpbitError}`
+        : `슬롯 ${slotId}번 포지션이 업비트 시장가 매도 청산되었습니다.`,
+      order: (!isUpbitError && orderData?.uuid) ? orderData : null,
+      upbitError: isUpbitError ? (typeof isUpbitError === 'object' ? JSON.stringify(isUpbitError) : isUpbitError) : null,
+      result
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -481,7 +514,7 @@ app.get('*', (req, res) => {
 
 // 서버 실행
 server.listen(config.PORT, () => {
-  console.log(`✨ [Youngja Trader Server] running on port ${config.PORT}`);
+  console.log(`✨ [NURIOH Trader Server] running on port ${config.PORT}`);
   upbitWs.connect();
   telegramBot.init(strategyEngine);
   strategyEngine.start();

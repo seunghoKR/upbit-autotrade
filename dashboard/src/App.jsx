@@ -89,9 +89,29 @@ export default function App() {
   const devModeRef = useRef(devModeOverride);
   devModeRef.current = devModeOverride;
 
-  // 회원 상태 (sessionStorage 우선 -> 자동로그인 체크된 localStorage 확인)
+  // 🔒 로그인 세션 보안 정책 (로그인 유지를 체크하더라도 12시간 경과 후 카카오 재인증 요구)
+  const SESSION_MAX_HOURS = 12;
+  const SESSION_MAX_AGE_MS = SESSION_MAX_HOURS * 60 * 60 * 1000;
+
+  // 회원 상태 (sessionStorage 우선 -> 자동로그인 체크된 localStorage 확인 + 12시간 세션 만료 검증)
   const [currentUser, setCurrentUser] = useState(() => {
     try {
+      const loginTimestamp = localStorage.getItem('nurioh_login_timestamp') || sessionStorage.getItem('nurioh_login_timestamp');
+      if (loginTimestamp) {
+        const elapsed = Date.now() - Number(loginTimestamp);
+        if (elapsed > SESSION_MAX_AGE_MS) {
+          // 🛡️ 12시간 경과로 세션 만료: 보안을 위해 토큰 자동 파기 후 재인증 요구
+          localStorage.removeItem('nurioh_user_id');
+          localStorage.removeItem('nurioh_user_profile');
+          localStorage.removeItem('nurioh_remember_me');
+          localStorage.removeItem('nurioh_login_timestamp');
+          sessionStorage.removeItem('nurioh_user_id');
+          sessionStorage.removeItem('nurioh_user_profile');
+          sessionStorage.removeItem('nurioh_login_timestamp');
+          return null;
+        }
+      }
+
       const sessionProfile = sessionStorage.getItem('nurioh_user_profile');
       if (sessionProfile) return JSON.parse(sessionProfile);
 
@@ -152,7 +172,7 @@ export default function App() {
   // 1. 초기 데이터 및 회원 프로필 로드 (선택된 모드 유지)
   const loadData = async () => {
     try {
-      const savedUserId = sessionStorage.getItem('nurioh_user_id') || localStorage.getItem('nurioh_user_id');
+      const savedUserId = sessionStorage.getItem('nurioh_user_id') || localStorage.getItem('nurioh_user_id') || currentUser?.id;
       if (!savedUserId) {
         return;
       }
@@ -361,14 +381,26 @@ export default function App() {
           const recentTicks = buffer.filter(t => t.timestamp >= cutoff);
           if (recentTicks.length < 2) continue;
 
-          const basePrice = recentTicks[0].price;
+          // 10초 감시 설정 시 10초 이내라도(1초, 2초, 4초 만에라도) 윈도우 내 최저가 대비 목표 상승률에 도달하면 즉시 포착!
+          let minPrice = recentTicks[0].price;
+          for (let i = 0; i < recentTicks.length; i++) {
+            if (recentTicks[i].price < minPrice) minPrice = recentTicks[i].price;
+          }
           const currentPrice = recentTicks[recentTicks.length - 1].price;
-          const priceDiffRate = ((currentPrice - basePrice) / basePrice) * 100;
+          const priceDiffRate = ((currentPrice - minPrice) / minPrice) * 100;
           const totalVolumeKrw = recentTicks.reduce((sum, item) => sum + item.amount, 0);
 
-          // 급등 조건 충족 시: 3초 카운트다운 시작 ➔ 전자동 매수 체결!
+          // 급등 조건 충족 시: [1단계] 발견 알림 ➔ [2단계] 3초 카운트다운 후 매수 체결 ➔ [3단계] 익절/손절 매도 체결
           if (priceDiffRate >= rateThreshold && totalVolumeKrw >= minVolumeKrw) {
-            console.log(`🚨 [Client Surge Trigger] 포착! ${slot.slotId}번 슬롯 (${isSelf ? '셀프전략' : '추천전략'}): ${tick.code} +${priceDiffRate.toFixed(2)}% (${windowSeconds}초간 ${Math.round(totalVolumeKrw).toLocaleString()}원)`);
+            console.log(`🚨 [Client Surge Trigger] 포착! ${slot.slotId}번 슬롯 (${isSelf ? '셀프전략' : '추천전략'}): ${tick.code} +${priceDiffRate.toFixed(2)}% (${windowSeconds}초 윈도우 내 ${Math.round(totalVolumeKrw).toLocaleString()}원)`);
+
+            // [1단계] 🚨 발견 알림 발송 & 슬롯 화면 카운트다운 표시
+            if ('Notification' in window && Notification.permission === 'granted') {
+              new Notification('🚨 [급등 코인 포착! 3초 후 매수]', {
+                body: `${slot.slotId}번 슬롯: ${tick.code} +${priceDiffRate.toFixed(2)}% 급등 감지 (3초 후 시장가 매수 집행)`,
+                icon: '/favicon.png'
+              });
+            }
 
             setSelectedSlotId(slot.slotId);
             setPendingSurgeCountdown({
@@ -394,7 +426,7 @@ export default function App() {
                 isExecutingBuyRef.current = true;
 
                 try {
-                  // 슬롯 상태를 IN_POSITION으로 즉시 낙관적 업데이트
+                  // [2단계] ⏱️ 3초 후 시장가 매수 집행
                   setSlots(prevSlots => prevSlots.map(s => {
                     if (s.slotId === slot.slotId) {
                       return {
@@ -419,10 +451,10 @@ export default function App() {
                   });
                   console.log('✅ [Auto Buy Success]', buyRes);
 
-                  // 브라우저 웹 푸시 알림 발송
+                  // [2단계 체결 알림] ✅ 매수 체결 완료 푸시
                   if ('Notification' in window && Notification.permission === 'granted') {
-                    new Notification('⚡ [급등 감지 자동매수 체결]', {
-                      body: `${slot.slotId}번 슬롯: ${tick.code} ${Math.round(slot.tradeAmountKrw).toLocaleString()}원 매수 체결`,
+                    new Notification('✅ [급등 코인 매수 체결 완료]', {
+                      body: `${slot.slotId}번 슬롯: ${tick.code} ${Math.round(slot.tradeAmountKrw).toLocaleString()}원 매수 체결 (트레일링 익절 감시 시작)`,
                       icon: '/favicon.png'
                     });
                   }
@@ -487,19 +519,23 @@ export default function App() {
         setCurrentUser(res.user);
 
         if (rememberMe) {
-          // 🔒 자동 로그인 체크(ON) 시: localStorage에 저장 (브라우저 닫아도 유지)
+          // 🔒 자동 로그인 체크(ON) 시: localStorage에 저장 (브라우저 닫아도 유지, 12시간 세션 타이머 가동)
           localStorage.setItem('nurioh_user_id', String(res.user.id));
           localStorage.setItem('nurioh_user_profile', JSON.stringify(res.user));
           localStorage.setItem('nurioh_remember_me', 'true');
+          localStorage.setItem('nurioh_login_timestamp', String(Date.now()));
           sessionStorage.removeItem('nurioh_user_id');
           sessionStorage.removeItem('nurioh_user_profile');
+          sessionStorage.removeItem('nurioh_login_timestamp');
         } else {
-          // 🚪 자동 로그인 해제(OFF - 기본값) 시: sessionStorage에만 저장 (브라우저 닫으면 로그아웃)
+          // 🚪 자동 로그인 해제(OFF - 기본값) 시: sessionStorage에만 저장 (브라우저 닫으면 즉시 로그아웃)
           sessionStorage.setItem('nurioh_user_id', String(res.user.id));
           sessionStorage.setItem('nurioh_user_profile', JSON.stringify(res.user));
+          sessionStorage.setItem('nurioh_login_timestamp', String(Date.now()));
           localStorage.removeItem('nurioh_user_id');
           localStorage.removeItem('nurioh_user_profile');
           localStorage.removeItem('nurioh_remember_me');
+          localStorage.removeItem('nurioh_login_timestamp');
         }
 
         setIsKakaoModalOpen(false);
@@ -514,6 +550,22 @@ export default function App() {
     }
   };
 
+  // 회원 프로필 정보 실시간 동기화 및 스토리지 영구 반영
+  const handleUpdateUser = (updatedUser) => {
+    if (!updatedUser) return;
+    setCurrentUser(prev => ({
+      ...prev,
+      ...updatedUser
+    }));
+    if (localStorage.getItem('nurioh_remember_me') === 'true') {
+      localStorage.setItem('nurioh_user_profile', JSON.stringify(updatedUser));
+      localStorage.setItem('nurioh_user_id', String(updatedUser.id));
+    } else {
+      sessionStorage.setItem('nurioh_user_profile', JSON.stringify(updatedUser));
+      sessionStorage.setItem('nurioh_user_id', String(updatedUser.id));
+    }
+  };
+
   // 로그아웃
   const handleLogout = () => {
     setDevModeOverride(null);
@@ -521,8 +573,10 @@ export default function App() {
     localStorage.removeItem('nurioh_user_id');
     localStorage.removeItem('nurioh_user_profile');
     localStorage.removeItem('nurioh_remember_me');
+    localStorage.removeItem('nurioh_login_timestamp');
     sessionStorage.removeItem('nurioh_user_id');
     sessionStorage.removeItem('nurioh_user_profile');
+    sessionStorage.removeItem('nurioh_login_timestamp');
     setCurrentUser(null);
   };
 
@@ -616,11 +670,12 @@ export default function App() {
 
   // 🚨 Panic Sell 전량 매도
   const handlePanicSellAll = async () => {
+    const userId = currentUser?.id || 1;
     try {
-      const res = await panicSellAll();
+      const res = await panicSellAll({ userId });
       alert(`🚨 [전 슬롯 긴급 매도]\n${res?.message || '모든 슬롯의 매도 청산이 완료되었습니다.'}`);
     } catch (err) {
-      alert('전량 매도 오류: ' + err.message);
+      alert('전량 매도 오류: ' + (err.response?.data?.error || err.message));
     }
     loadData();
   };
@@ -941,6 +996,7 @@ export default function App() {
         onOpenApiModal={() => setIsApiModalOpen(true)}
         onOpenPricing={() => setIsPricingOpen(true)}
         onReloadUser={loadData}
+        onUpdateUser={handleUpdateUser}
         serverIp={serverIp}
       />
 

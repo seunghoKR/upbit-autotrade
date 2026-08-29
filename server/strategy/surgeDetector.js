@@ -87,9 +87,11 @@ class SurgeDetector {
       return;
     }
 
-    // 급등 조건 충족 검사: 상승률 >= Y% AND 누적거래대금 >= N원
+    // 10초 감시 설정 시 10초 이내라도(예: 1초, 2초, 4초 만에라도) 목표 상승률과 거래대금 조건을 돌파하면 즉시 포착!
     if (priceDiffRate >= thresholdRate && (minVolumeKrw === 0 || totalVolumeKrw >= minVolumeKrw)) {
       this.lastSurgeTime.set(market, now);
+
+      const actualElapsedSeconds = Math.max(0.1, Number(((now - buffer[0].timestamp) / 1000).toFixed(1)));
 
       const surgeInfo = {
         market,
@@ -98,11 +100,12 @@ class SurgeDetector {
         priceDiffRate: Number(priceDiffRate.toFixed(2)),
         totalVolumeKrw: Math.round(totalVolumeKrw),
         durationSeconds: windowSeconds,
+        actualElapsedSeconds,
         detectedAt: new Date().toISOString(),
-        reason: `[급등 감지] ${windowSeconds}초간 +${priceDiffRate.toFixed(2)}% 상승 (거래대금: ${Math.round(totalVolumeKrw).toLocaleString()}원)`
+        reason: `[급등 포착] ${actualElapsedSeconds}초 만에 +${priceDiffRate.toFixed(2)}% 급등 돌파! (누적 거래대금: ${Math.round(totalVolumeKrw).toLocaleString()}원)`
       };
 
-      console.log(`🚨 [SURGE DETECTED] ${market} +${priceDiffRate.toFixed(2)}% in ${windowSeconds}s (거래대금: ${Math.round(totalVolumeKrw).toLocaleString()}원)`);
+      console.log(`🚨 [SURGE DETECTED] ${market} +${priceDiffRate.toFixed(2)}% in ${actualElapsedSeconds}s (설정창: ${windowSeconds}s 윈도우, 거래대금: ${Math.round(totalVolumeKrw).toLocaleString()}원)`);
       this.emitSurge(surgeInfo);
     }
   }

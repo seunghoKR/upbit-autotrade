@@ -52,6 +52,7 @@ export default function MyPageModal({
   onOpenApiModal,
   onOpenPricing,
   onReloadUser,
+  onUpdateUser,
   serverIp = '115.68.168.243'
 }) {
   const isAdmin = user?.role === 'DEVELOPER' || user?.role === 'ADMIN';
@@ -82,10 +83,9 @@ export default function MyPageModal({
 
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
-  const prevIsOpenRef = React.useRef(false);
 
   useEffect(() => {
-    if (isOpen && !prevIsOpenRef.current && user) {
+    if (isOpen && user) {
       setName(user.name || user.nickname || '');
       setPhone(user.phone && user.phone !== '010-0000-0000' ? formatPhoneNumber(user.phone) : '');
       setEmail(user.email || '');
@@ -113,8 +113,7 @@ export default function MyPageModal({
         setSlotLimits(limits);
       }
     }
-    prevIsOpenRef.current = isOpen;
-  }, [isOpen, user]);
+  }, [isOpen, user?.id, user?.name, user?.phone, user?.nickname, user?.email, user?.telegramId]);
 
   if (!isOpen) return null;
 
@@ -146,7 +145,7 @@ export default function MyPageModal({
     setProfileSuccessMsg('');
 
     try {
-      await requestUserProfileUpdate({
+      const res = await requestUserProfileUpdate({
         userId: user?.id || 1,
         name: name.trim(),
         phone: phone.trim(),
@@ -154,6 +153,26 @@ export default function MyPageModal({
         nickname: nickname.trim(),
         telegramId: telegramId.trim()
       });
+
+      const updatedUserData = res?.user || {
+        ...user,
+        name: name.trim(),
+        phone: phone.trim(),
+        email: email.trim(),
+        nickname: nickname.trim(),
+        telegramId: telegramId.trim()
+      };
+
+      // 💾 로컬/세션 스토리지 즉시 동기화
+      if (localStorage.getItem('nurioh_remember_me') === 'true') {
+        localStorage.setItem('nurioh_user_profile', JSON.stringify(updatedUserData));
+      } else {
+        sessionStorage.setItem('nurioh_user_profile', JSON.stringify(updatedUserData));
+      }
+
+      if (onUpdateUser) {
+        onUpdateUser(updatedUserData);
+      }
 
       if (onReloadUser) {
         await onReloadUser();

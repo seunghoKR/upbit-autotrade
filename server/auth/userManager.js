@@ -55,7 +55,7 @@ class UserManager {
    * 카카오 간편 로그인 / 회원가입 처리 (실명, 연락처, 출생연도 포함)
    */
   async loginOrRegisterKakao({ kakaoId, name, nickname, phone, email, birthyear, profileImage }) {
-    let user = Array.from(this.users.values()).find(u => u.kakaoId === kakaoId);
+    let user = Array.from(this.users.values()).find(u => u.kakaoId === kakaoId || (email && u.email === email));
 
     if (!user) {
       const newId = this.users.size + 1;
@@ -83,8 +83,35 @@ class UserManager {
 
       this.users.set(user.id, user);
       console.log(`🎉 신규 인증 회원 가입: [${user.name} (${user.nickname}), 연락처: ${user.phone}] (등급: FREE_TRIAL 7일)`);
+    } else {
+      // 🛡️ 기존 회원이 로그인할 때, 사용자가 마이페이지에서 수정한 실명과 연락처를 덮어쓰지 않고 보존
+      if (!user.name || user.name === '회원' || user.name === '누리오 회원') {
+        user.name = name || user.name;
+      }
+      if (!user.phone || user.phone === '010-0000-0000') {
+        user.phone = phone || user.phone;
+      }
+      if (profileImage) user.profileImage = profileImage;
     }
 
+    return this.getUserProfile(user.id);
+  }
+
+  /**
+   * 마이페이지: 실명, 닉네임, 연락처, 이메일, 텔레그램 연동 수정 저장
+   */
+  updateUserProfile(userId, { name, nickname, phone, email, telegramChatId, birthyear }) {
+    const user = this.users.get(Number(userId));
+    if (!user) throw new Error('해당 회원을 찾을 수 없습니다.');
+
+    if (name) user.name = name.trim();
+    if (nickname) user.nickname = nickname.trim();
+    if (phone) user.phone = phone.trim();
+    if (email) user.email = email.trim();
+    if (telegramChatId !== undefined) user.telegramChatId = telegramChatId ? telegramChatId.trim() : user.telegramChatId;
+    if (birthyear) user.birthyear = birthyear;
+
+    console.log(`👤 [User ${userId}] 마이페이지 회원 정보 수정 완료: ${user.name} (${user.nickname}), 연락처: ${user.phone}`);
     return this.getUserProfile(user.id);
   }
 

@@ -41,6 +41,7 @@ class SlotManager {
       let profitRate = 0;
       let profitKrw = 0;
       let currentValuation = 0;
+      const isReserved = slot.positionStatus === 'RESERVED_BUY';
       const hasPos = Boolean(slot.position && slot.position.entryPrice > 0 && slot.targetMarket);
 
       if (hasPos) {
@@ -49,13 +50,16 @@ class SlotManager {
         profitRate = ((currentPrice - slot.position.entryPrice) / slot.position.entryPrice) * 100;
         currentValuation = (slot.position.entryVolume || 0) * currentPrice;
         profitKrw = currentValuation - (slot.position.entryAmountKrw || (slot.position.entryPrice * slot.position.entryVolume));
+      } else if (isReserved) {
+        const liveTicker = livePriceMap[slot.targetMarket];
+        currentPrice = liveTicker ? liveTicker.trade_price : (slot.reservedSurge ? slot.reservedSurge.currentPrice : null);
       }
 
       return {
         ...slot,
         id: slot.slotId,
         slotName: slot.name || `${slot.slotId}번 슬롯`,
-        positionStatus: hasPos ? 'IN_POSITION' : 'IDLE',
+        positionStatus: isReserved ? 'RESERVED_BUY' : (hasPos ? 'IN_POSITION' : 'IDLE'),
         entryPrice: hasPos ? slot.position.entryPrice : null,
         entryVolume: hasPos ? slot.position.entryVolume : null,
         entryAmountKrw: hasPos ? slot.position.entryAmountKrw : null,
@@ -65,6 +69,7 @@ class SlotManager {
         profitRate: Number(profitRate.toFixed(2)),
         profitKrw: Math.round(profitKrw),
         currentValuation: Math.round(currentValuation),
+        reservedSurge: isReserved ? slot.reservedSurge : null,
         totalTrades: slot.totalTrades || 0,
         winTrades: slot.winTrades || 0,
         totalRealizedProfitKrw: slot.totalRealizedProfitKrw || 0
@@ -93,7 +98,7 @@ class SlotManager {
     let slot = this.slots.find(s => s.isEnabled && s.targetMarket === market && s.positionStatus === 'IDLE');
     if (slot) return slot;
 
-    // 2순위: 비어있는(targetMarket이 없거나 IDLE 상태인) 첫 번째 활성 슬롯
+    // 2순위: 비어있는(targetMarket이 없거나 IDLE 상태인) 첫 번째 활성 슬롯 (RESERVED_BUY나 HOLDING 제외)
     slot = this.slots.find(s => s.isEnabled && s.positionStatus === 'IDLE');
     return slot || null;
   }
@@ -106,12 +111,33 @@ class SlotManager {
     return this.slots.find(s => s.slotId === Number(slotId));
   }
 
+  /**
+   * ⚡ 급등 발견 시 3초 매수 대기 예약 상태 지정
+   */
+  reserveSurgeSlot(slotId, { market, surgeInfo, countdownSeconds = 3 }) {
+    const slot = this.slots.find(s => s.slotId === Number(slotId));
+    if (!slot) return;
+
+    slot.targetMarket = market;
+    slot.positionStatus = 'RESERVED_BUY';
+    slot.reservedSurge = {
+      ...surgeInfo,
+      countdownSeconds,
+      reservedAt: Date.now(),
+      executeAt: Date.now() + (countdownSeconds * 1000)
+    };
+
+    console.log(`⏳ [Slot ${slotId}] ⚡ 급등 발견 예약: ${market} (+${surgeInfo.priceDiffRate}%), ${countdownSeconds}초 후 매수 진입 대기`);
+    this.emitSlotEvent({ type: 'SLOT_RESERVED', slotId, slot, surgeInfo });
+  }
+
   assignPosition(slotId, { market, entryPrice, entryVolume, entryAmountKrw }) {
     const slot = this.slots.find(s => s.slotId === Number(slotId));
     if (!slot) return;
 
     slot.targetMarket = market;
     slot.positionStatus = 'HOLDING';
+    slot.reservedSurge = null;
     slot.position = {
       entryPrice: Number(entryPrice),
       entryVolume: Number(entryVolume),
@@ -132,6 +158,7 @@ class SlotManager {
 
     slot.positionStatus = 'IDLE';
     slot.position = null;
+    slot.reservedSurge = null;
     slot.targetMarket = null; // 포지션 청산 완료 시 다시 전종목 급등 포착 대기 상태로 복귀
 
     console.log(`🧹 [Slot ${slotId}] Position Cleared -> 전종목 급등 포착 대기 모드로 복귀.`);

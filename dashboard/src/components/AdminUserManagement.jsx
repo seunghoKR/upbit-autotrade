@@ -19,9 +19,11 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
-  UserCog
+  UserCog,
+  Send,
+  Plus
 } from 'lucide-react';
-import { getAdminUsers, updateAdminUser } from '../services/api';
+import { getAdminUsers, updateAdminUser, sendTelegramTestMessage, confirmUserDeposit } from '../services/api';
 
 export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
   const [users, setUsers] = useState([]);
@@ -29,6 +31,7 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
   const [selectedFilter, setSelectedFilter] = useState('ALL'); // ALL | OPERATOR | VIP | PRO | FREE | PENDING
   const [isLoading, setIsLoading] = useState(false);
   const [actionSuccess, setActionSuccess] = useState('');
+  const [testingTelegramUserId, setTestingTelegramUserId] = useState(null);
 
   const isDeveloper = currentUser?.role === 'DEVELOPER' || currentUser?.role === 'ADMIN';
 
@@ -66,6 +69,38 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
     }
   };
 
+  // ✈️ 텔레그램 알림 테스트 메시지 전송 핸들러
+  const handleTestTelegram = async (userId, userName) => {
+    setTestingTelegramUserId(userId);
+    try {
+      const res = await sendTelegramTestMessage(userId);
+      setActionSuccess(res?.message || `[${userName}] 님에게 텔레그램 테스트 메시지가 성공적으로 전송되었습니다! 🚀`);
+      setTimeout(() => setActionSuccess(''), 4000);
+    } catch (err) {
+      alert('텔레그램 테스트 발송 실패: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setTestingTelegramUserId(null);
+    }
+  };
+
+  // 💰 회비 입금 확인 및 1개월(+30일) 연장 승인 핸들러
+  const handleConfirmDeposit = async (userId, userName) => {
+    if (!window.confirm(`[${userName}] 회원의 회비 입금을 확인하고, 구독 기간을 1개월(+30일) 연장 승인하시겠습니까?`)) {
+      return;
+    }
+    try {
+      const res = await confirmUserDeposit(userId, {
+        amountKrw: 50000,
+        paymentType: 'BANK_TRANSFER'
+      });
+      setActionSuccess(res?.message || `[${userName}] 회원의 입금이 확인되어 1개월(+30일) 연장되었습니다! ✨`);
+      setTimeout(() => setActionSuccess(''), 4000);
+      loadUsers();
+    } catch (err) {
+      alert('입금 확인 연장 처리 실패: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
   // 필터링된 유저 목록
   const filteredUsers = users.filter(u => {
     const matchSearch = 
@@ -86,8 +121,8 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-3 sm:p-4 animate-in fade-in">
-      <div className="bg-slate-900 border border-indigo-500/50 rounded-2xl max-w-6xl w-full p-4 sm:p-6 shadow-2xl relative overflow-hidden max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-2 sm:p-4 animate-in fade-in">
+      <div className="bg-slate-900 border border-indigo-500/50 rounded-2xl max-w-[1360px] w-full p-4 sm:p-6 shadow-2xl relative overflow-hidden max-h-[92vh] flex flex-col">
         {/* 상단 헤더 */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-3">
@@ -228,23 +263,22 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
         </div>
 
         {/* 회원 테이블 영역 */}
-        <div className="overflow-y-auto overflow-x-auto flex-1 rounded-xl border border-slate-800 bg-slate-950/60">
+        <div className="overflow-y-auto overflow-x-auto flex-1 rounded-xl border border-slate-800 bg-slate-950/60 custom-scrollbar">
           <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-slate-900/90 text-[11px] text-slate-400 uppercase tracking-wider sticky top-0 border-b border-slate-800 z-10">
-              <tr>
-                <th className="py-3 px-4">회원 실명 / 닉네임</th>
-                <th className="py-3 px-3">연락처 / 이메일 (계정)</th>
-                <th className="py-3 px-3">역할 / 등급</th>
-                <th className="py-3 px-3">슬롯</th>
-                <th className="py-3 px-3">승인 상태</th>
-                <th className="py-3 px-3">구독 만료일</th>
-                <th className="py-3 px-4 text-right">플랜 및 권한 변경</th>
+            <thead className="bg-slate-900/95 text-[11px] text-slate-400 uppercase tracking-wider sticky top-0 border-b border-slate-800 z-10">
+              <tr className="whitespace-nowrap">
+                <th className="py-3.5 px-4 font-semibold">회원 실명 / 닉네임</th>
+                <th className="py-3.5 px-3 font-semibold">연락처 / 이메일 (계정)</th>
+                <th className="py-3.5 px-3 font-semibold">텔레그램 연동 상태</th>
+                <th className="py-3.5 px-3 font-semibold text-center">승인 상태</th>
+                <th className="py-3.5 px-3 font-semibold text-center">구독 만료일</th>
+                <th className="py-3.5 px-4 font-semibold text-right">알림 & 플랜 변경</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-500">
+                  <td colSpan={6} className="py-12 text-center text-slate-500">
                     해당 조건에 일치하는 회원이 없습니다.
                   </td>
                 </tr>
@@ -254,28 +288,46 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
                   const isVip = user.tier === 'VIP';
                   const isPro = user.tier === 'PRO';
                   const isPending = user.approvalStatus === 'PENDING';
+                  const isExpired = user.approvalStatus === 'EXPIRED' || (!isOperator && user.role !== 'DEVELOPER' && user.remainingDays <= 0 && Boolean(user.subscriptionExpiresAt && new Date(user.subscriptionExpiresAt) < new Date()));
 
                   return (
-                    <tr key={user.id} className="hover:bg-slate-900/50 transition">
-                      {/* 회원 실명 / 닉네임 */}
-                      <td className="py-3.5 px-4">
+                    <tr key={user.id} className="hover:bg-slate-900/60 transition whitespace-nowrap">
+                      {/* 회원 실명 / 닉네임 & 역할·등급 뱃지 */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-2.5">
                           <img
                             src={user.profileImage || 'https://t1.kakaocdn.net/together_image/common/avatar/avatar.png'}
                             alt=""
-                            className="w-8 h-8 rounded-full border border-slate-700 object-cover"
+                            className="w-8 h-8 rounded-full border border-slate-700 object-cover shrink-0"
                           />
                           <div>
-                            <div className="font-bold text-slate-100 flex items-center gap-1.5">
+                            <div className="font-bold text-slate-100 flex items-center gap-1.5 whitespace-nowrap">
                               <span>{user.name || user.nickname}</span>
                               <span className="text-[10px] text-slate-400 font-normal">({user.nickname})</span>
-                              {isOperator && (
-                                <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded font-bold">
-                                  운영자
+                              
+                              {/* 이름 옆 역할/등급 & 슬롯 뱃지 */}
+                              {isOperator ? (
+                                <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/40 px-1.5 py-0.5 rounded-md font-extrabold whitespace-nowrap flex items-center gap-1">
+                                  <Shield className="w-2.5 h-2.5 text-purple-400" />
+                                  <span>운영자 (9슬롯)</span>
+                                </span>
+                              ) : isVip ? (
+                                <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded-md font-bold whitespace-nowrap flex items-center gap-1">
+                                  <Crown className="w-2.5 h-2.5 text-amber-400" />
+                                  <span>VIP (9슬롯)</span>
+                                </span>
+                              ) : isPro ? (
+                                <span className="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 px-1.5 py-0.5 rounded-md font-bold whitespace-nowrap flex items-center gap-1">
+                                  <Zap className="w-2.5 h-2.5 text-indigo-400" />
+                                  <span>PRO (3슬롯)</span>
+                                </span>
+                              ) : (
+                                <span className="text-[10px] bg-slate-800 text-slate-400 border border-slate-700 px-1.5 py-0.5 rounded-md font-medium whitespace-nowrap">
+                                  무료 (1슬롯)
                                 </span>
                               )}
                             </div>
-                            <span className="text-[10px] text-slate-500 font-mono">
+                            <span className="text-[10px] text-slate-500 font-mono whitespace-nowrap block">
                               {user.kakaoId} ({user.birthyear || '1990'}년생)
                             </span>
                           </div>
@@ -283,170 +335,187 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
                       </td>
 
                       {/* 연락처 / 이메일 */}
-                      <td className="py-3.5 px-3">
+                      <td className="py-3.5 px-3 whitespace-nowrap">
                         <div className="space-y-0.5">
-                          <span className="font-mono text-slate-200 block text-xs flex items-center gap-1">
-                            <Phone className="w-3 h-3 text-slate-500" />
-                            {user.phone || '010-0000-0000'}
+                          <span className="font-mono text-slate-200 block text-xs flex items-center gap-1 whitespace-nowrap">
+                            <Phone className="w-3 h-3 text-slate-500 shrink-0" />
+                            <span>{user.phone || '010-0000-0000'}</span>
                           </span>
-                          <span className="text-[11px] font-mono text-indigo-300 font-semibold truncate block max-w-[170px] flex items-center gap-1">
-                            <Mail className="w-3 h-3 text-indigo-400" />
-                            {user.email || '미등록'}
+                          <span className="text-[11px] font-mono text-indigo-300 font-semibold truncate block max-w-[180px] flex items-center gap-1 whitespace-nowrap">
+                            <Mail className="w-3 h-3 text-indigo-400 shrink-0" />
+                            <span>{user.email || '미등록'}</span>
                           </span>
                         </div>
                       </td>
 
-                      {/* 현재 등급 */}
-                      <td className="py-3.5 px-3">
-                        {isOperator ? (
-                          <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 inline-flex items-center gap-1">
-                            <Shield className="w-3 h-3" />
-                            <span>운영자</span>
-                          </span>
+                      {/* 텔레그램 연동 상태 */}
+                      <td className="py-3.5 px-3 whitespace-nowrap">
+                        {user.hasTelegram ? (
+                          <div className="space-y-0.5">
+                            <span className="text-[11px] font-mono text-cyan-300 font-bold bg-cyan-950/70 border border-cyan-500/40 px-2 py-0.5 rounded-lg flex items-center gap-1 inline-flex shadow-sm whitespace-nowrap">
+                              <Send className="w-3 h-3 text-cyan-400 shrink-0" />
+                              <span>ID: {user.telegramId}</span>
+                            </span>
+                            <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1 whitespace-nowrap">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
+                              <span>알림 수신 가능</span>
+                            </span>
+                          </div>
                         ) : (
-                          <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border inline-flex items-center gap-1 ${
-                            isVip 
-                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                              : isPro
-                              ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
-                              : 'bg-slate-800 text-slate-300 border-slate-700'
-                          }`}>
-                            {isVip && <Crown className="w-3 h-3" />}
-                            {isPro && <Zap className="w-3 h-3" />}
-                            <span>{isVip ? 'VIP 플랜' : isPro ? 'PRO 플랜' : '무료방문자'}</span>
+                          <span className="text-[10px] text-slate-500 bg-slate-900 border border-slate-800 px-2 py-0.5 rounded-lg font-medium inline-block whitespace-nowrap">
+                            ⚪ 텔레그램 미등록
                           </span>
                         )}
                       </td>
 
-                      {/* 슬롯 개수 */}
-                      <td className="py-3.5 px-3 font-semibold text-slate-300">
-                        {user.maxSlots || (isVip ? 9 : isPro ? 3 : 1)}개 슬롯
-                      </td>
-
-                      {/* 승인 상태 */}
-                      <td className="py-3.5 px-3">
+                      {/* 승인 상태 & 입금 확인/연장 */}
+                      <td className="py-3.5 px-3 text-center whitespace-nowrap">
                         {isPending ? (
                           <button
                             onClick={() => handleUpdateUser(user.id, { approvalStatus: 'APPROVED', addDays: 3 }, `회원 #${user.id}님의 이용이 승인되었습니다 (3일 무료체험 시작)!`)}
-                            className="px-2 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-extrabold text-[10px] flex items-center gap-1 transition cursor-pointer animate-pulse"
+                            className="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-extrabold text-[10px] inline-flex items-center gap-1 transition cursor-pointer animate-pulse whitespace-nowrap"
                             title="클릭하여 무료 이용을 승인합니다"
                           >
                             <Clock className="w-3 h-3" />
                             <span>승인 대기 (클릭 승인)</span>
                           </button>
+                        ) : isExpired ? (
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="text-rose-400 font-bold inline-flex items-center gap-1 text-[10px] bg-rose-950/80 border border-rose-500/40 px-2 py-0.5 rounded-md whitespace-nowrap">
+                              <AlertTriangle className="w-3 h-3 text-rose-400" />
+                              <span>미승인 (입금 만료)</span>
+                            </span>
+                            <button
+                              onClick={() => handleConfirmDeposit(user.id, user.name || user.nickname)}
+                              className="text-[10px] bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-lg font-bold transition flex items-center gap-0.5 shadow-sm active:scale-95 cursor-pointer"
+                              title="회비 입금 확인 후 1개월 연장 및 즉시 승인"
+                            >
+                              <Plus className="w-2.5 h-2.5 text-emerald-400" />
+                              <span>+1개월 입금확인</span>
+                            </button>
+                          </div>
                         ) : (
-                          <span className="text-emerald-400 font-bold flex items-center gap-1 text-[11px]">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>승인 완료</span>
-                          </span>
+                          <div className="flex flex-col items-center gap-0.5">
+                            <span className="text-emerald-400 font-bold inline-flex items-center gap-1 text-[11px] whitespace-nowrap">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>승인 완료</span>
+                            </span>
+                            {!isOperator && (
+                              <button
+                                onClick={() => handleConfirmDeposit(user.id, user.name || user.nickname)}
+                                className="text-[10px] text-emerald-400 hover:text-emerald-200 hover:underline transition flex items-center gap-0.5 cursor-pointer mt-0.5 font-medium"
+                                title="회비 입금 확인 시 1개월(+30일) 추가 연장"
+                              >
+                                <span>[+1개월 연장]</span>
+                              </button>
+                            )}
+                          </div>
                         )}
                       </td>
 
                       {/* 만료일 */}
-                      <td className="py-3.5 px-3">
+                      <td className="py-3.5 px-3 text-center whitespace-nowrap">
                         <div>
-                          <span className="font-mono text-slate-200 block text-xs">
+                          <span className="font-mono text-slate-200 block text-xs whitespace-nowrap">
                             {user.subscriptionExpiresAt ? user.subscriptionExpiresAt.slice(0, 10) : '-'}
                           </span>
-                          <span className={`text-[10px] font-bold ${user.remainingDays <= 1 ? 'text-rose-400' : 'text-yellow-400'}`}>
-                            D-{user.remainingDays}일 남음
+                          <span className={`text-[10px] font-bold block whitespace-nowrap ${isExpired ? 'text-rose-400 font-extrabold' : user.remainingDays <= 3 ? 'text-rose-400' : 'text-yellow-400'}`}>
+                            {user.role === 'OPERATOR' ? '무제한 (운영자)' : isExpired ? '만료됨 (미승인)' : `D-${user.remainingDays}일 남음`}
                           </span>
                         </div>
                       </td>
 
-                      {/* 플랜 및 권한 변경 액션 */}
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                          {/* 🟢 무료 전환/지정 버튼 */}
+                      {/* 텔레그램 알림 테스트 & 플랜 변경 펼침 메뉴 */}
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-2 flex-nowrap whitespace-nowrap">
+                          {/* ✈️ 텔레그램 알림 테스트 버튼 */}
                           <button
-                            onClick={() => handleUpdateUser(
-                              user.id, 
-                              { tier: 'FREE_TRIAL', role: 'USER', approvalStatus: 'APPROVED', addDays: 30 }, 
-                              `회원 #${user.id} (${user.name || user.nickname})님이 [무료 플랜 (1슬롯)]으로 변경되었습니다.`
-                            )}
-                            className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition cursor-pointer flex items-center gap-1 ${
-                              (!isOperator && user.tier === 'FREE_TRIAL')
-                                ? 'bg-slate-700 text-white border-slate-500 ring-2 ring-slate-400 shadow-md font-black'
-                                : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-white hover:bg-slate-800'
+                            disabled={!user.hasTelegram || testingTelegramUserId === user.id}
+                            onClick={() => handleTestTelegram(user.id, user.name || user.nickname)}
+                            className={`px-2.5 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer flex items-center gap-1 whitespace-nowrap ${
+                              user.hasTelegram
+                                ? 'bg-cyan-950/70 text-cyan-300 border-cyan-500/50 hover:bg-cyan-900/80 hover:text-white shadow-md shadow-cyan-500/20 active:scale-95'
+                                : 'bg-slate-900/40 text-slate-600 border-slate-800/80 cursor-not-allowed opacity-60'
                             }`}
-                            title="무료 플랜 지정 (1슬롯, 30일)"
+                            title={user.hasTelegram ? `${user.name || user.nickname} 회원에게 텔레그램 테스트 메시지를 즉시 전송합니다` : '회원이 아직 텔레그램 ID를 등록하지 않았습니다'}
                           >
-                            {(!isOperator && user.tier === 'FREE_TRIAL') && <Check className="w-3 h-3 text-emerald-400 stroke-[3]" />}
-                            <span>무료 (1슬롯)</span>
-                          </button>
-
-                          {/* 🔵 PRO 플랜 지정 버튼 */}
-                          <button
-                            onClick={() => handleUpdateUser(
-                              user.id, 
-                              { tier: 'PRO', role: 'USER', approvalStatus: 'APPROVED', addDays: 30 }, 
-                              `회원 #${user.id} (${user.name || user.nickname})님이 [PRO 플랜 (3슬롯, +30일)]으로 변경되었습니다.`
-                            )}
-                            className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition cursor-pointer flex items-center gap-1 ${
-                              (!isOperator && isPro)
-                                ? 'bg-indigo-600 text-white border-indigo-400 ring-2 ring-indigo-400 shadow-lg shadow-indigo-500/20 font-black'
-                                : 'bg-indigo-950/40 text-indigo-300 border-indigo-500/30 hover:bg-indigo-900/60 hover:text-white'
-                            }`}
-                            title="PRO 플랜 지정 (3슬롯, +30일)"
-                          >
-                            {(!isOperator && isPro) ? (
-                              <Check className="w-3 h-3 text-white stroke-[3]" />
+                            {testingTelegramUserId === user.id ? (
+                              <RefreshCw className="w-3 h-3 animate-spin text-cyan-400" />
                             ) : (
-                              <Zap className="w-3 h-3 text-indigo-400" />
+                              <Send className={`w-3 h-3 ${user.hasTelegram ? 'text-cyan-400' : 'text-slate-600'}`} />
                             )}
-                            <span>PRO (3슬롯)</span>
+                            <span>{testingTelegramUserId === user.id ? '발송 중...' : '알림 테스트'}</span>
                           </button>
 
-                          {/* 🟡 VIP 플랜 지정 버튼 */}
-                          <button
-                            onClick={() => handleUpdateUser(
-                              user.id, 
-                              { tier: 'VIP', role: 'USER', approvalStatus: 'APPROVED', addDays: 30 }, 
-                              `회원 #${user.id} (${user.name || user.nickname})님이 [VIP 플랜 (9슬롯, +30일)]으로 변경되었습니다.`
-                            )}
-                            className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition cursor-pointer flex items-center gap-1 ${
-                              (!isOperator && isVip)
-                                ? 'bg-amber-500 text-black border-amber-300 ring-2 ring-amber-400 shadow-lg shadow-amber-500/25 font-black'
-                                : 'bg-amber-950/40 text-amber-300 border-amber-500/30 hover:bg-amber-900/60 hover:text-amber-100'
-                            }`}
-                            title="VIP 플랜 지정 (9슬롯, +30일)"
-                          >
-                            {(!isOperator && isVip) ? (
-                              <Check className="w-3 h-3 text-black stroke-[3]" />
-                            ) : (
-                              <Crown className="w-3 h-3 text-amber-400" />
-                            )}
-                            <span>VIP (9슬롯)</span>
-                          </button>
-
-                          {/* 🟣 운영자 지정/해제 버튼 (개발자 전용 권한) */}
-                          {isDeveloper && (
-                            <button
-                              onClick={() => handleUpdateUser(
-                                user.id, 
-                                { 
-                                  role: isOperator ? 'USER' : 'OPERATOR', 
-                                  tier: isOperator ? 'PRO' : 'VIP', 
-                                  approvalStatus: 'APPROVED',
-                                  addDays: isOperator ? 30 : 9999
-                                },
-                                `회원 #${user.id} (${user.name || user.nickname})님의 권한이 [${isOperator ? '일반회원' : '운영자 (9슬롯, 마스터 권한)'}]으로 변경되었습니다.`
-                              )}
-                              className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition cursor-pointer flex items-center gap-1 ${
-                                isOperator
-                                  ? 'bg-purple-600 text-white border-purple-400 ring-2 ring-purple-400 shadow-lg shadow-purple-500/30 font-black'
-                                  : 'bg-purple-950/40 text-purple-300 border-purple-500/30 hover:bg-purple-900/60 hover:text-white'
+                          {/* 🔽 플랜 변경 펼침 메뉴 (Dropdown Select) */}
+                          <div className="relative inline-block">
+                            <select
+                              value={isOperator ? 'OPERATOR' : user.tier || 'FREE_TRIAL'}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === 'FREE_TRIAL') {
+                                  handleUpdateUser(
+                                    user.id, 
+                                    { tier: 'FREE_TRIAL', role: 'USER', approvalStatus: 'APPROVED', addDays: 30 }, 
+                                    `회원 #${user.id} (${user.name || user.nickname})님이 [무료 플랜 (1슬롯)]으로 변경되었습니다.`
+                                  );
+                                } else if (val === 'PRO') {
+                                  handleUpdateUser(
+                                    user.id, 
+                                    { tier: 'PRO', role: 'USER', approvalStatus: 'APPROVED', addDays: 30 }, 
+                                    `회원 #${user.id} (${user.name || user.nickname})님이 [PRO 플랜 (3슬롯, +30일)]으로 변경되었습니다.`
+                                  );
+                                } else if (val === 'VIP') {
+                                  handleUpdateUser(
+                                    user.id, 
+                                    { tier: 'VIP', role: 'USER', approvalStatus: 'APPROVED', addDays: 30 }, 
+                                    `회원 #${user.id} (${user.name || user.nickname})님이 [VIP 플랜 (9슬롯, +30일)]으로 변경되었습니다.`
+                                  );
+                                } else if (val === 'OPERATOR') {
+                                  handleUpdateUser(
+                                    user.id, 
+                                    { 
+                                      role: 'OPERATOR', 
+                                      tier: 'VIP', 
+                                      approvalStatus: 'APPROVED',
+                                      addDays: 9999
+                                    },
+                                    `회원 #${user.id} (${user.name || user.nickname})님이 [운영자 (9슬롯, 마스터 권한)]으로 임명되었습니다.`
+                                  );
+                                } else if (val === 'USER') {
+                                  handleUpdateUser(
+                                    user.id, 
+                                    { 
+                                      role: 'USER', 
+                                      tier: 'PRO', 
+                                      approvalStatus: 'APPROVED',
+                                      addDays: 30
+                                    },
+                                    `회원 #${user.id} (${user.name || user.nickname})님의 운영자 권한이 해제되어 [일반회원]으로 변경되었습니다.`
+                                  );
+                                }
+                              }}
+                              className={`rounded-xl px-2.5 py-1.5 text-xs font-bold border focus:outline-none cursor-pointer transition shadow-sm bg-slate-900 ${
+                                isOperator 
+                                  ? 'border-purple-500/60 text-purple-300 bg-purple-950/60'
+                                  : isVip 
+                                  ? 'border-amber-500/60 text-amber-300 bg-amber-950/60'
+                                  : isPro 
+                                  ? 'border-indigo-500/60 text-indigo-300 bg-indigo-950/60'
+                                  : 'border-slate-700 text-slate-300 bg-slate-900'
                               }`}
-                              title={isOperator ? '운영자 권한 해제' : '운영자로 임명 (9슬롯, 전략 및 회원관리 권한 부여)'}
                             >
-                              {isOperator ? (
-                                <Check className="w-3 h-3 text-white stroke-[3]" />
-                              ) : (
-                                <Shield className="w-3 h-3 text-purple-400" />
+                              <option value="FREE_TRIAL" className="bg-slate-900 text-slate-200">🟢 무료 (1슬롯)</option>
+                              <option value="PRO" className="bg-slate-900 text-indigo-300">🔵 PRO 플랜 (3슬롯)</option>
+                              <option value="VIP" className="bg-slate-900 text-amber-300">🟡 VIP 플랜 (9슬롯)</option>
+                              {isDeveloper && (
+                                <option value="OPERATOR" className="bg-slate-900 text-purple-300">👑 운영자 (9슬롯)</option>
                               )}
-                              <span>{isOperator ? '운영자' : '운영자 지정'}</span>
-                            </button>
-                          )}
+                              {isDeveloper && isOperator && (
+                                <option value="USER" className="bg-slate-900 text-slate-400">⚪ 일반회원으로 전환</option>
+                              )}
+                            </select>
+                          </div>
                         </div>
                       </td>
                     </tr>

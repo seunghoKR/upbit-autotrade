@@ -45,6 +45,11 @@ export const updateUserRole = async (userId, role) => {
   return res.data;
 };
 
+export const confirmUserDeposit = async (userId, depositData = {}) => {
+  const res = await axios.post(`${API_BASE}/admin/users/${userId}/confirm-deposit`, depositData);
+  return res.data;
+};
+
 export const getSystemStatus = async () => {
   const res = await axios.get(`${API_BASE}/dev/system-status`);
   return res.data;
@@ -113,8 +118,8 @@ export const sellSlotPosition = async (slotId, sellData = {}) => {
 };
 
 // 비상 Panic Sell (전량 즉시 시장가 매도)
-export const panicSellAll = async () => {
-  const res = await axios.post(`${API_BASE}/panic-sell`);
+export const panicSellAll = async (payload = {}) => {
+  const res = await axios.post(`${API_BASE}/panic-sell`, payload);
   return res.data;
 };
 
@@ -147,6 +152,12 @@ export const getAdminUsers = async (viewerRole = 'DEVELOPER') => {
 
 export const updateAdminUser = async (userId, data) => {
   const res = await axios.post(`${API_BASE}/admin/users/${userId}/update`, data);
+  return res.data;
+};
+
+// ✈️ 회원 대상 텔레그램 알림 테스트 메시지 전송
+export const sendTelegramTestMessage = async (userId) => {
+  const res = await axios.post(`${API_BASE}/admin/users/${userId}/test-telegram`);
   return res.data;
 };
 

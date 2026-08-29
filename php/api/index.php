@@ -42,27 +42,85 @@ function generateUpbitJwt(string $accessKey, string $secretKey, ?string $querySt
     return "Bearer {$encodedHeader}.{$encodedPayload}.{$encodedSignature}";
 }
 
-function sendTelegramAdminAlert(string $text): bool {
-    $botToken = getenv('TELEGRAM_BOT_TOKEN') ?: '7472093556:AAFF_w44F69K0qKqY_4l8U5xX8vY5l3vJ4I';
-    $chatId = getenv('TELEGRAM_CHAT_ID') ?: '5618137472';
-    if (!$botToken || !$chatId) return false;
+function sendTelegramAdminAlert(string $text, ?string $userChatId = null): bool {
+    $botToken = getenv('TELEGRAM_BOT_TOKEN') ?: '8801000924:AAGspDXeDkHcHyGI0CHuSxFvyq_f5vmoezU';
+    $defaultAdminChatId = getenv('TELEGRAM_CHAT_ID') ?: '5618137472';
+    if (!$botToken) return false;
 
-    $url = "https://api.telegram.org/bot{$botToken}/sendMessage";
+    $targetChatIds = [];
+    if ($defaultAdminChatId) $targetChatIds[] = $defaultAdminChatId;
+
+    // 👑 DB에 등록된 모든 운영자(OPERATOR), 관리자(ADMIN), 개발자(DEVELOPER)의 텔레그램 Chat ID 자동 수집
+    try {
+        $pdo = Database::getConnection();
+        $stmt = $pdo->query("SELECT telegram_chat_id FROM nurioh_users WHERE role IN ('ADMIN', 'OPERATOR', 'DEVELOPER') AND telegram_chat_id IS NOT NULL AND telegram_chat_id != ''");
+        while ($row = $stmt->fetch()) {
+            $tId = trim((string)$row['telegram_chat_id']);
+            if ($tId && !in_array($tId, $targetChatIds, true)) {
+                $targetChatIds[] = $tId;
+            }
+        }
+    } catch (Exception $e) {}
+
+    if ($userChatId && !in_array($userChatId, $targetChatIds, true)) {
+        $targetChatIds[] = $userChatId;
+    }
+
+    $allSuccess = true;
+    foreach ($targetChatIds as $targetId) {
+        $url = "https://api.telegram.org/bot{$botToken}/sendMessage";
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+            'chat_id' => $targetId,
+            'text' => $text,
+            'parse_mode' => 'HTML'
+        ]));
+        $res = curl_exec($ch);
+        curl_close($ch);
+        if (!$res) $allSuccess = false;
+    }
+    return $allSuccess;
+}
+
+function autoCheckAndExpireUsers(PDO $pdo): void {
+    // 🛡️ 입금일(만료일 자정 23:59:59)이 지난 일반 회원의 경우 approval_status를 'EXPIRED'(미승인)로 자동 전환
+    try {
+        $now = date('Y-m-d H:i:s');
+        $pdo->prepare("UPDATE nurioh_users 
+            SET approval_status = 'EXPIRED' 
+            WHERE role NOT IN ('ADMIN', 'OPERATOR', 'DEVELOPER') 
+              AND subscription_expires_at IS NOT NULL 
+              AND subscription_expires_at < ? 
+              AND approval_status = 'APPROVED'")
+            ->execute([$now]);
+    } catch (Exception $e) {}
+}
+
+function fetchUpbitDeposits(string $accessKey, string $secretKey, string $currency = 'KRW'): array {
+    $queryString = "currency={$currency}&state=ACCEPTED";
+    $authHeader = generateUpbitJwt($accessKey, $secretKey, $queryString);
+    $url = "https://api.upbit.com/v1/deposits?" . $queryString;
+
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
-        'chat_id' => $chatId,
-        'text' => $text,
-        'parse_mode' => 'HTML'
-    ]));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        "Authorization: {$authHeader}",
+        "Accept: application/json"
+    ]);
     $res = curl_exec($ch);
     curl_close($ch);
-    return (bool)$res;
+
+    return $res ? (json_decode($res, true) ?: []) : [];
 }
 
 function getOutboundServerIp(): string {
@@ -167,6 +225,49 @@ function executeUpbitOrder(string $accessKey, string $secretKey, array $params, 
     return null;
 }
 
+function fetchUpbitOrderChance(string $accessKey, string $secretKey, string $market = 'KRW-BTC', ?string &$errorMsg = null): ?array {
+    $queryString = http_build_query(['market' => $market]);
+    $jwt = generateUpbitJwt($accessKey, $secretKey, $queryString);
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, "https://api.upbit.com/v1/orders/chance?{$queryString}");
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 6);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        "Authorization: {$jwt}",
+        "Accept: application/json",
+        "User-Agent: NURIOH-TRADER"
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr = curl_error($ch);
+    curl_close($ch);
+
+    if ($curlErr) {
+        $errorMsg = "cURL 네트워크 연결 오류: {$curlErr}";
+        return null;
+    }
+
+    if ($response) {
+        $data = json_decode($response, true);
+        if ($httpCode === 200 && is_array($data)) {
+            return $data;
+        }
+        if (isset($data['error']['message'])) {
+            $errorMsg = "업비트 주문 권한 검증 오류 [{$data['error']['name']}]: {$data['error']['message']}";
+        } else {
+            $errorMsg = "업비트 HTTP {$httpCode} 응답: {$response}";
+        }
+    } else {
+        $errorMsg = "업비트 서버 응답 없음 (HTTP {$httpCode})";
+    }
+
+    return null;
+}
+
 $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -221,6 +322,25 @@ try {
     try {
         $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN highest_profit_pct DECIMAL(8,4) DEFAULT 0.0000");
     } catch (Exception $e) {}
+
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `nurioh_payment_logs` (
+            `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+            `user_id` BIGINT NOT NULL,
+            `amount_krw` DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+            `payment_type` VARCHAR(50) DEFAULT 'BANK_TRANSFER',
+            `depositor_name` VARCHAR(100) DEFAULT NULL,
+            `tx_id` VARCHAR(150) DEFAULT NULL,
+            `status` VARCHAR(32) DEFAULT 'CONFIRMED',
+            `previous_expires_at` DATETIME DEFAULT NULL,
+            `extended_expires_at` DATETIME NOT NULL,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX `idx_user_pay` (`user_id`, `created_at`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    } catch (Exception $e) {}
+
+    // 🛡️ 입금일(만료일) 경과 회원 자동 미승인(EXPIRED) 검사 실행
+    autoCheckAndExpireUsers($pdo);
 
     // 🧹 더미 테스트 계정 정리 및 대표님 단일 계정 확정
     $pdo->exec("DELETE FROM nurioh_users WHERE kakao_id = 'kakao_test_12345'");
@@ -283,8 +403,9 @@ try {
         } else {
             $newNick = ($user['nickname'] === '??' || !$user['nickname']) ? $nickname : $user['nickname'];
             $newImg = $profileImage ?: $user['profile_image'];
-            $newName = $name ?: ($user['name'] ?? $newNick);
-            $newPhone = $phone ?: ($user['phone'] ?? '');
+            // 🛡️ 사용자가 마이페이지에서 수정한 실명(name)과 연락처(phone)는 카카오 재로그인 시 덮어쓰지 않고 영구 보존!
+            $newName = (!empty($user['name']) && $user['name'] !== '누리오 회원' && $user['name'] !== '??') ? $user['name'] : ($name ?: $newNick);
+            $newPhone = (!empty($user['phone']) && $user['phone'] !== '010-0000-0000') ? $user['phone'] : ($phone ?: '');
             
             $upd = $pdo->prepare("UPDATE nurioh_users SET 
                 kakao_id = ?,
@@ -394,11 +515,11 @@ try {
             subscription_expires_at = ?
             WHERE id = ?");
         $upd->execute([
-            $name ?: ($user['name'] ?: $nickname),
-            $nickname ?: $user['nickname'],
-            $phone ?: ($user['phone'] ?: ''),
-            $email ?: $user['email'],
-            $telegramId ?: ($user['telegram_chat_id'] ?: null),
+            $name !== '' ? $name : ($user['name'] ?: $nickname),
+            $nickname !== '' ? $nickname : $user['nickname'],
+            $phone !== '' ? $phone : ($user['phone'] ?: ''),
+            $email !== '' ? $email : $user['email'],
+            $telegramId !== '' ? $telegramId : ($user['telegram_chat_id'] ?: null),
             $newRole,
             $newTier,
             $newSlots,
@@ -658,7 +779,7 @@ try {
         $viewerRole = $_GET['viewerRole'] ?? 'DEVELOPER'; // DEVELOPER | OPERATOR
 
         // 👑 개발자 계정은 목록에 표시되지 않아야 함!
-        $stmt = $pdo->query("SELECT id, kakao_id, name, nickname, email, phone, birthyear, profile_image, role, tier, approval_status, subscription_expires_at, max_slots, is_active, created_at 
+        $stmt = $pdo->query("SELECT id, kakao_id, name, nickname, email, phone, birthyear, profile_image, role, tier, approval_status, subscription_expires_at, max_slots, is_active, telegram_chat_id, created_at 
             FROM nurioh_users 
             WHERE role != 'DEVELOPER' AND email != 'leeshkr@kakao.com'
             ORDER BY id DESC");
@@ -678,6 +799,8 @@ try {
                 'nickname' => $u['nickname'],
                 'email' => $u['email'],
                 'phone' => $u['phone'] ?: '',
+                'telegramId' => $u['telegram_chat_id'] ?: '',
+                'hasTelegram' => !empty($u['telegram_chat_id']),
                 'birthyear' => $u['birthyear'] ?: '1990',
                 'profileImage' => $u['profile_image'] ?: 'https://t1.kakaocdn.net/together_image/common/avatar/avatar.png',
                 'role' => $u['role'] ?: 'USER', // OPERATOR | USER
@@ -692,6 +815,47 @@ try {
         }, $users);
 
         echo json_encode(['users' => $result], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // 4-B. POST admin/users/{id}/test-telegram : 회원 대상 텔레그램 테스트 메시지 전송
+    if (preg_match('#^admin/users/([0-9]+)/test-telegram$#', $path, $matches) && $method === 'POST') {
+        $targetUserId = (int)$matches[1];
+        $stmt = $pdo->prepare("SELECT name, nickname, telegram_chat_id FROM nurioh_users WHERE id = ?");
+        $stmt->execute([$targetUserId]);
+        $targetUser = $stmt->fetch();
+
+        if (!$targetUser) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'error' => '회원을 찾을 수 없습니다.']);
+            exit;
+        }
+
+        $chatId = trim((string)($targetUser['telegram_chat_id'] ?? ''));
+        if (!$chatId) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => '해당 회원은 텔레그램 ID를 아직 등록하지 않았습니다.']);
+            exit;
+        }
+
+        $userName = $targetUser['name'] ?: $targetUser['nickname'];
+        $timeStr = date('Y-m-d H:i:s');
+        $testMsg = "🔔 <b>[NURIOH 트레이더 텔레그램 알림 테스트]</b>\n\n" .
+                   "안녕하세요, <b>{$userName}</b>님!\n" .
+                   "운영자가 회원님의 텔레그램 알림 통신을 성공적으로 테스트하였습니다.\n" .
+                   "현재 <b>실시간 급등 매수 및 매도(익절/손절) 신호</b>가 정상 발송 대기 중입니다! 🚀\n\n" .
+                   "⏱ 테스트 시각: {$timeStr}";
+
+        $sent = sendTelegramAdminAlert($testMsg, $chatId);
+        if ($sent) {
+            echo json_encode([
+                'success' => true,
+                'message' => "[{$userName}] 님의 텔레그램(ID: {$chatId})으로 테스트 메시지가 성공적으로 발송되었습니다! 🚀"
+            ], JSON_UNESCAPED_UNICODE);
+        } else {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => '텔레그램 봇 메시지 전송에 실패했습니다. (Bot Token / Chat ID 확인 필요)']);
+        }
         exit;
     }
 
@@ -741,6 +905,101 @@ try {
                 'approvalStatus' => $approvalStatus,
                 'expires' => $expires
             ]
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // 5-B. POST admin/users/:userId/confirm-deposit : 회비 입금 확인 및 구독 1개월 연장 처리
+    if (preg_match('#^admin/users/([0-9]+)/confirm-deposit$#', $path, $matches) && $method === 'POST') {
+        $targetUserId = (int)$matches[1];
+        $amountKrw = (float)($input['amountKrw'] ?? 50000);
+        $depositorName = trim((string)($input['depositorName'] ?? ''));
+        $paymentType = (string)($input['paymentType'] ?? 'BANK_TRANSFER');
+        $txId = (string)($input['txId'] ?? '');
+
+        $stmt = $pdo->prepare("SELECT * FROM nurioh_users WHERE id = ?");
+        $stmt->execute([$targetUserId]);
+        $targetUser = $stmt->fetch();
+
+        if (!$targetUser) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'error' => '회원을 찾을 수 없습니다.']);
+            exit;
+        }
+
+        $now = time();
+        $currExpires = !empty($targetUser['subscription_expires_at']) ? strtotime($targetUser['subscription_expires_at']) : 0;
+        
+        // 📅 입금일(만료일) 이전에 입금 확인 시 -> 기존 만료일에서 +1개월(+30일) 연장
+        // 만약 이미 만료(EXPIRED)된 상태라면 -> 현재 시점에서 +1개월(+30일) 부여
+        $baseTime = ($currExpires > $now) ? $currExpires : $now;
+        $newExpiresTime = strtotime('+30 days', $baseTime);
+        $newExpiresDate = date('Y-m-d 23:59:59', $newExpiresTime);
+
+        // 회원 상태를 APPROVED(승인 완료)로 전환 및 만료일 갱신
+        $upd = $pdo->prepare("UPDATE nurioh_users SET 
+            approval_status = 'APPROVED', 
+            subscription_expires_at = ?,
+            tier = CASE WHEN tier = 'FREE_TRIAL' THEN 'PRO' ELSE tier END
+            WHERE id = ?");
+        $upd->execute([$newExpiresDate, $targetUserId]);
+
+        // 입금 로그 기록
+        try {
+            $logStmt = $pdo->prepare("INSERT INTO nurioh_payment_logs 
+                (user_id, amount_krw, payment_type, depositor_name, tx_id, status, previous_expires_at, extended_expires_at) 
+                VALUES (?, ?, ?, ?, ?, 'CONFIRMED', ?, ?)");
+            $logStmt->execute([
+                $targetUserId,
+                $amountKrw,
+                $paymentType,
+                $depositorName ?: ($targetUser['name'] ?: $targetUser['nickname']),
+                $txId ?: ('DEP_' . date('YmdHis') . '_' . $targetUserId),
+                $targetUser['subscription_expires_at'],
+                $newExpiresDate
+            ]);
+        } catch (Exception $e) {}
+
+        // 🔔 운영진 및 회원에게 텔레그램 입금 승인 알림 발송
+        $userName = $targetUser['name'] ?: $targetUser['nickname'];
+        $userChatId = $targetUser['telegram_chat_id'] ?: null;
+        $alertMsg = "<b>💰 [누리오 트레이더] 회비 입금 확인 및 1개월 연장 완료</b>\n\n"
+            . "✨ <b>{$userName}</b>님의 회비 입금이 확인되어 <b>1개월(+30일) 이용 연장</b>이 완료되었습니다!\n\n"
+            . "━━━━━━━━━━━━━━━━━━━\n"
+            . "👤 <b>회원명:</b> {$userName} (연락처: {$targetUser['phone']})\n"
+            . "💵 <b>입금액:</b> " . number_format($amountKrw) . " KRW\n"
+            . "💳 <b>구분:</b> {$paymentType}\n"
+            . "📅 <b>연장된 만료일:</b> {$newExpiresDate}\n"
+            . "⚡ <b>이용 상태:</b> 승인 완료 (정상 가동 🟢)\n"
+            . "━━━━━━━━━━━━━━━━━━━\n\n"
+            . "🚀 <i>누리오 AI 트레이더가 24시간 실시간 감시를 이어갑니다.</i>";
+
+        sendTelegramAdminAlert($alertMsg, $userChatId);
+
+        echo json_encode([
+            'success' => true,
+            'message' => "{$userName}님의 입금이 확인되어 1개월(+30일) 연장 승인되었습니다! (만료일: {$newExpiresDate})",
+            'subscriptionExpiresAt' => $newExpiresDate,
+            'approvalStatus' => 'APPROVED'
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // 5-C. GET payment/upbit-deposits : 개발자 업비트 API 입금 내역 조회 (자동 입금 감지용)
+    if ($path === 'payment/upbit-deposits' && $method === 'GET') {
+        $accessKey = getenv('UPBIT_ACCESS_KEY') ?: '';
+        $secretKey = getenv('UPBIT_SECRET_KEY') ?: '';
+
+        if (!$accessKey || !$secretKey) {
+            echo json_encode(['success' => false, 'error' => '업비트 API 키가 설정되지 않았습니다.', 'deposits' => []]);
+            exit;
+        }
+
+        $deposits = fetchUpbitDeposits($accessKey, $secretKey, 'KRW');
+        echo json_encode([
+            'success' => true,
+            'count' => count($deposits),
+            'deposits' => $deposits
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }
@@ -924,7 +1183,12 @@ try {
             $slotId
         ]);
 
-        // 텔레그램 매수 알림
+        // 텔레그램 매수 알림 (유저 등록 Telegram ID + 관리자 모두 전송)
+        $uStmt = $pdo->prepare("SELECT telegram_chat_id FROM nurioh_users WHERE id = ?");
+        $uStmt->execute([$userId]);
+        $uRow = $uStmt->fetch();
+        $userChatId = $uRow['telegram_chat_id'] ?? null;
+
         $timeStr = date('Y-m-d H:i:s');
         $buyAlertMsg = "<b>⚡ [실시간 급등 감지 매수 체결]</b>\n\n" .
                        "🎰 <b>배정 슬롯:</b> <b>{$slotId}번 슬롯</b>\n" .
@@ -932,7 +1196,7 @@ try {
                        "💵 <b>매수 금액:</b> " . number_format((int)$tradeAmount) . " KRW\n" .
                        "📊 <b>진입 단가:</b> " . number_format($calcPrice) . " KRW\n" .
                        "⏱ <b>체결 시각:</b> {$timeStr}\n";
-        sendTelegramAdminAlert($buyAlertMsg);
+        sendTelegramAdminAlert($buyAlertMsg, $userChatId);
 
         echo json_encode([
             'success' => true,
@@ -1040,7 +1304,11 @@ try {
                     "⚡ <b>업비트 주문:</b> {$upbitOrderInfo}\n" .
                     "⏱ <b>청산 시각:</b> {$timeStr}\n";
 
-        sendTelegramAdminAlert($alertMsg);
+        $uStmt = $pdo->prepare("SELECT telegram_chat_id FROM nurioh_users WHERE id = ?");
+        $uStmt->execute([$userId]);
+        $uRow = $uStmt->fetch();
+        $userChatId = $uRow['telegram_chat_id'] ?? null;
+        sendTelegramAdminAlert($alertMsg, $userChatId);
 
         echo json_encode([
             'success' => true,
@@ -1090,6 +1358,110 @@ try {
             'success' => true,
             'message' => '업비트 API 키가 성공적으로 연결되었습니다!',
             'accountsCount' => count($testAccounts)
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // 9-1. GET upbit/diagnostic : 업비트 API 4단계 통신 정밀 진단 (IP, 조회, 주문, 시세)
+    if ($path === 'upbit/diagnostic' && $method === 'GET') {
+        $userId = (int)($_GET['userId'] ?? 1);
+        $serverIp = getOutboundServerIp();
+
+        $keyStmt = $pdo->prepare("SELECT access_key_enc, secret_key_enc FROM nurioh_user_apikeys WHERE user_id = ? AND is_valid = 1");
+        $keyStmt->execute([$userId]);
+        $keyInfo = $keyStmt->fetch();
+
+        $hasKeys = (bool)($keyInfo && $keyInfo['access_key_enc'] && $keyInfo['secret_key_enc']);
+        $readOk = false;
+        $orderOk = false;
+        $publicFeedOk = false;
+        $accountsCount = 0;
+        $krwBalance = 0;
+        $readError = null;
+        $orderError = null;
+
+        // 1. 공용 시세 API 통신 검사
+        $tickerCh = curl_init();
+        curl_setopt($tickerCh, CURLOPT_URL, 'https://api.upbit.com/v1/ticker?markets=KRW-BTC');
+        curl_setopt($tickerCh, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($tickerCh, CURLOPT_TIMEOUT, 3);
+        curl_setopt($tickerCh, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($tickerCh, CURLOPT_SSL_VERIFYHOST, false);
+        $tickerRes = curl_exec($tickerCh);
+        $tickerHttpCode = curl_getinfo($tickerCh, CURLINFO_HTTP_CODE);
+        curl_close($tickerCh);
+        $publicFeedOk = ($tickerHttpCode === 200 && $tickerRes);
+
+        // 2. Private API 키 검증 (조회 & 주문 권한)
+        if ($hasKeys) {
+            $accessKey = base64_decode($keyInfo['access_key_enc']);
+            $secretKey = base64_decode($keyInfo['secret_key_enc']);
+
+            // 자산 조회 권한 검사
+            $accounts = fetchUpbitAccounts($accessKey, $secretKey, $readError);
+            if (!empty($accounts)) {
+                $readOk = true;
+                $accountsCount = count($accounts);
+                foreach ($accounts as $acc) {
+                    if (($acc['currency'] ?? '') === 'KRW') {
+                        $krwBalance = (float)($acc['balance'] ?? 0);
+                        break;
+                    }
+                }
+            }
+
+            // 주문 권한 검사 (주문 찬스 API)
+            $chance = fetchUpbitOrderChance($accessKey, $secretKey, 'KRW-BTC', $orderError);
+            if ($chance && isset($chance['bid_fee'])) {
+                $orderOk = true;
+            }
+        }
+
+        echo json_encode([
+            'success' => true,
+            'serverIp' => $serverIp,
+            'hasKeys' => $hasKeys,
+            'diagnostic' => [
+                'hostingIp' => [
+                    'status' => 'OK',
+                    'ip' => $serverIp,
+                    'message' => "호스팅 서버 공인 IP [{$serverIp}] 정상 작동 중"
+                ],
+                'publicMarketFeed' => [
+                    'status' => $publicFeedOk ? 'SUCCESS' : 'FAILED',
+                    'message' => $publicFeedOk ? '업비트 실시간 시세 감시 신호 정상 통신' : '시세 서버 응답 지연'
+                ],
+                'accountRead' => [
+                    'status' => $readOk ? 'SUCCESS' : 'FAILED',
+                    'accountsCount' => $accountsCount,
+                    'krwBalance' => $krwBalance,
+                    'message' => $readOk ? "계좌 잔고 조회 권한 정상 (보유 자산 {$accountsCount}개 종목)" : ($hasKeys ? "조회 실패: {$readError}" : "API 키 미등록")
+                ],
+                'orderExecution' => [
+                    'status' => $orderOk ? 'SUCCESS' : 'FAILED',
+                    'message' => $orderOk ? "업비트 매수/매도 주문 권한 완벽 승인됨 (즉시 체결 가능)" : ($hasKeys ? "주문 권한 확인 실패: {$orderError}" : "API 키 미등록")
+                ]
+            ]
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // 9-2. POST auth/telegram : 텔레그램 연동 및 실시간 매수/매도 알림 설정
+    if ($path === 'auth/telegram' && $method === 'POST') {
+        $userId = (int)($input['userId'] ?? 1);
+        $chatId = trim((string)($input['chatId'] ?? $input['telegramId'] ?? ''));
+
+        $stmt = $pdo->prepare("UPDATE nurioh_users SET telegram_chat_id = ? WHERE id = ?");
+        $stmt->execute([$chatId ?: null, $userId]);
+
+        if ($chatId) {
+            sendTelegramAdminAlert("🎉 <b>[NURIOH 트레이더 텔레그램 연동 완료]</b>\n\n회원님의 계정과 텔레그램 알림이 성공적으로 연결되었습니다!\n현재 시험운영 모드로 <b>실시간 급등 매수 및 매도(익절/손절) 신호</b>가 모두 전송됩니다. 🚀", $chatId);
+        }
+
+        echo json_encode([
+            'success' => true,
+            'message' => '텔레그램 연동이 완료되었습니다! 확인 메시지가 텔레그램으로 전송되었습니다.',
+            'telegramId' => $chatId
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }
@@ -1158,15 +1530,70 @@ try {
         exit;
     }
 
-    // 14. POST panic-sell : 전량 긴급 매도
+    // 14. POST panic-sell : 전량 긴급 매도 (전체 코인 업비트 시장가 즉시 매도)
     if ($path === 'panic-sell' && $method === 'POST') {
         $userId = (int)($input['userId'] ?? 1);
-        $pdo->prepare("UPDATE nurioh_slots SET position_status = 'IDLE', entry_price = NULL, entry_volume = NULL, highest_price = NULL, highest_profit_pct = 0 WHERE user_id = ?")
+
+        // 사용자 API 키 조회
+        $keyStmt = $pdo->prepare("SELECT access_key_enc, secret_key_enc FROM nurioh_user_apikeys WHERE user_id = ? AND is_valid = 1");
+        $keyStmt->execute([$userId]);
+        $keyInfo = $keyStmt->fetch();
+
+        $sellOrders = [];
+        $orderErrors = [];
+
+        if ($keyInfo && $keyInfo['access_key_enc'] && $keyInfo['secret_key_enc']) {
+            $accessKey = base64_decode($keyInfo['access_key_enc']);
+            $secretKey = base64_decode($keyInfo['secret_key_enc']);
+
+            $accErr = null;
+            $accounts = fetchUpbitAccounts($accessKey, $secretKey, $accErr);
+
+            foreach ($accounts as $acc) {
+                if (($acc['currency'] ?? '') === 'KRW') continue;
+                $bal = (float)($acc['balance'] ?? 0);
+                if ($bal <= 0) continue;
+
+                $mkt = "KRW-{$acc['currency']}";
+                $formattedVolume = rtrim(rtrim(sprintf('%.8f', $bal), '0'), '.');
+                $orderParams = [
+                    'market' => $mkt,
+                    'side' => 'ask',
+                    'volume' => $formattedVolume,
+                    'ord_type' => 'market'
+                ];
+                $orderErr = null;
+                $orderRes = executeUpbitOrder($accessKey, $secretKey, $orderParams, $orderErr);
+                if ($orderRes) {
+                    $sellOrders[] = ['market' => $mkt, 'volume' => $formattedVolume, 'order' => $orderRes];
+                } else {
+                    $orderErrors[] = "{$mkt}: {$orderErr}";
+                }
+            }
+        }
+
+        // 전체 슬롯 초기화
+        $pdo->prepare("UPDATE nurioh_slots SET position_status = 'IDLE', entry_price = NULL, entry_volume = NULL, entry_amount_krw = NULL, highest_price = NULL, highest_profit_pct = 0 WHERE user_id = ?")
             ->execute([$userId]);
+
+        // 📢 텔레그램 긴급 매도 알림 발송
+        $uStmt = $pdo->prepare("SELECT telegram_chat_id FROM nurioh_users WHERE id = ?");
+        $uStmt->execute([$userId]);
+        $uRow = $uStmt->fetch();
+        $userChatId = $uRow['telegram_chat_id'] ?? null;
+
+        $orderSummary = count($sellOrders) > 0 
+            ? "총 " . count($sellOrders) . "개 코인 시장가 매도 접수 완료"
+            : (count($orderErrors) > 0 ? "매도 실패 (" . implode(', ', $orderErrors) . ")" : "보유 코인 없음 (슬롯 초기화)");
+        sendTelegramAdminAlert("🚨 <b>[전 슬롯 긴급 매도 (Panic Sell) 집행]</b>\n\n• 회원 ID: {$userId}\n• 상태: {$orderSummary}\n• 시각: " . date('Y-m-d H:i:s'), $userChatId);
 
         echo json_encode([
             'success' => true,
-            'message' => '모든 보유 포지션이 즉시 전량 매도되었습니다.'
+            'message' => count($sellOrders) > 0 
+                ? '보유 중인 모든 암호화폐에 대해 업비트 시장가 즉시 매도 주문이 접수되었습니다.' 
+                : '모든 슬롯이 초기화되었습니다.' . (count($orderErrors) > 0 ? ' (' . implode(' / ', $orderErrors) . ')' : ''),
+            'orders' => $sellOrders,
+            'errors' => $orderErrors
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }
@@ -1220,6 +1647,21 @@ try {
             highest_profit_pct = 0 
             WHERE user_id = ? AND slot_id = ?");
         $stmt->execute([$market, $price, $volume, $price, $userId, $slotId]);
+
+        // 📢 텔레그램 매수 알림 발송 (유저 + 관리자)
+        $uStmt = $pdo->prepare("SELECT telegram_chat_id FROM nurioh_users WHERE id = ?");
+        $uStmt->execute([$userId]);
+        $uRow = $uStmt->fetch();
+        $userChatId = $uRow['telegram_chat_id'] ?? null;
+
+        $timeStr = date('Y-m-d H:i:s');
+        $surgeAlertMsg = "<b>⚡ [실시간 급등 감지 매수 체결]</b>\n\n" .
+                         "🎰 <b>배정 슬롯:</b> <b>{$slotId}번 슬롯</b>\n" .
+                         "📌 <b>매수 코인:</b> <code>{$market}</code>\n" .
+                         "💵 <b>매수 금액:</b> " . number_format((int)$tradeAmount) . " KRW\n" .
+                         "📊 <b>진입 단가:</b> " . number_format($price) . " KRW\n" .
+                         "⏱ <b>체결 시각:</b> {$timeStr}\n";
+        sendTelegramAdminAlert($surgeAlertMsg, $userChatId);
 
         echo json_encode([
             'success' => true,

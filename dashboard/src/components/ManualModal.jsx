@@ -299,7 +299,7 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
                 대표님 & 운영자님의 소중한 아이디어를 들려주세요! 💌
               </h4>
               <p className="text-slate-200 leading-relaxed text-xs sm:text-sm">
-                "이런 매매 지표를 추가하고 싶어요", "이 버튼의 위치를 바꾸고 싶어요", "새로운 전략 알고리즘을 넣고 싶어요" 등 어떤 의견이든 자유롭게 남겨주시면 AI 디자인실장 영자가 즉시 검토하여 시스템에 반영해 드립니다! ✨
+                "이런 매매 지표를 추가하고 싶어요", "이 버튼의 위치를 바꾸고 싶어요", "새로운 전략 알고리즘을 넣고 싶어요" 등 어떤 의견이든 자유롭게 남겨주시면 누리오 트레이더 개발팀이 즉시 검토하여 시스템에 반영해 드립니다! ✨
               </p>
             </div>
 

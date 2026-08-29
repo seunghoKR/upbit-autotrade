@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Layers, 
   Flame, 
@@ -752,32 +753,48 @@ export default function SlotManager({
         })}
       </div>
 
-      {/* 4. 슬롯별 통계 상세 팝업 모달 */}
-      {isStatsModalOpen && selectedStatsSlot && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4">
+      {/* 4. 슬롯별 통계 상세 팝업 모달 (createPortal로 document.body에 직접 마운트하여 화면 정중앙 고정) */}
+      {isStatsModalOpen && selectedStatsSlot && typeof document !== 'undefined' && createPortal(
+        <div 
+          className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 overflow-y-auto"
+          onClick={() => setIsStatsModalOpen(false)}
+        >
+          <div 
+            className="bg-slate-900 border border-emerald-500/40 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 my-auto relative animate-in fade-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-emerald-400" />
-                <h3 className="text-base font-bold text-white">
-                  {selectedStatsSlot.slotId}번 슬롯 누적 매매 통계
-                </h3>
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-emerald-500/15 border border-emerald-500/30 rounded-xl text-emerald-400 shrink-0">
+                  <BarChart3 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-1.5">
+                    <span>{selectedStatsSlot.slotId}번 슬롯 누적 매매 통계</span>
+                    <span className="text-xs text-slate-400 font-normal">({selectedStatsSlot.slotName || `${selectedStatsSlot.slotId}번 슬롯`})</span>
+                  </h3>
+                  <span className="text-[11px] text-slate-400 font-normal">실시간 자동매매 실적 및 승률 리포트</span>
+                </div>
               </div>
-              <button onClick={() => setIsStatsModalOpen(false)} className="p-1 text-slate-400 hover:text-white rounded-lg">
+              <button 
+                onClick={() => setIsStatsModalOpen(false)} 
+                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition cursor-pointer"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
+            {/* 주요 지표 3단 그리드 */}
             <div className="grid grid-cols-3 gap-2.5 text-center">
               <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
                 <span className="text-[11px] text-slate-400 block mb-1">총 거래 횟수</span>
-                <span className="text-base font-bold font-mono text-white">
+                <span className="text-base font-black font-mono text-white">
                   {selectedStatsSlot.totalTrades || 0}회
                 </span>
               </div>
               <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
                 <span className="text-[11px] text-slate-400 block mb-1">승률</span>
-                <span className="text-base font-bold font-mono text-emerald-400">
+                <span className="text-base font-black font-mono text-emerald-400">
                   {selectedStatsSlot.totalTrades > 0 
                     ? `${Math.round(((selectedStatsSlot.winTrades || 0) / selectedStatsSlot.totalTrades) * 100)}%` 
                     : '-'}
@@ -785,7 +802,7 @@ export default function SlotManager({
               </div>
               <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
                 <span className="text-[11px] text-slate-400 block mb-1">실현 손익 합계</span>
-                <span className={`text-base font-bold font-mono ${
+                <span className={`text-base font-black font-mono ${
                   (selectedStatsSlot.totalRealizedProfitKrw || 0) > 0 
                     ? 'text-rose-400' 
                     : (selectedStatsSlot.totalRealizedProfitKrw || 0) < 0 
@@ -798,29 +815,37 @@ export default function SlotManager({
               </div>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-slate-400 space-y-1.5">
-              <div className="flex justify-between">
+            {/* 세부 설정 정보 요약 */}
+            <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-slate-400 space-y-2">
+              <div className="flex justify-between items-center">
                 <span>현재 대상 코인:</span>
-                <strong className="text-white">{formatMarketName(selectedStatsSlot.targetMarket)}</strong>
+                <strong className="text-white font-bold">{formatMarketName(selectedStatsSlot.targetMarket)}</strong>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center">
                 <span>1회 매수금액:</span>
-                <strong className="text-white">{Math.round(selectedStatsSlot.tradeAmountKrw).toLocaleString()}원</strong>
+                <strong className="text-amber-300 font-bold">{Math.round(selectedStatsSlot.tradeAmountKrw).toLocaleString()} KRW</strong>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center">
                 <span>운용 전략:</span>
-                <strong className="text-emerald-400">{selectedStatsSlot.strategyType === 'SELF' ? '셀프 전략' : '운영자 추천전략'}</strong>
+                <strong className="text-emerald-400 font-bold">{selectedStatsSlot.strategyType === 'SELF' ? '셀프 맞춤 전략' : '운영자 추천전략'}</strong>
+              </div>
+              <div className="flex justify-between items-center pt-1.5 border-t border-slate-800/80 text-[11px]">
+                <span>현재 포지션 상태:</span>
+                <span className={`font-bold ${selectedStatsSlot.positionStatus === 'IN_POSITION' ? 'text-amber-400' : 'text-slate-400'}`}>
+                  {selectedStatsSlot.positionStatus === 'IN_POSITION' ? '● 포지션 보유 중 (감시/트레일링)' : '○ 진입 대기 (IDLE)'}
+                </span>
               </div>
             </div>
 
             <button
               onClick={() => setIsStatsModalOpen(false)}
-              className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition"
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-700 hover:to-slate-600 text-white font-bold text-xs transition cursor-pointer shadow-lg active:scale-[0.99]"
             >
-              닫기
+              확인 및 닫기
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
