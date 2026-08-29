@@ -42,15 +42,38 @@ function generateUpbitJwt(string $accessKey, string $secretKey, ?string $querySt
     return "Bearer {$encodedHeader}.{$encodedPayload}.{$encodedSignature}";
 }
 
-function sendTelegramAdminAlert(string $text, ?string $userChatId = null): bool {
-    $botToken = getenv('TELEGRAM_BOT_TOKEN') ?: '8801000924:AAGspDXeDkHcHyGI0CHuSxFvyq_f5vmoezU';
+function sendTelegramDirectMessage(string $text, ?string $targetChatId = null): bool {
+    $botToken = getenv('TELEGRAM_BOT_TOKEN') ?: '8801000924:AAGspDXeDkHyGI0CHuSxFvyq_f5vmoezU';
+    $targetId = trim((string)$targetChatId);
+    if (!$botToken || !$targetId) return false;
+
+    $url = "https://api.telegram.org/bot{$botToken}/sendMessage";
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+        'chat_id' => $targetId,
+        'text' => $text,
+        'parse_mode' => 'HTML'
+    ]));
+    $res = curl_exec($ch);
+    curl_close($ch);
+    return !empty($res);
+}
+
+function sendTelegramAdminAlert(string $text): bool {
+    $botToken = getenv('TELEGRAM_BOT_TOKEN') ?: '8801000924:AAGspDXeDkHyGI0CHuSxFvyq_f5vmoezU';
     $defaultAdminChatId = getenv('TELEGRAM_CHAT_ID') ?: '5618137472';
     if (!$botToken) return false;
 
     $targetChatIds = [];
     if ($defaultAdminChatId) $targetChatIds[] = $defaultAdminChatId;
 
-    // 👑 DB에 등록된 모든 운영자(OPERATOR), 관리자(ADMIN), 개발자(DEVELOPER)의 텔레그램 Chat ID 자동 수집
+    // 👑 시스템 관리용(회비입금 등): DB에 등록된 운영자/개발자의 텔레그램으로만 공지
     try {
         $pdo = Database::getConnection();
         $stmt = $pdo->query("SELECT telegram_chat_id FROM nurioh_users WHERE role IN ('ADMIN', 'OPERATOR', 'DEVELOPER') AND telegram_chat_id IS NOT NULL AND telegram_chat_id != ''");
@@ -62,28 +85,11 @@ function sendTelegramAdminAlert(string $text, ?string $userChatId = null): bool 
         }
     } catch (Exception $e) {}
 
-    if ($userChatId && !in_array($userChatId, $targetChatIds, true)) {
-        $targetChatIds[] = $userChatId;
-    }
-
     $allSuccess = true;
     foreach ($targetChatIds as $targetId) {
-        $url = "https://api.telegram.org/bot{$botToken}/sendMessage";
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 3);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
-            'chat_id' => $targetId,
-            'text' => $text,
-            'parse_mode' => 'HTML'
-        ]));
-        $res = curl_exec($ch);
-        curl_close($ch);
-        if (!$res) $allSuccess = false;
+        if (!sendTelegramDirectMessage($text, $targetId)) {
+            $allSuccess = false;
+        }
     }
     return $allSuccess;
 }
@@ -846,7 +852,7 @@ try {
                    "현재 <b>실시간 급등 매수 및 매도(익절/손절) 신호</b>가 정상 발송 대기 중입니다! 🚀\n\n" .
                    "⏱ 테스트 시각: {$timeStr}";
 
-        $sent = sendTelegramAdminAlert($testMsg, $chatId);
+        $sent = sendTelegramDirectMessage($testMsg, $chatId);
         if ($sent) {
             echo json_encode([
                 'success' => true,
@@ -974,7 +980,10 @@ try {
             . "━━━━━━━━━━━━━━━━━━━\n\n"
             . "🚀 <i>누리오 AI 트레이더가 24시간 실시간 감시를 이어갑니다.</i>";
 
-        sendTelegramAdminAlert($alertMsg, $userChatId);
+        sendTelegramAdminAlert($alertMsg);
+        if ($userChatId) {
+            sendTelegramDirectMessage($alertMsg, $userChatId);
+        }
 
         echo json_encode([
             'success' => true,
@@ -1213,7 +1222,7 @@ try {
             $slotId
         ]);
 
-        // 텔레그램 매수 체결 알림 (실제 업비트 주문 성공 시에만 발송!)
+        // 텔레그램 매수 체결 알림 (해당 슬롯 소유자 본인에게만 1:1 발송!)
         $uStmt = $pdo->prepare("SELECT telegram_chat_id FROM nurioh_users WHERE id = ?");
         $uStmt->execute([$userId]);
         $uRow = $uStmt->fetch();
@@ -1227,7 +1236,9 @@ try {
                        "📊 <b>진입 단가:</b> " . number_format($calcPrice) . " KRW\n" .
                        "⏱ <b>체결 시각:</b> {$timeStr}\n\n" .
                        "🎯 <i>실시간 트레일링 스탑 익절 감시가 시작되었습니다.</i>";
-        sendTelegramAdminAlert($buyAlertMsg, $userChatId);
+        if ($userChatId) {
+            sendTelegramDirectMessage($buyAlertMsg, $userChatId);
+        }
 
         echo json_encode([
             'success' => true,
@@ -1339,7 +1350,9 @@ try {
         $uStmt->execute([$userId]);
         $uRow = $uStmt->fetch();
         $userChatId = $uRow['telegram_chat_id'] ?? null;
-        sendTelegramAdminAlert($alertMsg, $userChatId);
+        if ($userChatId) {
+            sendTelegramDirectMessage($alertMsg, $userChatId);
+        }
 
         echo json_encode([
             'success' => true,
@@ -1486,7 +1499,7 @@ try {
         $stmt->execute([$chatId ?: null, $userId]);
 
         if ($chatId) {
-            sendTelegramAdminAlert("🎉 <b>[NURIOH 트레이더 텔레그램 연동 완료]</b>\n\n회원님의 계정과 텔레그램 알림이 성공적으로 연결되었습니다!\n현재 시험운영 모드로 <b>실시간 급등 매수 및 매도(익절/손절) 신호</b>가 모두 전송됩니다. 🚀", $chatId);
+            sendTelegramDirectMessage("🎉 <b>[NURIOH 트레이더 텔레그램 연동 완료]</b>\n\n회원님의 계정과 텔레그램 알림이 성공적으로 연결되었습니다!\n현재 시험운영 모드로 <b>실시간 급등 매수 및 매도(익절/손절) 신호</b>가 모두 전송됩니다. 🚀", $chatId);
         }
 
         echo json_encode([
@@ -1607,7 +1620,7 @@ try {
         $pdo->prepare("UPDATE nurioh_slots SET position_status = 'IDLE', entry_price = NULL, entry_volume = NULL, entry_amount_krw = NULL, highest_price = NULL, highest_profit_pct = 0 WHERE user_id = ?")
             ->execute([$userId]);
 
-        // 📢 텔레그램 긴급 매도 알림 발송
+        // 📢 텔레그램 긴급 매도 알림 발송 (해당 회원 본인에게만 발송!)
         $uStmt = $pdo->prepare("SELECT telegram_chat_id FROM nurioh_users WHERE id = ?");
         $uStmt->execute([$userId]);
         $uRow = $uStmt->fetch();
@@ -1616,7 +1629,9 @@ try {
         $orderSummary = count($sellOrders) > 0 
             ? "총 " . count($sellOrders) . "개 코인 시장가 매도 접수 완료"
             : (count($orderErrors) > 0 ? "매도 실패 (" . implode(', ', $orderErrors) . ")" : "보유 코인 없음 (슬롯 초기화)");
-        sendTelegramAdminAlert("🚨 <b>[전 슬롯 긴급 매도 (Panic Sell) 집행]</b>\n\n• 회원 ID: {$userId}\n• 상태: {$orderSummary}\n• 시각: " . date('Y-m-d H:i:s'), $userChatId);
+        if ($userChatId) {
+            sendTelegramDirectMessage("🚨 <b>[전 슬롯 긴급 매도 (Panic Sell) 집행]</b>\n\n• 회원 ID: {$userId}\n• 상태: {$orderSummary}\n• 시각: " . date('Y-m-d H:i:s'), $userChatId);
+        }
 
         echo json_encode([
             'success' => true,
@@ -1679,7 +1694,7 @@ try {
             WHERE user_id = ? AND slot_id = ?");
         $stmt->execute([$market, $price, $volume, $price, $userId, $slotId]);
 
-        // 📢 텔레그램 매수 알림 발송 (유저 + 관리자)
+        // 📢 텔레그램 매수 알림 발송 (해당 유저에게만 발송!)
         $uStmt = $pdo->prepare("SELECT telegram_chat_id FROM nurioh_users WHERE id = ?");
         $uStmt->execute([$userId]);
         $uRow = $uStmt->fetch();
@@ -1692,7 +1707,9 @@ try {
                          "💵 <b>매수 금액:</b> " . number_format((int)$tradeAmount) . " KRW\n" .
                          "📊 <b>진입 단가:</b> " . number_format($price) . " KRW\n" .
                          "⏱ <b>체결 시각:</b> {$timeStr}\n";
-        sendTelegramAdminAlert($surgeAlertMsg, $userChatId);
+        if ($userChatId) {
+            sendTelegramDirectMessage($surgeAlertMsg, $userChatId);
+        }
 
         echo json_encode([
             'success' => true,
