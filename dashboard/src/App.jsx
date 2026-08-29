@@ -135,8 +135,9 @@ export default function App() {
   const [currentRsi, setCurrentRsi] = useState(50);
   const [currentBb, setCurrentBb] = useState(null);
 
-  // 회원 등급에 따른 슬롯 개수 제한 적용 (Free: 1개, Pro: 3개, VIP: 9개)
-  const maxSlotsAllowed = currentUser?.maxSlots || (currentUser?.role === 'DEVELOPER' || currentUser?.role === 'ADMIN' ? 9 : 5);
+  // 회원 등급에 따른 슬롯 개수 제한 적용 (Free: 1개, Pro: 3개, VIP/운영자/개발자: 9개)
+  const isPrivileged = (currentUser?.role === 'OPERATOR' || currentUser?.role === 'DEVELOPER' || currentUser?.role === 'ADMIN' || currentUser?.tier === 'VIP');
+  const maxSlotsAllowed = isPrivileged ? 9 : (currentUser?.tier === 'PRO' ? 3 : 1);
   const effectiveSlots = (slots && slots.length > 0) ? slots : DEFAULT_SLOTS;
   const visibleSlots = effectiveSlots.slice(0, maxSlotsAllowed);
 
@@ -698,32 +699,23 @@ export default function App() {
     <div className={`min-h-screen ${getThemeBgClass()} text-slate-100 selection:bg-emerald-500 selection:text-black flex flex-col font-sans pb-12 transition-colors duration-500`}>
       {/* 글로벌 네비게이션 헤더 */}
       <Header
+        user={currentUser}
+        hasApiKey={!accountError && hasRealAccounts}
         botRunning={botRunning}
         onToggleBot={handleToggleBot}
         onOpen2FA={() => setIs2FAModalOpen(true)}
         is2FAActive={is2FAActive}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-        onOpenGuide={() => setIsGuideOpen(true)}
-        onOpenPanicSell={() => setIsPanicSellOpen(true)}
         onOpenOperatorDashboard={() => setIsOperatorDashboardOpen(true)}
+        onOpenAdmin={() => setIsAdminUsersOpen(true)}
+        onOpenMyPage={() => setIsMyPageOpen(true)}
         onOpenManual={() => setIsManualOpen(true)}
+        onLogout={handleLogout}
         onRefresh={loadData}
-        livePrice={livePrice}
       />
 
       {/* 메인 콘텐츠 영역 (상단 헤더와 좌우 라인 100% 일치) */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-6">
-        {/* 🟡 유료 회원 구독 상태 & 카카오 온보딩 바 */}
-        <SubscriptionCard
-          user={currentUser}
-          hasApiKey={!accountError && hasRealAccounts}
-          onOpenMyPage={() => setIsMyPageOpen(true)}
-          onOpenApiModal={() => setIsApiModalOpen(true)}
-          onOpenPricing={() => setIsPricingOpen(true)}
-          onOpenAdmin={() => setIsAdminUsersOpen(true)}
-          onOpenKakaoLogin={() => setIsKakaoModalOpen(true)}
-          onLogout={handleLogout}
-        />
+        {/* 계좌 잔고 요약 카드 */}
 
         {/* 계좌 잔고 요약 카드 */}
         <BalanceCard 

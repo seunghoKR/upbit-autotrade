@@ -82,9 +82,10 @@ export default function MyPageModal({
 
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const prevIsOpenRef = React.useRef(false);
 
   useEffect(() => {
-    if (isOpen && user) {
+    if (isOpen && !prevIsOpenRef.current && user) {
       setName(user.name || user.nickname || '');
       setPhone(user.phone && user.phone !== '010-0000-0000' ? formatPhoneNumber(user.phone) : '');
       setEmail(user.email || '');
@@ -112,7 +113,8 @@ export default function MyPageModal({
         setSlotLimits(limits);
       }
     }
-  }, [isOpen]);
+    prevIsOpenRef.current = isOpen;
+  }, [isOpen, user]);
 
   if (!isOpen) return null;
 
@@ -556,7 +558,7 @@ export default function MyPageModal({
               </h4>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {slots.slice(0, user?.maxSlots || 5).map((slot) => {
+                {slots.slice(0, user?.maxSlots || 9).map((slot) => {
                   const currentVal = slotLimits[slot.slotId] ?? (slot.tradeAmountKrw || 50000);
                   return (
                     <div key={slot.slotId} className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 flex items-center justify-between gap-2">
