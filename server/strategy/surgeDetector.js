@@ -41,6 +41,15 @@ class SurgeDetector {
 
     if (!market || !price || isNaN(price)) return;
 
+    // 🚫 제외 코인(EXCLUDED_MARKETS)은 급등 감지기에서 100% 즉시 제외
+    if (Array.isArray(settings.EXCLUDED_MARKETS)) {
+      const excluded = settings.EXCLUDED_MARKETS.map(m => String(m).trim().toUpperCase());
+      const shortSym = market.replace('KRW-', '').toUpperCase();
+      if (excluded.includes(market.toUpperCase()) || excluded.includes(shortSym) || excluded.includes(`KRW-${shortSym}`)) {
+        return;
+      }
+    }
+
     if (!this.tickBuffers.has(market)) {
       this.tickBuffers.set(market, []);
     }

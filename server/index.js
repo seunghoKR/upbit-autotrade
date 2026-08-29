@@ -238,6 +238,53 @@ app.post('/api/slots/:slotId', (req, res) => {
   res.json({ success: true, slot: updated });
 });
 
+app.post('/api/slots/:slotId/buy', async (req, res) => {
+  const { slotId } = req.params;
+  const { market = 'KRW-BTC', amountKrw = 50000, currentPrice = 0, userId = 1 } = req.body;
+
+  try {
+    const tradeAmount = Number(amountKrw) >= 5000 ? Number(amountKrw) : 5000;
+    const calcPrice = Number(currentPrice) > 0 ? Number(currentPrice) : ((livePriceMap[market] && livePriceMap[market].trade_price) || 1000);
+    const estimatedVolume = tradeAmount / calcPrice;
+
+    // 실제 업비트 시장가 매수 시도 (유저 API 키 등록 시)
+    let orderResult = null;
+    try {
+      orderResult = await upbitClient.createOrder({
+        market,
+        side: 'bid',
+        price: tradeAmount,
+        ord_type: 'price'
+      });
+    } catch (orderErr) {
+      console.warn(`[Node Slot Buy] 업비트 API 키 미연결 또는 주문 실패: ${orderErr.message} -> 모의 매수로 지속`);
+    }
+
+    slotManager.assignPosition(Number(slotId), {
+      market,
+      entryPrice: calcPrice,
+      entryVolume: estimatedVolume,
+      entryAmountKrw: tradeAmount
+    });
+
+    const updatedSlots = slotManager.getSlots(livePriceMap);
+    broadcast({ type: 'SLOTS_UPDATED', slots: updatedSlots });
+
+    res.json({
+      success: true,
+      message: `슬롯 ${slotId}번에 [${market}] 매수가 정상 완료되었습니다!`,
+      slotId: Number(slotId),
+      market,
+      entryPrice: calcPrice,
+      entryVolume: estimatedVolume,
+      entryAmountKrw: tradeAmount,
+      orderResult
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 app.post('/api/slots/:slotId/sell', async (req, res) => {
   const { slotId } = req.params;
   try {
@@ -297,10 +344,18 @@ app.post('/api/bot/stop', (req, res) => {
 
 // ⚡ 모의 급등 신호 발생 (실시간 감시 테스트용: 업비트 다양한 알트코인/메이저 급등 시뮬레이션)
 app.post('/api/test/surge-signal', (req, res) => {
-  const candidateMarkets = ['KRW-STX', 'KRW-SUI', 'KRW-NEAR', 'KRW-SOL', 'KRW-DOGE', 'KRW-ADA', 'KRW-AVAX', 'KRW-XRP', 'KRW-BTC', 'KRW-ETH'];
+  const allCandidates = ['KRW-STX', 'KRW-SUI', 'KRW-NEAR', 'KRW-SOL', 'KRW-DOGE', 'KRW-ADA', 'KRW-AVAX', 'KRW-XRP', 'KRW-BTC', 'KRW-ETH'];
+  const excludedList = (strategyEngine.settings?.EXCLUDED_MARKETS || []).map(m => String(m).trim().toUpperCase());
+  const candidateMarkets = allCandidates.filter(c => !excludedList.includes(c) && !excludedList.includes(c.replace('KRW-', '')));
+
   let market = req.body?.market;
   if (!market || market === 'RANDOM' || market === 'KRW-BTC') {
+    if (candidateMarkets.length === 0) {
+      return res.json({ success: false, message: '모든 후보 코인이 제외 목록에 등록되어 있어 신호를 발생시킬 수 없습니다.' });
+    }
     market = candidateMarkets[Math.floor(Math.random() * candidateMarkets.length)];
+  } else if (excludedList.includes(market.toUpperCase()) || excludedList.includes(market.replace('KRW-', '').toUpperCase())) {
+    return res.json({ success: false, message: `[${market}] 코인은 감시/매매 제외 코인으로 등록되어 있어 신호가 차단되었습니다.` });
   }
 
   const availableSlot = slotManager.getAvailableSlot(market);

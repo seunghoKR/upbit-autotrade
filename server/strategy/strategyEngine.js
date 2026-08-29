@@ -23,6 +23,16 @@ class StrategyEngine {
     surgeDetector.onSurge(async (surge) => {
       if (!this.isRunning) return;
 
+      // 🚫 제외 코인(EXCLUDED_MARKETS) 이중 방어 체크
+      if (Array.isArray(this.settings.EXCLUDED_MARKETS)) {
+        const excluded = this.settings.EXCLUDED_MARKETS.map(m => String(m).trim().toUpperCase());
+        const shortSym = (surge.market || '').replace('KRW-', '').toUpperCase();
+        if (excluded.includes((surge.market || '').toUpperCase()) || excluded.includes(shortSym) || excluded.includes(`KRW-${shortSym}`)) {
+          console.log(`ℹ️ [급등 감지 제외] ${surge.market}은(는) 제외 코인 목록에 등록되어 있어 매수를 건너뜁니다.`);
+          return;
+        }
+      }
+
       const availableSlot = slotManager.getAvailableSlot(surge.market);
       if (!availableSlot) {
         console.log(`ℹ️ [급등 감지됨] ${surge.market}이나 현재 비어있는 사용 가능 슬롯이 없습니다.`);

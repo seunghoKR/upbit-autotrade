@@ -8,13 +8,9 @@ export default defineConfig({
     tailwindcss()
   ],
   build: {
-    rollupOptions: {
-      output: {
-        entryFileNames: `assets/app-[name]-[hash].js`,
-        chunkFileNames: `assets/chunk-[name]-[hash].js`,
-        assetFileNames: `assets/asset-[name]-[hash].[ext]`
-      }
-    }
+    outDir: 'dist',
+    emptyOutDir: true,
+    target: 'es2020'
   },
   server: {
     host: true,

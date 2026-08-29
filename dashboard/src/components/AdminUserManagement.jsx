@@ -107,8 +107,8 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
               </h3>
               <p className="text-xs text-slate-400">
                 {isDeveloper 
-                  ? '운영자 임명, VIP / PRO / 무료방문자 플랜 변경 및 무료 회원 이용 승인을 총괄 관리합니다.' 
-                  : '회원들의 플랜 변경(VIP/PRO/무료) 및 무료 회원 이용 승인/만료일을 관리합니다.'}
+                  ? '👑 개발자 권한: [무료 | PRO 플랜 | VIP 플랜 | 운영자 지정] 모든 등급과 권한을 총괄 관리합니다.' 
+                  : '📊 운영자 권한: [무료 | PRO 플랜 | VIP 플랜] 회원들의 등급 지정 및 이용 기간을 관리합니다.'}
               </p>
             </div>
           </div>
@@ -357,51 +357,96 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
                       {/* 플랜 및 권한 변경 액션 */}
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                          {/* 👑 개발자만 운영자 임명/해제 가능 */}
+                          {/* 🟢 무료 전환/지정 버튼 */}
+                          <button
+                            onClick={() => handleUpdateUser(
+                              user.id, 
+                              { tier: 'FREE_TRIAL', role: 'USER', approvalStatus: 'APPROVED', addDays: 30 }, 
+                              `회원 #${user.id} (${user.name || user.nickname})님이 [무료 플랜 (1슬롯)]으로 변경되었습니다.`
+                            )}
+                            className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition cursor-pointer flex items-center gap-1 ${
+                              (!isOperator && user.tier === 'FREE_TRIAL')
+                                ? 'bg-slate-700 text-white border-slate-500 ring-2 ring-slate-400 shadow-md font-black'
+                                : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-white hover:bg-slate-800'
+                            }`}
+                            title="무료 플랜 지정 (1슬롯, 30일)"
+                          >
+                            {(!isOperator && user.tier === 'FREE_TRIAL') && <Check className="w-3 h-3 text-emerald-400 stroke-[3]" />}
+                            <span>무료 (1슬롯)</span>
+                          </button>
+
+                          {/* 🔵 PRO 플랜 지정 버튼 */}
+                          <button
+                            onClick={() => handleUpdateUser(
+                              user.id, 
+                              { tier: 'PRO', role: 'USER', approvalStatus: 'APPROVED', addDays: 30 }, 
+                              `회원 #${user.id} (${user.name || user.nickname})님이 [PRO 플랜 (3슬롯, +30일)]으로 변경되었습니다.`
+                            )}
+                            className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition cursor-pointer flex items-center gap-1 ${
+                              (!isOperator && isPro)
+                                ? 'bg-indigo-600 text-white border-indigo-400 ring-2 ring-indigo-400 shadow-lg shadow-indigo-500/20 font-black'
+                                : 'bg-indigo-950/40 text-indigo-300 border-indigo-500/30 hover:bg-indigo-900/60 hover:text-white'
+                            }`}
+                            title="PRO 플랜 지정 (3슬롯, +30일)"
+                          >
+                            {(!isOperator && isPro) ? (
+                              <Check className="w-3 h-3 text-white stroke-[3]" />
+                            ) : (
+                              <Zap className="w-3 h-3 text-indigo-400" />
+                            )}
+                            <span>PRO (3슬롯)</span>
+                          </button>
+
+                          {/* 🟡 VIP 플랜 지정 버튼 */}
+                          <button
+                            onClick={() => handleUpdateUser(
+                              user.id, 
+                              { tier: 'VIP', role: 'USER', approvalStatus: 'APPROVED', addDays: 30 }, 
+                              `회원 #${user.id} (${user.name || user.nickname})님이 [VIP 플랜 (9슬롯, +30일)]으로 변경되었습니다.`
+                            )}
+                            className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition cursor-pointer flex items-center gap-1 ${
+                              (!isOperator && isVip)
+                                ? 'bg-amber-500 text-black border-amber-300 ring-2 ring-amber-400 shadow-lg shadow-amber-500/25 font-black'
+                                : 'bg-amber-950/40 text-amber-300 border-amber-500/30 hover:bg-amber-900/60 hover:text-amber-100'
+                            }`}
+                            title="VIP 플랜 지정 (9슬롯, +30일)"
+                          >
+                            {(!isOperator && isVip) ? (
+                              <Check className="w-3 h-3 text-black stroke-[3]" />
+                            ) : (
+                              <Crown className="w-3 h-3 text-amber-400" />
+                            )}
+                            <span>VIP (9슬롯)</span>
+                          </button>
+
+                          {/* 🟣 운영자 지정/해제 버튼 (개발자 전용 권한) */}
                           {isDeveloper && (
                             <button
                               onClick={() => handleUpdateUser(
                                 user.id, 
-                                { role: isOperator ? 'USER' : 'OPERATOR', tier: isOperator ? 'PRO' : 'VIP', approvalStatus: 'APPROVED' },
-                                `회원 #${user.id} 권한이 ${isOperator ? '일반회원' : '운영자'}로 변경되었습니다.`
+                                { 
+                                  role: isOperator ? 'USER' : 'OPERATOR', 
+                                  tier: isOperator ? 'PRO' : 'VIP', 
+                                  approvalStatus: 'APPROVED',
+                                  addDays: isOperator ? 30 : 9999
+                                },
+                                `회원 #${user.id} (${user.name || user.nickname})님의 권한이 [${isOperator ? '일반회원' : '운영자 (9슬롯, 마스터 권한)'}]으로 변경되었습니다.`
                               )}
-                              className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition cursor-pointer ${
+                              className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition cursor-pointer flex items-center gap-1 ${
                                 isOperator
-                                  ? 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
-                                  : 'bg-purple-600/30 hover:bg-purple-600 text-purple-200 border-purple-500/40'
+                                  ? 'bg-purple-600 text-white border-purple-400 ring-2 ring-purple-400 shadow-lg shadow-purple-500/30 font-black'
+                                  : 'bg-purple-950/40 text-purple-300 border-purple-500/30 hover:bg-purple-900/60 hover:text-white'
                               }`}
-                              title={isOperator ? '운영자 권한 해제' : '운영자로 임명'}
+                              title={isOperator ? '운영자 권한 해제' : '운영자로 임명 (9슬롯, 전략 및 회원관리 권한 부여)'}
                             >
-                              {isOperator ? '운영자 해제' : '운영자 임명'}
+                              {isOperator ? (
+                                <Check className="w-3 h-3 text-white stroke-[3]" />
+                              ) : (
+                                <Shield className="w-3 h-3 text-purple-400" />
+                              )}
+                              <span>{isOperator ? '운영자' : '운영자 지정'}</span>
                             </button>
                           )}
-
-                          {/* VIP 승급 버튼 */}
-                          <button
-                            onClick={() => handleUpdateUser(user.id, { tier: 'VIP', role: user.role, approvalStatus: 'APPROVED', addDays: 30 }, `회원 #${user.id}님이 VIP 플랜(+30일)으로 승급되었습니다.`)}
-                            className="px-2 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 border border-amber-500/30 text-[10px] font-extrabold transition cursor-pointer"
-                            title="VIP 플랜 승급 (+30일, 9슬롯)"
-                          >
-                            VIP 플랜
-                          </button>
-
-                          {/* PRO 승급 버튼 */}
-                          <button
-                            onClick={() => handleUpdateUser(user.id, { tier: 'PRO', role: user.role, approvalStatus: 'APPROVED', addDays: 30 }, `회원 #${user.id}님이 PRO 플랜(+30일)으로 승급되었습니다.`)}
-                            className="px-2 py-1 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 border border-indigo-500/30 text-[10px] font-extrabold transition cursor-pointer"
-                            title="PRO 플랜 승급 (+30일, 3슬롯)"
-                          >
-                            PRO 플랜
-                          </button>
-
-                          {/* 무료방문자 전환 버튼 */}
-                          <button
-                            onClick={() => handleUpdateUser(user.id, { tier: 'FREE_TRIAL', role: 'USER', approvalStatus: 'APPROVED', addDays: 3 }, `회원 #${user.id}님이 무료방문자(3일)로 변경되었습니다.`)}
-                            className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[10px] font-semibold transition cursor-pointer"
-                            title="무료방문자 전환 (+3일, 1슬롯)"
-                          >
-                            무료전환
-                          </button>
                         </div>
                       </td>
                     </tr>

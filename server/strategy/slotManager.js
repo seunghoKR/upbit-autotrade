@@ -41,8 +41,9 @@ class SlotManager {
       let profitRate = 0;
       let profitKrw = 0;
       let currentValuation = 0;
+      const hasPos = Boolean(slot.position && slot.position.entryPrice > 0 && slot.targetMarket);
 
-      if (slot.position && slot.position.entryPrice > 0 && slot.targetMarket) {
+      if (hasPos) {
         const liveTicker = livePriceMap[slot.targetMarket];
         currentPrice = liveTicker ? liveTicker.trade_price : slot.position.entryPrice;
         profitRate = ((currentPrice - slot.position.entryPrice) / slot.position.entryPrice) * 100;
@@ -52,6 +53,14 @@ class SlotManager {
 
       return {
         ...slot,
+        id: slot.slotId,
+        slotName: slot.name || `${slot.slotId}번 슬롯`,
+        positionStatus: hasPos ? 'IN_POSITION' : 'IDLE',
+        entryPrice: hasPos ? slot.position.entryPrice : null,
+        entryVolume: hasPos ? slot.position.entryVolume : null,
+        entryAmountKrw: hasPos ? slot.position.entryAmountKrw : null,
+        highestPrice: hasPos ? slot.position.highestPrice : null,
+        highestProfitPct: hasPos ? (slot.position.highestProfitPct || 0) : 0,
         currentPrice,
         profitRate: Number(profitRate.toFixed(2)),
         profitKrw: Math.round(profitKrw),

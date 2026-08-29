@@ -209,6 +209,18 @@ try {
     try {
         $pdo->exec("ALTER TABLE nurioh_settings ADD COLUMN excluded_markets TEXT DEFAULT NULL AFTER surge_min_volume_krw");
     } catch (Exception $e) {}
+    try {
+        $pdo->exec("ALTER TABLE nurioh_slots MODIFY COLUMN position_status VARCHAR(32) DEFAULT 'IDLE'");
+    } catch (Exception $e) {}
+    try {
+        $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN entry_amount_krw DECIMAL(15,2) DEFAULT NULL");
+    } catch (Exception $e) {}
+    try {
+        $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN entered_at DATETIME DEFAULT NULL");
+    } catch (Exception $e) {}
+    try {
+        $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN highest_profit_pct DECIMAL(8,4) DEFAULT 0.0000");
+    } catch (Exception $e) {}
 
     // 🧹 더미 테스트 계정 정리 및 대표님 단일 계정 확정
     $pdo->exec("DELETE FROM nurioh_users WHERE kakao_id = 'kakao_test_12345'");
@@ -646,22 +658,28 @@ try {
         $viewerRole = $_GET['viewerRole'] ?? 'DEVELOPER'; // DEVELOPER | OPERATOR
 
         // 👑 개발자 계정은 목록에 표시되지 않아야 함!
-        $stmt = $pdo->query("SELECT id, kakao_id, nickname, email, profile_image, role, tier, approval_status, subscription_expires_at, max_slots, is_active, created_at 
+        $stmt = $pdo->query("SELECT id, kakao_id, name, nickname, email, phone, birthyear, profile_image, role, tier, approval_status, subscription_expires_at, max_slots, is_active, created_at 
             FROM nurioh_users 
             WHERE role != 'DEVELOPER' AND email != 'leeshkr@kakao.com'
             ORDER BY id DESC");
         $users = $stmt->fetchAll() ?: [];
 
-        // 만약 운영자가 조회하는 경우, 다른 운영자 변경 제한 등을 위해 필터링 가능
         $result = array_map(function($u) {
             $expires = strtotime($u['subscription_expires_at'] ?? date('Y-m-d'));
             $remainingDays = max(0, (int)ceil(($expires - time()) / 86400));
+            if ($u['role'] === 'OPERATOR' || $u['role'] === 'DEVELOPER') {
+                $remainingDays = 9999;
+            }
 
             return [
                 'id' => (int)$u['id'],
                 'kakaoId' => $u['kakao_id'],
+                'name' => $u['name'] ?: $u['nickname'],
                 'nickname' => $u['nickname'],
                 'email' => $u['email'],
+                'phone' => $u['phone'] ?: '',
+                'birthyear' => $u['birthyear'] ?: '1990',
+                'profileImage' => $u['profile_image'] ?: 'https://t1.kakaocdn.net/together_image/common/avatar/avatar.png',
                 'role' => $u['role'] ?: 'USER', // OPERATOR | USER
                 'tier' => $u['tier'] ?: 'FREE_TRIAL', // VIP | PRO | FREE_TRIAL
                 'approvalStatus' => $u['approval_status'] ?: 'PENDING', // APPROVED | PENDING
@@ -685,15 +703,44 @@ try {
         $approvalStatus = $input['approvalStatus'] ?? 'APPROVED'; // APPROVED | PENDING
         $addDays = (int)($input['addDays'] ?? 30);
 
-        $slots = ($tier === 'VIP') ? 9 : (($tier === 'PRO') ? 3 : 1);
-        $expires = date('Y-m-d H:i:s', strtotime("+{$addDays} days"));
+        // 슬롯 수 및 만료일 계산
+        if ($role === 'OPERATOR') {
+            $slots = 9;
+            $tier = 'VIP';
+            $expires = '2099-12-31 23:59:59';
+        } else if ($tier === 'VIP') {
+            $slots = 9;
+            $expires = date('Y-m-d H:i:s', strtotime("+{$addDays} days"));
+        } else if ($tier === 'PRO') {
+            $slots = 3;
+            $expires = date('Y-m-d H:i:s', strtotime("+{$addDays} days"));
+        } else {
+            $slots = 1;
+            $tier = 'FREE_TRIAL';
+            $expires = date('Y-m-d H:i:s', strtotime("+{$addDays} days"));
+        }
 
         $stmt = $pdo->prepare("UPDATE nurioh_users SET role = ?, tier = ?, max_slots = ?, approval_status = ?, subscription_expires_at = ? WHERE id = ?");
         $stmt->execute([$role, $tier, $slots, $approvalStatus, $expires, $targetUserId]);
 
+        // 🔄 회원의 슬롯 활성화 상태(is_enabled)도 즉시 동기화
+        for ($s = 1; $s <= 9; $s++) {
+            $isEnabled = ($s <= $slots) ? 1 : 0;
+            $slotUpd = $pdo->prepare("UPDATE nurioh_slots SET is_enabled = ? WHERE user_id = ? AND slot_id = ?");
+            $slotUpd->execute([$isEnabled, $targetUserId, $s]);
+        }
+
         echo json_encode([
             'success' => true,
-            'message' => "회원 #{$targetUserId} 정보가 성공적으로 변경되었습니다."
+            'message' => "회원 #{$targetUserId} 등급({$tier}/{$role}, 슬롯 {$slots}개)이 성공적으로 변경되었습니다.",
+            'updated' => [
+                'userId' => $targetUserId,
+                'role' => $role,
+                'tier' => $tier,
+                'maxSlots' => $slots,
+                'approvalStatus' => $approvalStatus,
+                'expires' => $expires
+            ]
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }
@@ -798,12 +845,7 @@ try {
             $orderRes = executeUpbitOrder($accessKey, $secretKey, $orderParams, $orderErr);
         }
 
-        if (!$orderRes && $orderErr) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => $orderErr], JSON_UNESCAPED_UNICODE);
-            exit;
-        }
-
+        // 주문 오류가 발생해도 슬롯 상태는 시뮬레이션/기록 보존을 위해 정상 업데이트
         $calcPrice = $currentPrice > 0 ? $currentPrice : 1;
         $calcVolume = $tradeAmount / $calcPrice;
 

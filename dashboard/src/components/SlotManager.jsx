@@ -204,7 +204,7 @@ export default function SlotManager({
         <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1.5 scrollbar-none border-b border-slate-800/60">
           {displaySlots.map((slot) => {
             const isSelected = (selectedSlotId === slot.slotId);
-            const hasPosition = slot.positionStatus === 'IN_POSITION';
+            const hasPosition = (slot.positionStatus === 'IN_POSITION' || slot.positionStatus === 'HOLDING' || slot.positionStatus === 'TRAILING_ACTIVE') || Boolean(slot.entryPrice && slot.entryPrice > 0);
             return (
               <button
                 key={slot.slotId}
@@ -241,7 +241,7 @@ export default function SlotManager({
         {displaySlots.map((slot) => {
           const isSelected = (selectedSlotId === slot.slotId);
           const isEditing = (editingSlotId === slot.slotId);
-          const hasPosition = (slot.positionStatus === 'IN_POSITION');
+          const hasPosition = (slot.positionStatus === 'IN_POSITION' || slot.positionStatus === 'HOLDING' || slot.positionStatus === 'TRAILING_ACTIVE') || Boolean(slot.entryPrice && slot.entryPrice > 0);
           const isSurgeCounting = (pendingSurgeCountdown && pendingSurgeCountdown.slotId === slot.slotId);
           const marketData = livePriceMap[slot.targetMarket] || {};
           const currentPrice = marketData.trade_price || slot.entryPrice || 0;

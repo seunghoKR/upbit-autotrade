@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, 
   TrendingUp, 
@@ -22,9 +22,127 @@ import {
   CheckCircle2,
   Clock,
   Settings2,
-  Ban
+  Ban,
+  Search,
+  ChevronRight
 } from 'lucide-react';
 import { getAdminUsers, updateUserTier, updateSettings, updateExcludedMarkets } from '../services/api';
+
+// 🪙 업비트 원화 마켓 전종목 메타데이터 사전 (자동완성 및 오타 방지용)
+const ALL_UPBIT_COINS = [
+  { code: 'KRW-BTC', symbol: 'BTC', nameKo: '비트코인', nameEn: 'Bitcoin' },
+  { code: 'KRW-ETH', symbol: 'ETH', nameKo: '이더리움', nameEn: 'Ethereum' },
+  { code: 'KRW-XRP', symbol: 'XRP', nameKo: '리플', nameEn: 'Ripple' },
+  { code: 'KRW-SOL', symbol: 'SOL', nameKo: '솔라나', nameEn: 'Solana' },
+  { code: 'KRW-DOGE', symbol: 'DOGE', nameKo: '도지코인', nameEn: 'Dogecoin' },
+  { code: 'KRW-ADA', symbol: 'ADA', nameKo: '에이다', nameEn: 'Cardano' },
+  { code: 'KRW-AVAX', symbol: 'AVAX', nameKo: '아발란체', nameEn: 'Avalanche' },
+  { code: 'KRW-DOT', symbol: 'DOT', nameKo: '폴카닷', nameEn: 'Polkadot' },
+  { code: 'KRW-NEAR', symbol: 'NEAR', nameKo: '니어프로토콜', nameEn: 'NEAR Protocol' },
+  { code: 'KRW-STX', symbol: 'STX', nameKo: '스택스', nameEn: 'Stacks' },
+  { code: 'KRW-SUI', symbol: 'SUI', nameKo: '수이', nameEn: 'Sui' },
+  { code: 'KRW-SHIB', symbol: 'SHIB', nameKo: '시바이누', nameEn: 'Shiba Inu' },
+  { code: 'KRW-PEPE', symbol: 'PEPE', nameKo: '페페', nameEn: 'Pepe' },
+  { code: 'KRW-LINK', symbol: 'LINK', nameKo: '체인링크', nameEn: 'Chainlink' },
+  { code: 'KRW-ETC', symbol: 'ETC', nameKo: '이더리움클래식', nameEn: 'Ethereum Classic' },
+  { code: 'KRW-BCH', symbol: 'BCH', nameKo: '비트코인캐시', nameEn: 'Bitcoin Cash' },
+  { code: 'KRW-SEI', symbol: 'SEI', nameKo: '세이', nameEn: 'Sei' },
+  { code: 'KRW-SAND', symbol: 'SAND', nameKo: '샌드박스', nameEn: 'The Sandbox' },
+  { code: 'KRW-AXS', symbol: 'AXS', nameKo: '엑시인피니티', nameEn: 'Axie Infinity' },
+  { code: 'KRW-MANA', symbol: 'MANA', nameKo: '디센트럴랜드', nameEn: 'Decentraland' },
+  { code: 'KRW-FLOW', symbol: 'FLOW', nameKo: '플로우', nameEn: 'Flow' },
+  { code: 'KRW-EOS', symbol: 'EOS', nameKo: '이오스', nameEn: 'EOS' },
+  { code: 'KRW-TRX', symbol: 'TRX', nameKo: '트론', nameEn: 'TRON' },
+  { code: 'KRW-XLM', symbol: 'XLM', nameKo: '스텔라루멘', nameEn: 'Stellar Lumens' },
+  { code: 'KRW-VET', symbol: 'VET', nameKo: '비체인', nameEn: 'VeChain' },
+  { code: 'KRW-NEO', symbol: 'NEO', nameKo: '네오', nameEn: 'NEO' },
+  { code: 'KRW-GAS', symbol: 'GAS', nameKo: '가스', nameEn: 'Gas' },
+  { code: 'KRW-QTUM', symbol: 'QTUM', nameKo: '퀀텀', nameEn: 'Qtum' },
+  { code: 'KRW-HBAR', symbol: 'HBAR', nameKo: '헤데라', nameEn: 'Hedera' },
+  { code: 'KRW-ALGO', symbol: 'ALGO', nameKo: '알고랜드', nameEn: 'Algorand' },
+  { code: 'KRW-ICP', symbol: 'ICP', nameKo: '인터넷컴퓨터', nameEn: 'Internet Computer' },
+  { code: 'KRW-APT', symbol: 'APT', nameKo: '앱토스', nameEn: 'Aptos' },
+  { code: 'KRW-POL', symbol: 'POL', nameKo: '폴리곤', nameEn: 'Polygon' },
+  { code: 'KRW-WAVES', symbol: 'WAVES', nameKo: '웨이브', nameEn: 'Waves' },
+  { code: 'KRW-KNC', symbol: 'KNC', nameKo: '카이버네트워크', nameEn: 'Kyber Network' },
+  { code: 'KRW-ZRX', symbol: 'ZRX', nameKo: '제로엑스', nameEn: '0x' },
+  { code: 'KRW-CHZ', symbol: 'CHZ', nameKo: '칠리즈', nameEn: 'Chiliz' },
+  { code: 'KRW-ENJ', symbol: 'ENJ', nameKo: '엔진코인', nameEn: 'Enjin Coin' },
+  { code: 'KRW-BAT', symbol: 'BAT', nameKo: '베이직어텐션토큰', nameEn: 'Basic Attention Token' },
+  { code: 'KRW-STORJ', symbol: 'STORJ', nameKo: '스토리지', nameEn: 'Storj' },
+  { code: 'KRW-SC', symbol: 'SC', nameKo: '시아코인', nameEn: 'Siacoin' },
+  { code: 'KRW-ANKR', symbol: 'ANKR', nameKo: '앵커', nameEn: 'Ankr' },
+  { code: 'KRW-GLM', symbol: 'GLM', nameKo: '골렘', nameEn: 'Golem' },
+  { code: 'KRW-WAXP', symbol: 'WAXP', nameKo: '왁스', nameEn: 'WAX' },
+  { code: 'KRW-POWR', symbol: 'POWR', nameKo: '파워렛저', nameEn: 'Power Ledger' },
+  { code: 'KRW-STRAX', symbol: 'STRAX', nameKo: '스트라티스', nameEn: 'Stratis' },
+  { code: 'KRW-MOC', symbol: 'MOC', nameKo: '모스코인', nameEn: 'Moss Coin' },
+  { code: 'KRW-TT', symbol: 'TT', nameKo: '썬더코어', nameEn: 'ThunderCore' },
+  { code: 'KRW-IQ', symbol: 'IQ', nameKo: '아이큐', nameEn: 'IQ' },
+  { code: 'KRW-CRE', symbol: 'CRE', nameKo: '캐리프로토콜', nameEn: 'Carry Protocol' },
+  { code: 'KRW-MED', symbol: 'MED', nameKo: '메디블록', nameEn: 'MediBloc' },
+  { code: 'KRW-DKA', symbol: 'DKA', nameKo: '디카르고', nameEn: 'dKargo' },
+  { code: 'KRW-AHT', symbol: 'AHT', nameKo: '아하토큰', nameEn: 'AhaToken' },
+  { code: 'KRW-META', symbol: 'META', nameKo: '메타디움', nameEn: 'Metadium' },
+  { code: 'KRW-FCT2', symbol: 'FCT2', nameKo: '피르마체인', nameEn: 'FirmaChain' },
+  { code: 'KRW-CBK', symbol: 'CBK', nameKo: '코박토큰', nameEn: 'Cobak Token' },
+  { code: 'KRW-HUM', symbol: 'HUM', nameKo: '휴먼스케이프', nameEn: 'Humanscape' },
+  { code: 'KRW-DVI', symbol: 'DVI', nameKo: '디비전', nameEn: 'Dvision Network' },
+  { code: 'KRW-MILK', symbol: 'MILK', nameKo: '밀크', nameEn: 'MiL.k' },
+  { code: 'KRW-AERGO', symbol: 'AERGO', nameKo: '아르고', nameEn: 'Aergo' },
+  { code: 'KRW-BORA', symbol: 'BORA', nameKo: '보라', nameEn: 'BORA' },
+  { code: 'KRW-AQT', symbol: 'AQT', nameKo: '알파쿼크', nameEn: 'Alpha Quark' },
+  { code: 'KRW-MVL', symbol: 'MVL', nameKo: '엠블', nameEn: 'MVL' },
+  { code: 'KRW-TON', symbol: 'TON', nameKo: '토카막네트워크', nameEn: 'Tokamak Network' },
+  { code: 'KRW-STPT', symbol: 'STPT', nameKo: '에스티피', nameEn: 'STP' },
+  { code: 'KRW-CRO', symbol: 'CRO', nameKo: '크로노스', nameEn: 'Cronos' },
+  { code: 'KRW-T', symbol: 'T', nameKo: '쓰레스홀드', nameEn: 'Threshold' },
+  { code: 'KRW-PUNDIX', symbol: 'PUNDIX', nameKo: '펀디엑스', nameEn: 'Pundi X' },
+  { code: 'KRW-CELO', symbol: 'CELO', nameKo: '셀로', nameEn: 'Celo' },
+  { code: 'KRW-ELF', symbol: 'ELF', nameKo: '엘프', nameEn: 'aelf' },
+  { code: 'KRW-CVC', symbol: 'CVC', nameKo: '시빅', nameEn: 'Civic' },
+  { code: 'KRW-ARDR', symbol: 'ARDR', nameKo: '아더', nameEn: 'Ardor' },
+  { code: 'KRW-HIVE', symbol: 'HIVE', nameKo: '하이브', nameEn: 'Hive' },
+  { code: 'KRW-KAVA', symbol: 'KAVA', nameKo: '카바', nameEn: 'Kava' },
+  { code: 'KRW-STMX', symbol: 'STMX', nameKo: '스톰엑스', nameEn: 'StormX' },
+  { code: 'KRW-HUNT', symbol: 'HUNT', nameKo: '헌트', nameEn: 'HUNT' },
+  { code: 'KRW-ATOM', symbol: 'ATOM', nameKo: '코스모스', nameEn: 'Cosmos' },
+  { code: 'KRW-XTZ', symbol: 'XTZ', nameKo: '테조스', nameEn: 'Tezos' },
+  { code: 'KRW-ZIL', symbol: 'ZIL', nameKo: '질리카', nameEn: 'Zilliqa' },
+  { code: 'KRW-IOST', symbol: 'IOST', nameKo: '아이오에스티', nameEn: 'IOST' },
+  { code: 'KRW-ICX', symbol: 'ICX', nameKo: '아이콘', nameEn: 'ICON' },
+  { code: 'KRW-THETA', symbol: 'THETA', nameKo: '쎄타토큰', nameEn: 'Theta Token' },
+  { code: 'KRW-TFUEL', symbol: 'TFUEL', nameKo: '쎄타퓨엘', nameEn: 'Theta Fuel' },
+  { code: 'KRW-MTL', symbol: 'MTL', nameKo: '메탈', nameEn: 'Metal DAO' },
+  { code: 'KRW-UPP', symbol: 'UPP', nameKo: '센티넬프로토콜', nameEn: 'Sentinel Protocol' },
+  { code: 'KRW-BLUR', symbol: 'BLUR', nameKo: '블러', nameEn: 'Blur' },
+  { code: 'KRW-BIGTIME', symbol: 'BIGTIME', nameKo: '빅타임', nameEn: 'Big Time' },
+  { code: 'KRW-ID', symbol: 'ID', nameKo: '스페이스아이디', nameEn: 'SPACE ID' },
+  { code: 'KRW-CYBER', symbol: 'CYBER', nameKo: '사이버', nameEn: 'Cyber' },
+  { code: 'KRW-ARKM', symbol: 'ARKM', nameKo: '아크엠', nameEn: 'Arkham' },
+  { code: 'KRW-PENDLE', symbol: 'PENDLE', nameKo: '펜들', nameEn: 'Pendle' },
+  { code: 'KRW-ONDO', symbol: 'ONDO', nameKo: '온도파이낸스', nameEn: 'Ondo' },
+  { code: 'KRW-G', symbol: 'G', nameKo: '그래비티', nameEn: 'Gravity' },
+  { code: 'KRW-UXLINK', symbol: 'UXLINK', nameKo: '유엑스링크', nameEn: 'UXLINK' },
+  { code: 'KRW-CARV', symbol: 'CARV', nameKo: '카브', nameEn: 'CARV' },
+  { code: 'KRW-SAFE', symbol: 'SAFE', nameKo: '세이프', nameEn: 'Safe' },
+  { code: 'KRW-MOVE', symbol: 'MOVE', nameKo: '무브', nameEn: 'Movement' },
+  { code: 'KRW-KAIA', symbol: 'KAIA', nameKo: '카이아', nameEn: 'Kaia' },
+  { code: 'KRW-TIA', symbol: 'TIA', nameKo: '셀레스티아', nameEn: 'Celestia' },
+  { code: 'KRW-W', symbol: 'W', nameKo: '웜홀', nameEn: 'Wormhole' },
+  { code: 'KRW-JUP', symbol: 'JUP', nameKo: '주피터', nameEn: 'Jupiter' },
+  { code: 'KRW-DRIFT', symbol: 'DRIFT', nameKo: '드리프트', nameEn: 'Drift' },
+  { code: 'KRW-ZRO', symbol: 'ZRO', nameKo: '레이어제로', nameEn: 'LayerZero' },
+  { code: 'KRW-BLAST', symbol: 'BLAST', nameKo: '블라스트', nameEn: 'Blast' },
+  { code: 'KRW-TAO', symbol: 'TAO', nameKo: '비텐서', nameEn: 'Bittensor' },
+  { code: 'KRW-AAVE', symbol: 'AAVE', nameKo: '에이브', nameEn: 'Aave' },
+  { code: 'KRW-UNI', symbol: 'UNI', nameKo: '유니스왑', nameEn: 'Uniswap' },
+  { code: 'KRW-CRV', symbol: 'CRV', nameKo: '커브', nameEn: 'Curve DAO Token' },
+  { code: 'KRW-MINA', symbol: 'MINA', nameKo: '미나', nameEn: 'Mina' },
+  { code: 'KRW-ASTR', symbol: 'ASTR', nameKo: '아스타', nameEn: 'Astar' },
+  { code: 'KRW-HIFI', symbol: 'HIFI', nameKo: '하이파이', nameEn: 'Hifi Finance' },
+  { code: 'KRW-GMT', symbol: 'GMT', nameKo: '스테픈', nameEn: 'STEPN' }
+];
 
 export default function OperatorDashboardModal({ 
   isOpen, 
@@ -32,7 +150,7 @@ export default function OperatorDashboardModal({
   currentSettings = {},
   onSaveSettings
 }) {
-  const [activeTab, setActiveTab] = useState('STRATEGY'); // 'STRATEGY' | 'BUSINESS' | 'EXCLUDED'
+  const [activeTab, setActiveTab] = useState('STRATEGY'); // 'STRATEGY' | 'EXCLUDED' | 'BUSINESS'
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
@@ -40,81 +158,21 @@ export default function OperatorDashboardModal({
   // 🚫 제외 코인 목록 관리
   const [excludedMarkets, setExcludedMarkets] = useState(currentSettings?.EXCLUDED_MARKETS || []);
   const [newExcludedInput, setNewExcludedInput] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
-  // 1. 운영자 트레이딩 전략 프리셋 목록
-  const [strategies, setStrategies] = useState([
-    {
-      id: 'strat_scalping',
-      name: '🚀 초단타 급등 추종 (Scalping Alpha)',
-      description: '5초 단기 급등 시 빠르게 포지션 진입 후 +3% 도달 시 트레일링 스탑 추적',
-      isDefault: true,
-      settings: {
-        DEFAULT_MARKET: 'KRW-BTC',
-        DEFAULT_TRADE_AMOUNT: 50000,
-        SURGE_CHECK_SECONDS: 5,
-        SURGE_RATE_THRESHOLD: 1.5,
-        SURGE_MIN_VOLUME_KRW: 10000000,
-        TRAILING_TARGET_PROFIT_PCT: 3.0,
-        TRAILING_CALLBACK_PCT: 1.0,
-        STOP_LOSS_PCT: 2.0,
-        APPROVAL_TIMEOUT_SECONDS: 30,
-        AUTO_EXECUTE_ON_TIMEOUT: false
-      }
-    },
-    {
-      id: 'strat_trend',
-      name: '🌊 안정형 추세 스윙 (Trend Follower)',
-      description: '15초간 안정적인 거래량 폭증 감지 시 진입하여 +5% 이상 장기 추세 익절',
-      isDefault: false,
-      settings: {
-        DEFAULT_MARKET: 'KRW-BTC',
-        DEFAULT_TRADE_AMOUNT: 100000,
-        SURGE_CHECK_SECONDS: 15,
-        SURGE_RATE_THRESHOLD: 2.5,
-        SURGE_MIN_VOLUME_KRW: 30000000,
-        TRAILING_TARGET_PROFIT_PCT: 5.0,
-        TRAILING_CALLBACK_PCT: 1.5,
-        STOP_LOSS_PCT: 3.0,
-        APPROVAL_TIMEOUT_SECONDS: 45,
-        AUTO_EXECUTE_ON_TIMEOUT: false
-      }
-    },
-    {
-      id: 'strat_breakout',
-      name: '⚡ 초고수익 불장 돌파 (Bull Breakout)',
-      description: '3초 찰나의 폭등 감지 후 즉시 매수, +7% 이상 극대화 수익 추구',
-      isDefault: false,
-      settings: {
-        DEFAULT_MARKET: 'KRW-BTC',
-        DEFAULT_TRADE_AMOUNT: 50000,
-        SURGE_CHECK_SECONDS: 3,
-        SURGE_RATE_THRESHOLD: 1.0,
-        SURGE_MIN_VOLUME_KRW: 20000000,
-        TRAILING_TARGET_PROFIT_PCT: 7.0,
-        TRAILING_CALLBACK_PCT: 2.0,
-        STOP_LOSS_PCT: 1.5,
-        APPROVAL_TIMEOUT_SECONDS: 20,
-        AUTO_EXECUTE_ON_TIMEOUT: true
-      }
-    }
-  ]);
-
-  const [activeStrategyId, setActiveStrategyId] = useState('strat_scalping');
-  const [editingStrategy, setEditingStrategy] = useState(null);
-  const [isCreatingNew, setIsCreatingNew] = useState(false);
-
-  // 신규 전략 폼 상태
-  const [strategyForm, setStrategyForm] = useState({
-    name: '',
-    description: '',
-    SURGE_CHECK_SECONDS: 5,
-    SURGE_RATE_THRESHOLD: 1.5,
-    SURGE_MIN_VOLUME_KRW: 10000000,
-    TRAILING_TARGET_PROFIT_PCT: 3.0,
-    TRAILING_CALLBACK_PCT: 1.0,
-    STOP_LOSS_PCT: 2.0,
-    APPROVAL_TIMEOUT_SECONDS: 30,
-    AUTO_EXECUTE_ON_TIMEOUT: false
+  // 👑 운영자 단일 추천 전략 (1개의 마스터 추천전략)
+  const [recommendedStrategy, setRecommendedStrategy] = useState({
+    name: '🎯 마스터 황금 추천 전략 (Official Golden Standard)',
+    description: '5초 단기 급등 시 신속 진입하여 +3% 익절 추적 및 -2% 칼손절 방어',
+    SURGE_CHECK_SECONDS: currentSettings?.SURGE_CHECK_SECONDS || 5,
+    SURGE_RATE_THRESHOLD: currentSettings?.SURGE_RATE_THRESHOLD || 1.5,
+    SURGE_MIN_VOLUME_KRW: currentSettings?.SURGE_MIN_VOLUME_KRW || 10000000,
+    TRAILING_TARGET_PROFIT_PCT: currentSettings?.TRAILING_TARGET_PROFIT_PCT || 3.0,
+    TRAILING_CALLBACK_PCT: currentSettings?.TRAILING_CALLBACK_PCT || 1.0,
+    STOP_LOSS_PCT: currentSettings?.STOP_LOSS_PCT || 2.0,
+    APPROVAL_TIMEOUT_SECONDS: currentSettings?.APPROVAL_TIMEOUT_SECONDS || 30,
+    AUTO_EXECUTE_ON_TIMEOUT: currentSettings?.AUTO_EXECUTE_ON_TIMEOUT !== undefined ? currentSettings.AUTO_EXECUTE_ON_TIMEOUT : false
   });
 
   // 비즈니스 입금 대기열
@@ -149,123 +207,111 @@ export default function OperatorDashboardModal({
   useEffect(() => {
     if (isOpen) {
       loadData();
+      if (currentSettings) {
+        setExcludedMarkets(currentSettings.EXCLUDED_MARKETS || []);
+        setRecommendedStrategy(prev => ({
+          ...prev,
+          SURGE_CHECK_SECONDS: currentSettings.SURGE_CHECK_SECONDS || prev.SURGE_CHECK_SECONDS,
+          SURGE_RATE_THRESHOLD: currentSettings.SURGE_RATE_THRESHOLD || prev.SURGE_RATE_THRESHOLD,
+          SURGE_MIN_VOLUME_KRW: currentSettings.SURGE_MIN_VOLUME_KRW || prev.SURGE_MIN_VOLUME_KRW,
+          TRAILING_TARGET_PROFIT_PCT: currentSettings.TRAILING_TARGET_PROFIT_PCT || prev.TRAILING_TARGET_PROFIT_PCT,
+          TRAILING_CALLBACK_PCT: currentSettings.TRAILING_CALLBACK_PCT || prev.TRAILING_CALLBACK_PCT,
+          STOP_LOSS_PCT: currentSettings.STOP_LOSS_PCT || prev.STOP_LOSS_PCT
+        }));
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, currentSettings]);
+
+  // 외부 클릭 시 드롭다운 닫기
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   if (!isOpen) return null;
 
-  // 1. 전략 즉시 적용 (봇에 파라미터 전달 및 브로드캐스트)
-  const handleApplyStrategy = async (strategy) => {
+  // 1. 단일 추천 전략 저장 (전체 봇 및 회원 추천 슬롯에 즉시 일괄 적용)
+  const handleSaveRecommendedStrategy = async (e) => {
+    e?.preventDefault();
     try {
-      setActiveStrategyId(strategy.id);
-      if (onSaveSettings) {
-        await onSaveSettings(strategy.settings);
-      } else {
-        await updateSettings(strategy.settings);
-      }
-      setSaveSuccessMsg(`[${strategy.name}] 전략이 활성화되어 전체 실시간 트레이딩 엔진에 즉시 적용되었습니다! 🚀`);
-      setTimeout(() => setSaveSuccessMsg(''), 4000);
-    } catch (err) {
-      alert('전략 적용 실패: ' + err.message);
-    }
-  };
-
-  // 2. 전략 수정 모드 시작
-  const handleStartEditStrategy = (strategy) => {
-    setIsCreatingNew(false);
-    setEditingStrategy(strategy.id);
-    setStrategyForm({
-      name: strategy.name,
-      description: strategy.description,
-      ...strategy.settings
-    });
-  };
-
-  // 3. 신규 전략 생성 모드 시작
-  const handleStartCreateNew = () => {
-    setEditingStrategy(null);
-    setIsCreatingNew(true);
-    setStrategyForm({
-      name: `전략 알고리즘 #${strategies.length + 1}`,
-      description: '운영자 맞춤형 급등 감지 및 트레일링 전략',
-      SURGE_CHECK_SECONDS: 5,
-      SURGE_RATE_THRESHOLD: 1.5,
-      SURGE_MIN_VOLUME_KRW: 10000000,
-      TRAILING_TARGET_PROFIT_PCT: 3.0,
-      TRAILING_CALLBACK_PCT: 1.0,
-      STOP_LOSS_PCT: 2.0,
-      APPROVAL_TIMEOUT_SECONDS: 30,
-      AUTO_EXECUTE_ON_TIMEOUT: false
-    });
-  };
-
-  // 4. 전략 저장 (신규 추가 or 기존 수정)
-  const handleSaveStrategy = async (e) => {
-    e.preventDefault();
-
-    const newSettings = {
-      DEFAULT_MARKET: 'KRW-BTC',
-      DEFAULT_TRADE_AMOUNT: 50000,
-      SURGE_CHECK_SECONDS: Number(strategyForm.SURGE_CHECK_SECONDS),
-      SURGE_RATE_THRESHOLD: Number(strategyForm.SURGE_RATE_THRESHOLD),
-      SURGE_MIN_VOLUME_KRW: Number(strategyForm.SURGE_MIN_VOLUME_KRW),
-      TRAILING_TARGET_PROFIT_PCT: Number(strategyForm.TRAILING_TARGET_PROFIT_PCT),
-      TRAILING_CALLBACK_PCT: Number(strategyForm.TRAILING_CALLBACK_PCT),
-      STOP_LOSS_PCT: Number(strategyForm.STOP_LOSS_PCT),
-      APPROVAL_TIMEOUT_SECONDS: Number(strategyForm.APPROVAL_TIMEOUT_SECONDS),
-      AUTO_EXECUTE_ON_TIMEOUT: Boolean(strategyForm.AUTO_EXECUTE_ON_TIMEOUT)
-    };
-
-    if (isCreatingNew) {
-      const newStrat = {
-        id: `strat_${Date.now()}`,
-        name: strategyForm.name,
-        description: strategyForm.description,
-        isDefault: false,
-        settings: newSettings
+      const newSettings = {
+        DEFAULT_MARKET: 'KRW-BTC',
+        DEFAULT_TRADE_AMOUNT: 50000,
+        SURGE_CHECK_SECONDS: Number(recommendedStrategy.SURGE_CHECK_SECONDS),
+        SURGE_RATE_THRESHOLD: Number(recommendedStrategy.SURGE_RATE_THRESHOLD),
+        SURGE_MIN_VOLUME_KRW: Number(recommendedStrategy.SURGE_MIN_VOLUME_KRW),
+        TRAILING_TARGET_PROFIT_PCT: Number(recommendedStrategy.TRAILING_TARGET_PROFIT_PCT),
+        TRAILING_CALLBACK_PCT: Number(recommendedStrategy.TRAILING_CALLBACK_PCT),
+        STOP_LOSS_PCT: Number(recommendedStrategy.STOP_LOSS_PCT),
+        APPROVAL_TIMEOUT_SECONDS: Number(recommendedStrategy.APPROVAL_TIMEOUT_SECONDS),
+        AUTO_EXECUTE_ON_TIMEOUT: Boolean(recommendedStrategy.AUTO_EXECUTE_ON_TIMEOUT),
+        EXCLUDED_MARKETS: excludedMarkets
       };
-      setStrategies(prev => [...prev, newStrat]);
-      setIsCreatingNew(false);
-      setSaveSuccessMsg(`새로운 트레이딩 전략 [${newStrat.name}]이 성공적으로 등록되었습니다! ✨`);
-    } else if (editingStrategy) {
-      setStrategies(prev => prev.map(s => {
-        if (s.id === editingStrategy) {
-          return {
-            ...s,
-            name: strategyForm.name,
-            description: strategyForm.description,
-            settings: newSettings
-          };
-        }
-        return s;
-      }));
 
-      // 현재 활성 전략이면 봇에도 실시간 반영
-      if (activeStrategyId === editingStrategy) {
-        if (onSaveSettings) await onSaveSettings(newSettings);
+      if (onSaveSettings) {
+        await onSaveSettings(newSettings);
+      } else {
+        await updateSettings(newSettings);
       }
 
-      setEditingStrategy(null);
-      setSaveSuccessMsg(`전략 [${strategyForm.name}] 파라미터가 수정 및 저장되었습니다! 💾`);
+      setSaveSuccessMsg(`🎯 [마스터 추천전략] 파라미터가 전체 봇 엔진 및 모든 추천 슬롯에 성공적으로 일괄 반영되었습니다! 🚀`);
+      setTimeout(() => setSaveSuccessMsg(''), 4500);
+    } catch (err) {
+      alert('추천전략 저장 실패: ' + err.message);
     }
-
-    setTimeout(() => setSaveSuccessMsg(''), 4000);
   };
 
-  // 5. 전략 삭제
-  const handleDeleteStrategy = (id, name) => {
-    if (strategies.length <= 1) {
-      alert('최소 1개 이상의 트레이딩 전략이 유지되어야 합니다.');
+  // 2. 제외 코인 실시간 검색 필터링 (알파벳/심볼/한글명 모두 지원)
+  const filteredCoins = newExcludedInput.trim() === ''
+    ? []
+    : ALL_UPBIT_COINS.filter(c => {
+        const query = newExcludedInput.trim().toUpperCase();
+        return (
+          c.symbol.toUpperCase().includes(query) ||
+          c.code.toUpperCase().includes(query) ||
+          c.nameKo.includes(newExcludedInput.trim()) ||
+          c.nameEn.toUpperCase().includes(query)
+        );
+      }).slice(0, 8); // 최대 8개 표시
+
+  // 3. 제외 코인 추가/삭제 핸들러
+  const handleAddExcludedMarket = async (marketCode) => {
+    let formatted = marketCode.trim().toUpperCase();
+    if (!formatted.startsWith('KRW-')) {
+      formatted = `KRW-${formatted}`;
+    }
+    if (excludedMarkets.includes(formatted)) {
+      alert('이미 감시/매매 제외 목록에 등록된 코인입니다.');
       return;
     }
-    if (window.confirm(`정말로 [${name}] 전략을 삭제하시겠습니까?`)) {
-      setStrategies(prev => prev.filter(s => s.id !== id));
-      if (activeStrategyId === id) {
-        const remaining = strategies.filter(s => s.id !== id);
-        if (remaining.length > 0) {
-          handleApplyStrategy(remaining[0]);
-        }
-      }
+    const updated = [...excludedMarkets, formatted];
+    setExcludedMarkets(updated);
+    setNewExcludedInput('');
+    setIsDropdownOpen(false);
+
+    try {
+      await updateExcludedMarkets(updated);
+      setSaveSuccessMsg(`[${formatted}] 코인이 감시 및 매매 제외 목록에 추가되었습니다! (레이더 감시 즉시 배제) 🚫`);
+      setTimeout(() => setSaveSuccessMsg(''), 4000);
+    } catch (err) {
+      alert('제외 코인 저장 실패: ' + err.message);
+    }
+  };
+
+  const handleRemoveExcludedMarket = async (marketCode) => {
+    const updated = excludedMarkets.filter(m => m !== marketCode);
+    setExcludedMarkets(updated);
+    try {
+      await updateExcludedMarkets(updated);
+      setSaveSuccessMsg(`[${marketCode}] 코인의 제외 설정이 해제되었습니다 (급등 감시 정상 재개). ✅`);
+      setTimeout(() => setSaveSuccessMsg(''), 4000);
+    } catch (err) {
+      alert('제외 코인 삭제 실패: ' + err.message);
     }
   };
 
@@ -287,40 +333,6 @@ export default function OperatorDashboardModal({
     }
   };
 
-  // 🚫 제외 코인 추가/삭제 핸들러
-  const handleAddExcludedMarket = async (marketCode) => {
-    let formatted = marketCode.trim().toUpperCase();
-    if (!formatted.startsWith('KRW-')) {
-      formatted = `KRW-${formatted}`;
-    }
-    if (excludedMarkets.includes(formatted)) {
-      alert('이미 감시/매매 제외 목록에 등록된 코인입니다.');
-      return;
-    }
-    const updated = [...excludedMarkets, formatted];
-    setExcludedMarkets(updated);
-    setNewExcludedInput('');
-    try {
-      await updateExcludedMarkets(updated);
-      setSaveSuccessMsg(`[${formatted}] 코인이 감시 및 매매 제외 목록에 추가되었습니다! 🚫`);
-      setTimeout(() => setSaveSuccessMsg(''), 4000);
-    } catch (err) {
-      alert('제외 코인 저장 실패: ' + err.message);
-    }
-  };
-
-  const handleRemoveExcludedMarket = async (marketCode) => {
-    const updated = excludedMarkets.filter(m => m !== marketCode);
-    setExcludedMarkets(updated);
-    try {
-      await updateExcludedMarkets(updated);
-      setSaveSuccessMsg(`[${marketCode}] 코인의 제외 설정이 해제되었습니다 (감시 재개). ✅`);
-      setTimeout(() => setSaveSuccessMsg(''), 4000);
-    } catch (err) {
-      alert('제외 코인 삭제 실패: ' + err.message);
-    }
-  };
-
   const totalMembers = users.length > 0 ? users.length + 47 : 48;
   const vipCount = users.filter(u => u.tier === 'VIP').length + 23;
   const proCount = users.filter(u => u.tier === 'PRO').length + 20;
@@ -338,14 +350,14 @@ export default function OperatorDashboardModal({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-xl font-extrabold text-slate-100 tracking-tight">
-                  사이트 운영자(관리자) 비즈니스 & 전략 콘솔
+                  사이트 운영자(관리자) 비즈니스 &amp; 전략 콘솔
                 </h3>
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold">
                   Operator Master
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                전략 알고리즘 제어, 감시/매매 제외 코인 관리 및 회원 구독/입금을 총괄합니다.
+                추천전략 단일 제어, 감시/매매 제외 코인(블랙리스트) 관리 및 회원 비즈니스를 총괄합니다.
               </p>
             </div>
           </div>
@@ -362,7 +374,7 @@ export default function OperatorDashboardModal({
                 }`}
               >
                 <Sliders className="w-3.5 h-3.5 text-indigo-300" />
-                <span>🎯 전략 관리</span>
+                <span>🎯 전략 관리 (추천 1개)</span>
               </button>
 
               <button
@@ -408,317 +420,445 @@ export default function OperatorDashboardModal({
 
         {/* 안내 메시지 */}
         {saveSuccessMsg && (
-          <div className="mt-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <div className="mt-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2 animate-in fade-in">
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
             <span>{saveSuccessMsg}</span>
           </div>
         )}
 
         {/* 본문 스크롤 영역 */}
         <div className="py-5 space-y-5 overflow-y-auto pr-1 flex-1 text-xs text-slate-300">
-          {/* ====================================================
-              탭 1: 🎯 트레이딩 전략 알고리즘 매니저 (추가/삭제/수정/적용)
-             ==================================================== */}
+          
+          {/* ========================================================================= */}
+          {/* TAB 1: 🎯 단일 추천 전략 알고리즘 매니저 (추천전략 1개 전용) */}
+          {/* ========================================================================= */}
           {activeTab === 'STRATEGY' && (
             <div className="space-y-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
-                <div>
-                  <h4 className="text-sm font-bold text-slate-100 flex items-center gap-2">
-                    <Sliders className="w-4 h-4 text-indigo-400" />
-                    마스터 트레이딩 알고리즘 프리셋 관리 (운영자 전용)
-                  </h4>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    회원들에게는 노출되지 않으며, 운영자가 전략을 추가·수정·선택하면 모든 봇에 실시간 일괄 적용됩니다.
-                  </p>
+              {/* 상단 브리핑 배너 */}
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-950/60 via-slate-900 to-slate-900 border border-indigo-500/30 flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2.5 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shrink-0">
+                    <Sliders className="w-5 h-5 text-indigo-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-white text-sm flex items-center gap-2">
+                      <span>👑 마스터 추천전략 통합 제어 (단일 전략 관리)</span>
+                      <span className="text-[10px] px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
+                        실시간 전 봇 동기화
+                      </span>
+                    </h4>
+                    <p className="text-xs text-slate-300 leading-relaxed mt-1">
+                      모든 회원의 슬롯은 <strong>[운영자 추천전략 1개]</strong> 또는 <strong>[회원 직접 설정 셀프전략 1개]</strong>로 운영됩니다.<br />
+                      여기서 추천전략 파라미터를 수정하시면, <strong>'추천전략'으로 설정된 모든 슬롯에 실시간으로 즉시 일괄 적용</strong>됩니다! ✨
+                    </p>
+                  </div>
                 </div>
 
-                <button
-                  onClick={handleStartCreateNew}
-                  className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-lg shadow-indigo-600/30 cursor-pointer self-start sm:self-auto"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>+ 새 전략 알고리즘 추가</span>
-                </button>
+                <div className="hidden sm:flex flex-col items-end shrink-0">
+                  <span className="text-[10px] text-slate-400">슬롯 운영 체계</span>
+                  <span className="text-xs font-bold text-amber-300 mt-0.5">추천 1개 + 셀프 1개 모드</span>
+                </div>
               </div>
 
-              {/* 전략 추가 또는 수정 모드 폼 */}
-              {(isCreatingNew || editingStrategy) && (
-                <form onSubmit={handleSaveStrategy} className="bg-slate-950 p-5 rounded-2xl border-2 border-indigo-500/50 space-y-4 animate-in fade-in">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                    <h5 className="font-bold text-slate-100 text-sm flex items-center gap-2">
-                      <Settings2 className="w-4 h-4 text-indigo-400" />
-                      {isCreatingNew ? '새로운 트레이딩 전략 알고리즘 등록' : '전략 파라미터 수정'}
+              {/* 단일 추천전략 상세 파라미터 폼 */}
+              <form onSubmit={handleSaveRecommendedStrategy} className="bg-slate-950/80 p-5 sm:p-6 rounded-2xl border-2 border-indigo-500/40 space-y-5 shadow-xl">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-amber-400" />
+                    <h5 className="font-extrabold text-slate-100 text-sm">
+                      {recommendedStrategy.name}
                     </h5>
-                    <button
-                      type="button"
-                      onClick={() => { setIsCreatingNew(false); setEditingStrategy(null); }}
-                      className="text-slate-400 hover:text-slate-200 text-xs"
-                    >
-                      취소
-                    </button>
                   </div>
+                  <span className="text-[11px] text-slate-400 font-medium">
+                    {recommendedStrategy.description}
+                  </span>
+                </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-slate-400 block mb-1">전략 이름</label>
-                      <input
-                        type="text"
-                        required
-                        value={strategyForm.name}
-                        onChange={(e) => setStrategyForm({ ...strategyForm, name: e.target.value })}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500"
-                        placeholder="예: 🚀 초단타 급등 추종"
-                      />
+                {/* 세부 파라미터 3대 그리드 */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* 1. 실시간 급등 감지 파라미터 */}
+                  <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+                    <div className="font-bold text-amber-400 flex items-center gap-1.5 border-b border-slate-800 pb-2">
+                      <Zap className="w-4 h-4" />
+                      <span>1. 급등 포착 조건 (Surge Engine)</span>
                     </div>
-                    <div>
-                      <label className="text-slate-400 block mb-1">전략 설명</label>
-                      <input
-                        type="text"
-                        value={strategyForm.description}
-                        onChange={(e) => setStrategyForm({ ...strategyForm, description: e.target.value })}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500"
-                        placeholder="전략의 특징 및 운영 방침"
-                      />
-                    </div>
-                  </div>
 
-                  {/* 세부 파라미터 그리드 */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                    {/* 급등 감지 조건 */}
-                    <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
-                      <div className="font-bold text-amber-400 flex items-center gap-1.5">
-                        <Zap className="w-3.5 h-3.5" />
-                        <span>급등 감지 파라미터</span>
-                      </div>
-                      <div>
-                        <label className="text-slate-400 block mb-1 text-[11px]">감시 시간 (초)</label>
+                    <div>
+                      <label className="text-slate-300 block mb-1 text-[11px] font-bold">감시 시간 (초)</label>
+                      <div className="flex items-center gap-1">
                         <input
                           type="number"
                           min="1"
                           max="60"
-                          value={strategyForm.SURGE_CHECK_SECONDS}
-                          onChange={(e) => setStrategyForm({ ...strategyForm, SURGE_CHECK_SECONDS: e.target.value })}
-                          className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-slate-200"
+                          value={recommendedStrategy.SURGE_CHECK_SECONDS}
+                          onChange={(e) => setRecommendedStrategy({ ...recommendedStrategy, SURGE_CHECK_SECONDS: Number(e.target.value) })}
+                          className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 font-mono font-bold focus:outline-none focus:border-amber-400"
                         />
+                        <span className="text-slate-400 text-xs shrink-0">초간</span>
                       </div>
-                      <div>
-                        <label className="text-slate-400 block mb-1 text-[11px]">상승률 기준 (%)</label>
+                      <p className="text-[10px] text-slate-500 mt-1">예: 최근 5초 동안의 틱 시세 분석</p>
+                    </div>
+
+                    <div>
+                      <label className="text-slate-300 block mb-1 text-[11px] font-bold">상승률 기준 (%)</label>
+                      <div className="flex items-center gap-1">
                         <input
                           type="number"
                           step="0.1"
-                          value={strategyForm.SURGE_RATE_THRESHOLD}
-                          onChange={(e) => setStrategyForm({ ...strategyForm, SURGE_RATE_THRESHOLD: e.target.value })}
-                          className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-slate-200"
+                          min="0.1"
+                          value={recommendedStrategy.SURGE_RATE_THRESHOLD}
+                          onChange={(e) => setRecommendedStrategy({ ...recommendedStrategy, SURGE_RATE_THRESHOLD: Number(e.target.value) })}
+                          className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-rose-300 font-mono font-bold focus:outline-none focus:border-rose-400"
                         />
+                        <span className="text-slate-400 text-xs shrink-0">% 이상</span>
                       </div>
-                      <div>
-                        <label className="text-slate-400 block mb-1 text-[11px]">최소 거래대금 (원)</label>
-                        <input
-                          type="number"
-                          step="1000000"
-                          value={strategyForm.SURGE_MIN_VOLUME_KRW}
-                          onChange={(e) => setStrategyForm({ ...strategyForm, SURGE_MIN_VOLUME_KRW: e.target.value })}
-                          className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-slate-200"
-                        />
-                      </div>
+                      <p className="text-[10px] text-slate-500 mt-1">지정 시간 내 최저가 대비 상승폭</p>
                     </div>
 
-                    {/* 트레일링 & 손절 조건 */}
-                    <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
-                      <div className="font-bold text-purple-400 flex items-center gap-1.5">
-                        <Flame className="w-3.5 h-3.5" />
-                        <span>트레일링 & 리스크 관리</span>
-                      </div>
-                      <div>
-                        <label className="text-slate-400 block mb-1 text-[11px]">추적 시작 수익률 (%)</label>
-                        <input
-                          type="number"
-                          step="0.5"
-                          value={strategyForm.TRAILING_TARGET_PROFIT_PCT}
-                          onChange={(e) => setStrategyForm({ ...strategyForm, TRAILING_TARGET_PROFIT_PCT: e.target.value })}
-                          className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-slate-200"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-slate-400 block mb-1 text-[11px]">고점 대비 하락폭 (%)</label>
-                        <input
-                          type="number"
-                          step="0.2"
-                          value={strategyForm.TRAILING_CALLBACK_PCT}
-                          onChange={(e) => setStrategyForm({ ...strategyForm, TRAILING_CALLBACK_PCT: e.target.value })}
-                          className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-slate-200"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-slate-400 block mb-1 text-[11px]">손절선 (Stop Loss %)</label>
-                        <input
-                          type="number"
-                          step="0.5"
-                          value={strategyForm.STOP_LOSS_PCT}
-                          onChange={(e) => setStrategyForm({ ...strategyForm, STOP_LOSS_PCT: e.target.value })}
-                          className="w-full bg-slate-950 border border-rose-900/60 rounded-lg px-2 py-1 text-rose-300"
-                        />
-                      </div>
+                    <div>
+                      <label className="text-slate-300 block mb-1 text-[11px] font-bold">최소 거래대금 필터 (원)</label>
+                      <input
+                        type="number"
+                        step="1000000"
+                        value={recommendedStrategy.SURGE_MIN_VOLUME_KRW}
+                        onChange={(e) => setRecommendedStrategy({ ...recommendedStrategy, SURGE_MIN_VOLUME_KRW: Number(e.target.value) })}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-emerald-300 font-mono font-bold focus:outline-none focus:border-emerald-400"
+                      />
+                      <p className="text-[10px] text-slate-400 mt-1 font-mono font-bold">
+                        {(Number(recommendedStrategy.SURGE_MIN_VOLUME_KRW || 0) / 10000).toLocaleString()}만원 이상 수급 시 유효
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 2. 트레일링 스탑 & 손절매 조건 */}
+                  <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+                    <div className="font-bold text-purple-400 flex items-center gap-1.5 border-b border-slate-800 pb-2">
+                      <Flame className="w-4 h-4" />
+                      <span>2. 트레일링 스탑 &amp; 리스크 제어</span>
                     </div>
 
-                    {/* 승인 정책 */}
-                    <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
-                      <div className="font-bold text-indigo-400 flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5" />
-                        <span>승인 비서 및 자동 집행</span>
-                      </div>
-                      <div>
-                        <label className="text-slate-400 block mb-1 text-[11px]">승인 제한시간 (초)</label>
+                    <div>
+                      <label className="text-slate-300 block mb-1 text-[11px] font-bold">추적 시작 수익률 (%)</label>
+                      <div className="flex items-center gap-1">
                         <input
                           type="number"
-                          value={strategyForm.APPROVAL_TIMEOUT_SECONDS}
-                          onChange={(e) => setStrategyForm({ ...strategyForm, APPROVAL_TIMEOUT_SECONDS: e.target.value })}
-                          className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-slate-200"
+                          step="0.1"
+                          value={recommendedStrategy.TRAILING_TARGET_PROFIT_PCT}
+                          onChange={(e) => setRecommendedStrategy({ ...recommendedStrategy, TRAILING_TARGET_PROFIT_PCT: Number(e.target.value) })}
+                          className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-purple-300 font-mono font-bold focus:outline-none focus:border-purple-400"
                         />
+                        <span className="text-slate-400 text-xs shrink-0">%</span>
                       </div>
-                      <div className="pt-2">
-                        <label className="text-slate-400 block mb-1 text-[11px]">타임아웃 시 자동 주문</label>
+                      <p className="text-[10px] text-slate-500 mt-1">이 수익률 도달 이후부터 최고가 실시간 추적</p>
+                    </div>
+
+                    <div>
+                      <label className="text-slate-300 block mb-1 text-[11px] font-bold">고점 대비 하락폭 (Callback %)</label>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={recommendedStrategy.TRAILING_CALLBACK_PCT}
+                          onChange={(e) => setRecommendedStrategy({ ...recommendedStrategy, TRAILING_CALLBACK_PCT: Number(e.target.value) })}
+                          className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-cyan-300 font-mono font-bold focus:outline-none focus:border-cyan-400"
+                        />
+                        <span className="text-slate-400 text-xs shrink-0">%</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 mt-1">최고가 찍고 하락 시 0.1초 즉시 익절 매도</p>
+                    </div>
+
+                    <div>
+                      <label className="text-slate-300 block mb-1 text-[11px] font-bold">손절선 (Stop-Loss, %)</label>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={recommendedStrategy.STOP_LOSS_PCT}
+                          onChange={(e) => setRecommendedStrategy({ ...recommendedStrategy, STOP_LOSS_PCT: Number(e.target.value) })}
+                          className="w-full bg-slate-950 border border-rose-900/80 rounded-lg px-3 py-1.5 text-rose-300 font-mono font-bold focus:outline-none focus:border-rose-500"
+                        />
+                        <span className="text-rose-400 text-xs shrink-0">%</span>
+                      </div>
+                      <p className="text-[10px] text-rose-400 mt-1 font-mono font-bold">
+                        -{recommendedStrategy.STOP_LOSS_PCT}% 도달 시 원금 보호 즉각 손절매
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 3. 승인 정책 & 안전 장치 */}
+                  <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+                    <div className="font-bold text-indigo-400 flex items-center gap-1.5 border-b border-slate-800 pb-2">
+                      <Clock className="w-4 h-4" />
+                      <span>3. 주문 집행 및 안전 정책</span>
+                    </div>
+
+                    <div>
+                      <label className="text-slate-300 block mb-1 text-[11px] font-bold">승인 대기 제한시간 (초)</label>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          value={recommendedStrategy.APPROVAL_TIMEOUT_SECONDS}
+                          onChange={(e) => setRecommendedStrategy({ ...recommendedStrategy, APPROVAL_TIMEOUT_SECONDS: Number(e.target.value) })}
+                          className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-200 font-mono font-bold"
+                        />
+                        <span className="text-slate-400 text-xs shrink-0">초</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 mt-1">0초 설정 시 지연 없이 즉시 전자동 매수</p>
+                    </div>
+
+                    <div className="pt-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-slate-300 font-bold block text-[11px]">타임아웃 시 자동 주문</span>
+                          <span className="text-[10px] text-slate-500">시간 초과 시 자동 집행</span>
+                        </div>
                         <button
                           type="button"
-                          onClick={() => setStrategyForm({ ...strategyForm, AUTO_EXECUTE_ON_TIMEOUT: !strategyForm.AUTO_EXECUTE_ON_TIMEOUT })}
-                          className={`w-10 h-5 rounded-full p-0.5 transition-colors ${
-                            strategyForm.AUTO_EXECUTE_ON_TIMEOUT ? 'bg-indigo-600' : 'bg-slate-700'
+                          onClick={() => setRecommendedStrategy({ ...recommendedStrategy, AUTO_EXECUTE_ON_TIMEOUT: !recommendedStrategy.AUTO_EXECUTE_ON_TIMEOUT })}
+                          className={`w-11 h-6 rounded-full p-0.5 transition-colors cursor-pointer ${
+                            recommendedStrategy.AUTO_EXECUTE_ON_TIMEOUT ? 'bg-indigo-600' : 'bg-slate-700'
                           }`}
                         >
-                          <div className={`w-4 h-4 rounded-full bg-white transition-transform ${
-                            strategyForm.AUTO_EXECUTE_ON_TIMEOUT ? 'translate-x-5' : 'translate-x-0'
+                          <div className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                            recommendedStrategy.AUTO_EXECUTE_ON_TIMEOUT ? 'translate-x-5' : 'translate-x-0'
                           }`} />
                         </button>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+                    <div className="p-3 rounded-xl bg-slate-950/70 border border-indigo-500/20 text-[10px] text-slate-400 space-y-1">
+                      <span className="text-indigo-300 font-bold block">💡 슬롯 운영 원칙:</span>
+                      <p>
+                        사용자는 각 슬롯에서 <strong>추천전략</strong> 또는 <strong>셀프전략</strong> 중 1가지를 선택하여 운용합니다.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 하단 저장 버튼 */}
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                  <button
+                    type="submit"
+                    className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs transition flex items-center gap-2 shadow-xl shadow-indigo-600/30 cursor-pointer"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>🎯 마스터 추천전략 저장 및 전체 봇 일괄 적용하기</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* TAB 2: 🚫 감시/매매 제외 코인 관리 (Blacklist + 실시간 검색 자동완성) */}
+          {/* ========================================================================= */}
+          {activeTab === 'EXCLUDED' && (
+            <div className="space-y-6">
+              {/* 상단 설명 배너 */}
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-950/40 via-slate-900 to-slate-900 border border-rose-500/30 flex items-start gap-3">
+                <div className="p-2 rounded-xl bg-rose-500/20 text-rose-300 shrink-0">
+                  <Ban className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-white text-sm">전종목 자동 감시 중 특정 코인 제외 (Blacklist)</h4>
+                  <p className="text-xs text-slate-300 leading-relaxed mt-0.5">
+                    자동매매 봇은 업비트 원화마켓 전종목을 24시간 실시간 감시하지만, 
+                    <strong>유의종목, 급변동 종목 또는 운영자가 원치 않는 특정 코인</strong>을 등록하면 
+                    <strong>급등 감시 레이더 포착 및 자동 매수 대상에서 즉시 100% 제외</strong>됩니다.
+                  </p>
+                </div>
+              </div>
+
+              {/* 코인 등록 입력창 (실시간 알파벳/한글 자동완성 드롭다운 탑재) */}
+              <div className="p-5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-4" ref={dropdownRef}>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-extrabold text-slate-200 flex items-center gap-1.5">
+                    <Plus className="w-4 h-4 text-emerald-400" />
+                    <span>제외할 코인 티커(심볼) 또는 한글명 검색 추가</span>
+                  </h4>
+                  <span className="text-[11px] text-slate-400">
+                    💡 알파벳(XRP, BTC 등)이나 한글(리플, 도지 등)을 입력하면 목록이 나타납니다.
+                  </span>
+                </div>
+
+                <div className="relative">
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <Search className="w-4 h-4" />
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="코인 티커(XRP, DOGE, SOL...) 또는 한글명(리플, 도지...)을 입력하세요"
+                        value={newExcludedInput}
+                        onChange={(e) => {
+                          setNewExcludedInput(e.target.value);
+                          setIsDropdownOpen(true);
+                        }}
+                        onFocus={() => {
+                          if (newExcludedInput.trim()) setIsDropdownOpen(true);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            if (filteredCoins.length > 0) {
+                              handleAddExcludedMarket(filteredCoins[0].code);
+                            } else if (newExcludedInput.trim()) {
+                              handleAddExcludedMarket(newExcludedInput);
+                            }
+                          }
+                        }}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-white font-mono text-sm uppercase focus:outline-none focus:border-rose-400"
+                      />
+                      {newExcludedInput && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewExcludedInput('');
+                            setIsDropdownOpen(false);
+                          }}
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+
                     <button
                       type="button"
-                      onClick={() => { setIsCreatingNew(false); setEditingStrategy(null); }}
-                      className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium transition"
+                      onClick={() => {
+                        if (filteredCoins.length > 0) {
+                          handleAddExcludedMarket(filteredCoins[0].code);
+                        } else if (newExcludedInput.trim()) {
+                          handleAddExcludedMarket(newExcludedInput);
+                        }
+                      }}
+                      className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-xs transition shadow-md cursor-pointer shrink-0 flex items-center gap-1.5"
                     >
-                      취소
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition flex items-center gap-1.5 shadow-lg shadow-indigo-600/30 cursor-pointer"
-                    >
-                      <Save className="w-4 h-4" />
-                      <span>{isCreatingNew ? '전략 등록하기' : '수정사항 저장하기'}</span>
+                      <Plus className="w-4 h-4" />
+                      <span>제외 등록</span>
                     </button>
                   </div>
-                </form>
-              )}
 
-              {/* 전략 프리셋 카드 목록 */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {strategies.map((strat) => {
-                  const isActive = strat.id === activeStrategyId;
+                  {/* 🔍 실시간 코인 검색 추천 드롭다운 목록 (오타 방지) */}
+                  {isDropdownOpen && filteredCoins.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full mt-1.5 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-30 overflow-hidden divide-y divide-slate-800 animate-in fade-in">
+                      <div className="px-3 py-1.5 bg-slate-950/80 text-[10px] font-bold text-slate-400 flex justify-between">
+                        <span>업비트 원화 마켓 일치 코인 목록 ({filteredCoins.length}건)</span>
+                        <span>클릭 시 바로 제외 등록</span>
+                      </div>
+                      {filteredCoins.map((coin) => {
+                        const isAlreadyExcluded = excludedMarkets.includes(coin.code);
+                        return (
+                          <div
+                            key={coin.code}
+                            onClick={() => {
+                              if (!isAlreadyExcluded) {
+                                handleAddExcludedMarket(coin.code);
+                              }
+                            }}
+                            className={`px-4 py-2.5 flex items-center justify-between cursor-pointer transition ${
+                              isAlreadyExcluded
+                                ? 'bg-slate-950/40 text-slate-500 cursor-not-allowed'
+                                : 'hover:bg-indigo-600/20 hover:border-l-4 hover:border-l-rose-500'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="font-mono font-black text-rose-300 text-sm">
+                                {coin.code}
+                              </span>
+                              <span className="text-white font-bold text-xs">
+                                {coin.nameKo}
+                              </span>
+                              <span className="text-[10px] text-slate-400">
+                                ({coin.nameEn})
+                              </span>
+                            </div>
 
-                  return (
-                    <div
-                      key={strat.id}
-                      className={`p-5 rounded-2xl border transition-all flex flex-col justify-between space-y-4 ${
-                        isActive
-                          ? 'bg-gradient-to-b from-indigo-950/40 via-slate-900 to-slate-900 border-indigo-500/70 shadow-xl shadow-indigo-950/60 ring-2 ring-indigo-500/30'
-                          : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
+                            {isAlreadyExcluded ? (
+                              <span className="text-[10px] px-2 py-0.5 rounded bg-rose-950/60 text-rose-400 border border-rose-500/30 font-bold">
+                                이미 제외 중
+                              </span>
+                            ) : (
+                              <div className="flex items-center gap-1 text-[11px] text-rose-400 font-bold">
+                                <span>+ 제외 추가</span>
+                                <ChevronRight className="w-3.5 h-3.5" />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* 추천 퀵 제외 버튼 */}
+                <div className="flex items-center gap-1.5 flex-wrap pt-1 text-xs">
+                  <span className="text-[11px] text-slate-500 font-bold">빠른 추가:</span>
+                  {['KRW-XRP', 'KRW-DOGE', 'KRW-SHIB', 'KRW-BTT', 'KRW-TRX', 'KRW-PEPE', 'KRW-STRAX', 'KRW-TT'].map((coin) => (
+                    <button
+                      key={coin}
+                      type="button"
+                      disabled={excludedMarkets.includes(coin)}
+                      onClick={() => handleAddExcludedMarket(coin)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold border transition ${
+                        excludedMarkets.includes(coin)
+                          ? 'bg-slate-800 text-slate-600 border-slate-800 cursor-not-allowed'
+                          : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-700 cursor-pointer'
                       }`}
                     >
-                      <div className="space-y-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <h5 className="font-extrabold text-slate-100 text-sm leading-tight">
-                            {strat.name}
-                          </h5>
-                          {isActive ? (
-                            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold flex items-center gap-1 shrink-0">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                              활성 적용 중
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 text-[10px] font-medium shrink-0">
-                              대기 전략
-                            </span>
-                          )}
-                        </div>
+                      +{coin}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-                        <p className="text-[11px] text-slate-400 leading-relaxed">
-                          {strat.description}
-                        </p>
+              {/* 현재 제외된 코인 목록 */}
+              <div className="p-5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <h4 className="font-bold text-white text-sm flex items-center gap-2">
+                    <span>현재 감시/매매 제외 중인 코인 목록 (Blacklist)</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold font-mono">
+                      총 {excludedMarkets.length}종목
+                    </span>
+                  </h4>
+                  <span className="text-[11px] text-slate-400">
+                    * 등록된 종목은 급등 레이더 신호 포착 및 자동 매수가 발생하지 않습니다.
+                  </span>
+                </div>
 
-                        {/* 전략 주요 파라미터 요약 표 */}
-                        <div className="bg-slate-900/90 p-3 rounded-xl border border-slate-800/80 space-y-1.5 text-[11px]">
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">급등 감지:</span>
-                            <span className="text-amber-300 font-mono font-bold">
-                              {strat.settings.SURGE_CHECK_SECONDS}초간 +{strat.settings.SURGE_RATE_THRESHOLD}%
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">거래대금 필터:</span>
-                            <span className="text-slate-200 font-mono">
-                              {(strat.settings.SURGE_MIN_VOLUME_KRW / 10000).toLocaleString()}만원 이상
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">트레일링 익절:</span>
-                            <span className="text-purple-300 font-mono font-bold">
-                              +{strat.settings.TRAILING_TARGET_PROFIT_PCT}% 추적 / -{strat.settings.TRAILING_CALLBACK_PCT}% 콜백
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">손절선(Stop-Loss):</span>
-                            <span className="text-rose-400 font-mono font-bold">
-                              -{strat.settings.STOP_LOSS_PCT}%
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* 하단 제어 버튼 */}
-                      <div className="flex items-center gap-2 pt-3 border-t border-slate-800/80">
-                        {isActive ? (
-                          <div className="flex-1 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-bold text-center flex items-center justify-center gap-1">
-                            <Check className="w-3.5 h-3.5" />
-                            <span>현재 가동 중인 전략</span>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => handleApplyStrategy(strat)}
-                            className="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition flex items-center justify-center gap-1 shadow-md cursor-pointer"
-                          >
-                            <Zap className="w-3.5 h-3.5" />
-                            <span>이 전략으로 즉시 전환</span>
-                          </button>
-                        )}
-
+                {excludedMarkets.length === 0 ? (
+                  <div className="py-8 text-center text-slate-500 text-xs">
+                    현재 제외된 코인이 없습니다. 업비트 원화마켓 모든 코인이 정상 감시 중입니다. ✨
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {excludedMarkets.map((market) => (
+                      <div
+                        key={market}
+                        className="px-3.5 py-2 rounded-xl bg-rose-950/40 border border-rose-500/40 text-rose-200 font-mono text-xs font-black flex items-center gap-2 shadow-sm"
+                      >
+                        <Ban className="w-3.5 h-3.5 text-rose-400" />
+                        <span>{market}</span>
                         <button
-                          onClick={() => handleStartEditStrategy(strat)}
-                          className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer"
-                          title="파라미터 수정"
+                          type="button"
+                          onClick={() => handleRemoveExcludedMarket(market)}
+                          className="p-1 rounded-lg hover:bg-rose-900/60 text-rose-400 hover:text-white transition cursor-pointer"
+                          title="제외 해제 (감시 정상 재개)"
                         >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </button>
-
-                        <button
-                          onClick={() => handleDeleteStrategy(strat.id, strat.name)}
-                          className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition cursor-pointer"
-                          title="전략 삭제"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <X className="w-3.5 h-3.5" />
                         </button>
                       </div>
-                    </div>
-                  );
-                })}
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
 
-          {/* ====================================================
-              탭 2: 📊 비즈니스 지표 & 무통장 입금 승인 대시보드
-             ==================================================== */}
+          {/* ========================================================================= */}
+          {/* TAB 3: 📊 비즈니스 지표 & 무통장 입금 승인 대시보드 */}
+          {/* ========================================================================= */}
           {activeTab === 'BUSINESS' && (
             <div className="space-y-5">
               {/* 1. 4대 비즈니스 핵심 지표 (KPIs) */}
@@ -786,7 +926,7 @@ export default function OperatorDashboardModal({
                   <div className="flex items-center gap-2">
                     <CreditCard className="w-4 h-4 text-amber-400" />
                     <h4 className="font-bold text-slate-100 text-sm">
-                      신규 무통장 입금 확인 & 멤버십 승급 대기열 ({pendingDeposits.length}건)
+                      신규 무통장 입금 확인 &amp; 멤버십 승급 대기열 ({pendingDeposits.length}건)
                     </h4>
                   </div>
                   <span className="text-[11px] text-slate-400">입금자명 확인 후 [승인] 시 기간 연장 및 슬롯이 즉시 개방됩니다.</span>
@@ -838,7 +978,7 @@ export default function OperatorDashboardModal({
                 <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                   <div className="flex items-center gap-2">
                     <Activity className="w-4 h-4 text-cyan-400" />
-                    <h4 className="font-bold text-slate-100 text-sm">실시간 회원 급등 매수 & 트레일링 익절 스트림 피드</h4>
+                    <h4 className="font-bold text-slate-100 text-sm">실시간 회원 급등 매수 &amp; 트레일링 익절 스트림 피드</h4>
                   </div>
                   <span className="flex items-center gap-1.5 text-xs text-emerald-400">
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -871,115 +1011,6 @@ export default function OperatorDashboardModal({
                     </div>
                   ))}
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* ========================================================================= */}
-          {/* TAB 3: 🚫 감시/매매 제외 코인 관리 (Blacklist) */}
-          {/* ========================================================================= */}
-          {activeTab === 'EXCLUDED' && (
-            <div className="space-y-6">
-              {/* 상단 설명 배너 */}
-              <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-950/40 via-slate-900 to-slate-900 border border-rose-500/30 flex items-start gap-3">
-                <div className="p-2 rounded-xl bg-rose-500/20 text-rose-300 shrink-0">
-                  <Ban className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="font-extrabold text-white text-sm">전종목 자동 감시 중 특정 코인 제외 (Blacklist)</h4>
-                  <p className="text-xs text-slate-300 leading-relaxed mt-0.5">
-                    자동매매 봇은 업비트 원화마켓 전종목을 24시간 실시간 감시하지만, 
-                    <strong>유의종목, 급변동 종목 또는 운영자가 원치 않는 특정 코인</strong>을 등록하면 
-                    감시 신호 포착 및 자동 매수 대상에서 즉시 제외됩니다.
-                  </p>
-                </div>
-              </div>
-
-              {/* 코인 등록 입력창 */}
-              <div className="p-5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-4">
-                <h4 className="text-xs font-extrabold text-slate-200 flex items-center gap-1.5">
-                  <Plus className="w-4 h-4 text-emerald-400" />
-                  <span>제외할 코인 티커(심볼) 직접 추가</span>
-                </h4>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    placeholder="예: XRP 또는 KRW-XRP 또는 DOGE"
-                    value={newExcludedInput}
-                    onChange={(e) => setNewExcludedInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && newExcludedInput.trim()) {
-                        handleAddExcludedMarket(newExcludedInput);
-                      }
-                    }}
-                    className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white font-mono text-sm uppercase focus:outline-none focus:border-rose-400"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => newExcludedInput.trim() && handleAddExcludedMarket(newExcludedInput)}
-                    className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-xs transition shadow-md cursor-pointer shrink-0"
-                  >
-                    제외 등록
-                  </button>
-                </div>
-
-                {/* 추천 퀵 제외 버튼 */}
-                <div className="flex items-center gap-1.5 flex-wrap pt-1 text-xs">
-                  <span className="text-[11px] text-slate-500 font-bold">빠른 추가:</span>
-                  {['KRW-XRP', 'KRW-DOGE', 'KRW-SHIB', 'KRW-BTT', 'KRW-TRX', 'KRW-PEPE'].map((coin) => (
-                    <button
-                      key={coin}
-                      type="button"
-                      disabled={excludedMarkets.includes(coin)}
-                      onClick={() => handleAddExcludedMarket(coin)}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold border transition ${
-                        excludedMarkets.includes(coin)
-                          ? 'bg-slate-800 text-slate-600 border-slate-800 cursor-not-allowed'
-                          : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-700 cursor-pointer'
-                      }`}
-                    >
-                      +{coin}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 현재 제외된 코인 목록 */}
-              <div className="p-5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                  <h4 className="font-bold text-white text-sm flex items-center gap-2">
-                    <span>현재 감시/매매 제외 중인 코인 목록</span>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold font-mono">
-                      총 {excludedMarkets.length}종목
-                    </span>
-                  </h4>
-                </div>
-
-                {excludedMarkets.length === 0 ? (
-                  <div className="py-8 text-center text-slate-500 text-xs">
-                    현재 제외된 코인이 없습니다. 업비트 원화마켓 모든 코인이 정상 감시 중입니다. ✨
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    {excludedMarkets.map((market) => (
-                      <div
-                        key={market}
-                        className="px-3.5 py-2 rounded-xl bg-rose-950/40 border border-rose-500/40 text-rose-200 font-mono text-xs font-black flex items-center gap-2 shadow-sm"
-                      >
-                        <Ban className="w-3.5 h-3.5 text-rose-400" />
-                        <span>{market}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveExcludedMarket(market)}
-                          className="p-1 rounded-lg hover:bg-rose-900/60 text-rose-400 hover:text-white transition cursor-pointer"
-                          title="제외 해제 (감시 재개)"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
           )}
