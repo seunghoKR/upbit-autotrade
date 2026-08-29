@@ -508,18 +508,18 @@ export default function SlotManager({
                     )}
                   </div>
 
-                  {/* 🛠️ 셀프전략 전용 상세 옵션 (급등 감지 기준 & 익절/손절) */}
+                  {/* 🛠️ 셀프전략 전용 상세 옵션 (급등 감지 기준 & 감시익절/콜백/손절) */}
                   {editForm.strategyType === 'SELF' ? (
-                    <div className="space-y-1.5 p-2 rounded-xl bg-slate-950/90 border border-purple-500/30">
-                      <div className="text-[10px] font-bold text-purple-300 flex items-center justify-between">
+                    <div className="space-y-2 p-2.5 rounded-xl bg-slate-950/90 border border-purple-500/30">
+                      <div className="text-xs text-purple-300 flex items-center justify-between font-medium">
                         <span>⚡ 급등 감지 기준 (자동매수 조건)</span>
-                        <span className="text-[9px] text-slate-400 font-normal">조건 만족 시 자동 매수</span>
+                        <span className="text-[10px] text-slate-400 font-normal">조건 만족 시 자동 매수</span>
                       </div>
                       
                       {/* 초 단위 감시 시간 & 상승률 & 거래대금 */}
                       <div className="grid grid-cols-3 gap-1.5 text-center">
                         <div className="bg-slate-900/80 p-1.5 rounded-lg border border-slate-800">
-                          <label className="text-[9px] text-slate-400 block mb-0.5 font-bold">감시 시간(초)</label>
+                          <label className="text-xs text-slate-300 block mb-0.5 font-normal">감시 시간(초)</label>
                           <div className="flex items-center justify-center gap-0.5">
                             <input
                               type="number"
@@ -528,13 +528,13 @@ export default function SlotManager({
                               step="1"
                               value={editForm.surgeWindowSeconds}
                               onChange={(e) => setEditForm(prev => ({ ...prev, surgeWindowSeconds: Math.max(1, Number(e.target.value)) }))}
-                              className="w-full bg-slate-950 border border-slate-700 rounded px-1 py-0.5 text-amber-300 font-mono text-[11px] text-center font-bold"
+                              className="w-full bg-slate-950 border border-slate-700 rounded px-1 py-0.5 text-amber-300 font-mono text-xs text-center font-bold"
                             />
-                            <span className="text-[9px] text-slate-500">초</span>
+                            <span className="text-[10px] text-slate-400 font-normal">초</span>
                           </div>
                         </div>
                         <div className="bg-slate-900/80 p-1.5 rounded-lg border border-slate-800">
-                          <label className="text-[9px] text-slate-400 block mb-0.5 font-bold">상승률(%)</label>
+                          <label className="text-xs text-slate-300 block mb-0.5 font-normal">상승률(%)</label>
                           <div className="flex items-center justify-center gap-0.5">
                             <input
                               type="number"
@@ -542,69 +542,69 @@ export default function SlotManager({
                               min="0.1"
                               value={editForm.surgeRatePct}
                               onChange={(e) => setEditForm(prev => ({ ...prev, surgeRatePct: Number(e.target.value) }))}
-                              className="w-full bg-slate-950 border border-slate-700 rounded px-1 py-0.5 text-rose-300 font-mono text-[11px] text-center font-bold"
+                              className="w-full bg-slate-950 border border-slate-700 rounded px-1 py-0.5 text-rose-300 font-mono text-xs text-center font-bold"
                             />
-                            <span className="text-[9px] text-slate-500">%</span>
+                            <span className="text-[10px] text-slate-400 font-normal">%</span>
                           </div>
                         </div>
                         <div className="bg-slate-900/80 p-1.5 rounded-lg border border-slate-800">
-                          <label className="text-[9px] text-slate-400 block mb-0.5 font-bold whitespace-nowrap">최소거래대금(원)</label>
+                          <label className="text-xs text-slate-300 block mb-0.5 font-normal whitespace-nowrap">최소거래대금(원)</label>
                           <input
                             type="number"
                             step="1000000"
                             min="100000"
                             value={editForm.surgeMinVolumeKrw}
                             onChange={(e) => setEditForm(prev => ({ ...prev, surgeMinVolumeKrw: Number(e.target.value) }))}
-                            className="w-full bg-slate-950 border border-slate-700 rounded px-1 py-0.5 text-emerald-300 font-mono text-[10px] text-center font-bold truncate"
+                            className="w-full bg-slate-950 border border-slate-700 rounded px-1 py-0.5 text-emerald-300 font-mono text-[11px] text-center font-bold truncate"
                             title={`${Math.round(editForm.surgeMinVolumeKrw).toLocaleString()}원`}
                           />
                         </div>
                       </div>
 
-                      {/* 익절 / 콜백 / 손절 */}
-                      <div className="grid grid-cols-3 gap-1.5 text-center pt-1 border-t border-slate-800">
+                      {/* 감시익절 / 콜백 / 손절 */}
+                      <div className="grid grid-cols-3 gap-1.5 text-center pt-1.5 border-t border-slate-800">
                         <div>
-                          <label className="text-[9px] text-slate-400 block">목표익절(%)</label>
+                          <label className="text-xs text-slate-300 block mb-0.5 font-normal" title="이 수익률 도달 이후부터 최고가 추적을 시작합니다">감시익절(%)</label>
                           <input
                             type="number"
                             step="0.1"
                             value={editForm.targetProfitPct}
                             onChange={(e) => setEditForm(prev => ({ ...prev, targetProfitPct: Number(e.target.value) }))}
-                            className="w-full bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-emerald-300 font-mono text-[11px] text-center font-bold"
+                            className="w-full bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-emerald-300 font-mono text-xs text-center font-bold"
                           />
                         </div>
                         <div>
-                          <label className="text-[9px] text-slate-400 block">콜백(%)</label>
+                          <label className="text-xs text-slate-300 block mb-0.5 font-normal" title="최고점 대비 하락 시 즉시 익절 매도합니다">콜백(%)</label>
                           <input
                             type="number"
                             step="0.1"
                             value={editForm.trailingCallbackPct}
                             onChange={(e) => setEditForm(prev => ({ ...prev, trailingCallbackPct: Number(e.target.value) }))}
-                            className="w-full bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-cyan-300 font-mono text-[11px] text-center font-bold"
+                            className="w-full bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-cyan-300 font-mono text-xs text-center font-bold"
                           />
                         </div>
                         <div>
-                          <label className="text-[9px] text-slate-400 block">손절(%)</label>
+                          <label className="text-xs text-slate-300 block mb-0.5 font-normal" title="손실 제한 즉시 손절매">손절(%)</label>
                           <input
                             type="number"
                             step="0.1"
                             value={editForm.stopLossPct}
                             onChange={(e) => setEditForm(prev => ({ ...prev, stopLossPct: Number(e.target.value) }))}
-                            className="w-full bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-rose-300 font-mono text-[11px] text-center font-bold"
+                            className="w-full bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-rose-300 font-mono text-xs text-center font-bold"
                           />
                         </div>
                       </div>
                     </div>
                   ) : (
                     /* 🎯 추천전략 프리셋 안내 */
-                    <div className="p-2 rounded-xl bg-emerald-950/20 border border-emerald-500/20 text-[10px] text-slate-300 space-y-1">
+                    <div className="p-2.5 rounded-xl bg-emerald-950/20 border border-emerald-500/20 text-xs text-slate-300 space-y-1.5">
                       <div className="flex items-center justify-between text-emerald-400 font-bold">
                         <span>🎯 운영자 황금 추천 조건</span>
-                        <span>자동 적용</span>
+                        <span className="text-[10px] px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 font-normal">자동 적용</span>
                       </div>
-                      <p className="text-[10px] text-slate-400 leading-tight">
+                      <p className="text-[11px] text-slate-300 leading-relaxed font-normal">
                         • <strong>5초</strong> 동안 <strong>+1.5%</strong> 급등 &amp; <strong>1,000만원</strong> 수급 시 자동 매수<br />
-                        • 익절 <strong>+3.0%</strong> | 트레일링 콜백 <strong>-1.0%</strong> | 손절 <strong>-2.0%</strong>
+                        • 감시익절 <strong>+3.0%</strong> 추적 시작 | 콜백 <strong>-1.0%</strong> | 손절 <strong>-2.0%</strong>
                       </p>
                     </div>
                   )}
