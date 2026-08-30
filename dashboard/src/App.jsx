@@ -212,21 +212,24 @@ export default function App() {
         else setAccountError(null);
         if (status.slots && Array.isArray(status.slots) && status.slots.length > 0) {
           const normalizedSlots = status.slots.map(s => {
-            const rawEntryPrice = s.entryPrice || s.position?.entryPrice || 0;
-            const isCorrupted = (rawEntryPrice > 0 && rawEntryPrice < 10) || (s.highestProfitPct > 500);
-            const hasPosition = !isCorrupted && ((s.positionStatus === 'IN_POSITION' || s.positionStatus === 'HOLDING' || s.positionStatus === 'TRAILING_ACTIVE') || Boolean(rawEntryPrice > 0));
+            const rawEntryPrice = parseFloat(s.entryPrice || s.position?.entryPrice || 0);
+            const isCorrupted = (s.highestProfitPct > 5000000);
+            const hasPosition = !isCorrupted && (
+              (s.positionStatus === 'IN_POSITION' || s.positionStatus === 'HOLDING' || s.positionStatus === 'TRAILING_ACTIVE') || 
+              Boolean(rawEntryPrice > 0)
+            );
             const tracker = slotTrackersRef.current[s.slotId];
             
             const entryPrice = hasPosition ? rawEntryPrice : null;
             let highestPrice = hasPosition ? (s.highestPrice || s.position?.highestPrice || entryPrice) : null;
             let highestProfitPct = hasPosition ? (s.highestProfitPct || s.position?.highestProfitPct || 0) : 0;
 
-            if (hasPosition && tracker) {
+            if (hasPosition && tracker && tracker.targetMarket === s.targetMarket) {
               if (tracker.highestPrice > (highestPrice || 0)) {
                 highestPrice = tracker.highestPrice;
                 highestProfitPct = tracker.highestProfitPct;
               }
-            } else if (hasPosition && !tracker && entryPrice) {
+            } else if (hasPosition && (!tracker || tracker.targetMarket !== s.targetMarket) && entryPrice) {
               slotTrackersRef.current[s.slotId] = {
                 entryPrice,
                 highestPrice: highestPrice || entryPrice,
