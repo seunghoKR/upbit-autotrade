@@ -796,8 +796,9 @@ try {
             if ($s['position_status'] === 'IN_POSITION') {
                 $isDustOrZero = ($vol <= 0.00001 || $amount < 4000 || $entryP <= 0);
                 $isSoldOutOnUpbit = (!empty($accounts) && is_array($accounts) && count($accounts) > 0 && !isset($heldCoins[$slotMkt]));
+                $isStaleDogeOrDisabled = ($slotMkt === 'KRW-DOGE' || (int)$s['is_enabled'] === 0);
 
-                if ($isDustOrZero || $isSoldOutOnUpbit) {
+                if ($isDustOrZero || $isSoldOutOnUpbit || $isStaleDogeOrDisabled) {
                     $pdo->prepare("UPDATE nurioh_slots SET position_status = 'IDLE', entry_price = NULL, entry_volume = NULL, entry_amount_krw = NULL, highest_price = NULL, highest_profit_pct = 0 WHERE id = ?")
                         ->execute([$s['id']]);
                     $s['position_status'] = 'IDLE';
@@ -806,11 +807,6 @@ try {
                     $s['entry_amount_krw'] = null;
                     $s['highest_price'] = null;
                     $s['highest_profit_pct'] = 0;
-                } else if (isset($heldCoins[$slotMkt])) {
-                    // 실제 매수된 정상 포지션의 경우 최신 업비트 단가/수량 동기화
-                    $s['entry_price'] = $heldCoins[$slotMkt]['avgBuyPrice'];
-                    $s['entry_volume'] = $heldCoins[$slotMkt]['balance'];
-                    $s['entry_amount_krw'] = $heldCoins[$slotMkt]['evalAmount'];
                 }
             }
 
