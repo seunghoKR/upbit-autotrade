@@ -76,15 +76,22 @@ export default function SlotManager({
   const handleStartEdit = (e, slot) => {
     e.stopPropagation();
     setEditingSlotId(slot.slotId);
+    const targetProfit = (slot.targetProfitPct !== undefined && slot.targetProfitPct !== null && slot.targetProfitPct !== '') 
+      ? slot.targetProfitPct 
+      : (slot.trailingTargetProfitPct !== undefined && slot.trailingTargetProfitPct !== null && slot.trailingTargetProfitPct !== '' ? slot.trailingTargetProfitPct : 3.0);
+    const callback = (slot.trailingCallbackPct !== undefined && slot.trailingCallbackPct !== null && slot.trailingCallbackPct !== '') ? slot.trailingCallbackPct : 1.0;
+    const stopLoss = (slot.stopLossPct !== undefined && slot.stopLossPct !== null && slot.stopLossPct !== '') ? slot.stopLossPct : 2.0;
+
     setEditForm({
       tradeAmountKrw: slot.tradeAmountKrw !== undefined ? slot.tradeAmountKrw : 50000,
       strategyType: slot.strategyType || 'RECOMMENDED',
       surgeWindowSeconds: slot.surgeWindowSeconds !== undefined ? slot.surgeWindowSeconds : 5,
       surgeRatePct: slot.surgeRatePct !== undefined ? slot.surgeRatePct : 1.5,
       surgeMinVolumeKrw: slot.surgeMinVolumeKrw !== undefined ? slot.surgeMinVolumeKrw : 10000000,
-      trailingTargetProfitPct: slot.trailingTargetProfitPct !== undefined ? slot.trailingTargetProfitPct : 3.0,
-      trailingCallbackPct: slot.trailingCallbackPct !== undefined ? slot.trailingCallbackPct : 1.0,
-      stopLossPct: slot.stopLossPct !== undefined ? slot.stopLossPct : 2.0
+      targetProfitPct: targetProfit,
+      trailingTargetProfitPct: targetProfit,
+      trailingCallbackPct: callback,
+      stopLossPct: stopLoss
     });
   };
 
@@ -95,13 +102,18 @@ export default function SlotManager({
     }
 
     if (onUpdateSlot) {
+      const targetProfit = (editForm.targetProfitPct !== undefined && editForm.targetProfitPct !== '') 
+        ? editForm.targetProfitPct 
+        : (editForm.trailingTargetProfitPct !== undefined && editForm.trailingTargetProfitPct !== '' ? editForm.trailingTargetProfitPct : 3.0);
+
       onUpdateSlot(slotId, {
         tradeAmountKrw: editForm.tradeAmountKrw,
         strategyType: editForm.strategyType,
         surgeWindowSeconds: editForm.surgeWindowSeconds,
         surgeRatePct: editForm.surgeRatePct,
         surgeMinVolumeKrw: editForm.surgeMinVolumeKrw,
-        trailingTargetProfitPct: editForm.trailingTargetProfitPct,
+        targetProfitPct: targetProfit,
+        trailingTargetProfitPct: targetProfit,
         trailingCallbackPct: editForm.trailingCallbackPct,
         stopLossPct: editForm.stopLossPct
       });
@@ -555,10 +567,10 @@ export default function SlotManager({
                             <input
                               type="text"
                               inputMode="decimal"
-                              value={editForm.targetProfitPct}
+                              value={editForm.targetProfitPct !== undefined ? editForm.targetProfitPct : (editForm.trailingTargetProfitPct !== undefined ? editForm.trailingTargetProfitPct : 3.0)}
                               onChange={(e) => {
                                 const val = e.target.value.replace(/[^0-9.]/g, '');
-                                setEditForm(prev => ({ ...prev, targetProfitPct: val }));
+                                setEditForm(prev => ({ ...prev, targetProfitPct: val, trailingTargetProfitPct: val }));
                               }}
                               className="w-full bg-slate-950 border border-rose-500/50 rounded-lg py-1.5 text-center font-mono text-xs font-bold text-rose-400 focus:border-rose-400 focus:outline-none transition-colors"
                             />

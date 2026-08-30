@@ -243,10 +243,13 @@ export default function App() {
               positionStatus: hasPosition ? 'IN_POSITION' : 'IDLE',
               entryPrice: entryPrice,
               entryVolume: hasPosition ? (s.entryVolume || s.position?.entryVolume) : null,
-              entryAmountKrw: hasPosition ? (s.entryAmountKrw || s.position?.entryAmountKrw || (entryPrice * s.entryVolume)) : null,
               highestPrice: highestPrice,
               highestProfitPct: highestProfitPct,
-              targetMarket: s.targetMarket || 'KRW-BTC'
+              targetMarket: s.targetMarket || 'KRW-BTC',
+              targetProfitPct: parseFloat(s.targetProfitPct !== undefined ? s.targetProfitPct : (s.target_profit_pct !== undefined ? s.target_profit_pct : (s.trailingTargetProfitPct !== undefined ? s.trailingTargetProfitPct : 3.0))),
+              trailingTargetProfitPct: parseFloat(s.trailingTargetProfitPct !== undefined ? s.trailingTargetProfitPct : (s.trailing_target_profit_pct !== undefined ? s.trailing_target_profit_pct : (s.targetProfitPct !== undefined ? s.targetProfitPct : 3.0))),
+              trailingCallbackPct: parseFloat(s.trailingCallbackPct !== undefined ? s.trailingCallbackPct : (s.trailing_callback_pct !== undefined ? s.trailing_callback_pct : 1.0)),
+              stopLossPct: parseFloat(s.stopLossPct !== undefined ? s.stopLossPct : (s.stop_loss_pct !== undefined ? s.stop_loss_pct : 2.0))
             };
           });
           setSlots(normalizedSlots);
