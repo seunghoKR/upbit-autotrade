@@ -28,79 +28,83 @@ import {
 } from 'lucide-react';
 
 const DEFAULT_SLOTS = [
-  { id: 1, slotId: 1, slotName: '1번 슬롯', isEnabled: true, targetMarket: 'KRW-BTC', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 2, slotId: 2, slotName: '2번 슬롯', isEnabled: true, targetMarket: 'KRW-ETH', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 3, slotId: 3, slotName: '3번 슬롯', isEnabled: true, targetMarket: 'KRW-SOL', tradeAmountKrw: 30000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 4, slotId: 4, slotName: '4번 슬롯', isEnabled: true, targetMarket: 'KRW-XRP', tradeAmountKrw: 30000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 5, slotId: 5, slotName: '5번 슬롯', isEnabled: true, targetMarket: 'KRW-DOGE', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 6, slotId: 6, slotName: '6번 슬롯', isEnabled: true, targetMarket: 'KRW-ADA', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 7, slotId: 7, slotName: '7번 슬롯', isEnabled: true, targetMarket: 'KRW-AVAX', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 8, slotId: 8, slotName: '8번 슬롯', isEnabled: true, targetMarket: 'KRW-DOT', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 9, slotId: 9, slotName: '9번 슬롯', isEnabled: true, targetMarket: 'KRW-NEAR', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 1, slotId: 1, slotName: '1번 슬롯', isEnabled: true, targetMarket: 'KRW-BTC', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, trailingTargetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 2, slotId: 2, slotName: '2번 슬롯', isEnabled: true, targetMarket: 'KRW-ETH', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, trailingTargetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 3, slotId: 3, slotName: '3번 슬롯', isEnabled: true, targetMarket: 'KRW-SOL', tradeAmountKrw: 30000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, trailingTargetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 4, slotId: 4, slotName: '4번 슬롯', isEnabled: true, targetMarket: 'KRW-XRP', tradeAmountKrw: 30000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, trailingTargetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 5, slotId: 5, slotName: '5번 슬롯', isEnabled: true, targetMarket: 'KRW-DOGE', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, trailingTargetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 6, slotId: 6, slotName: '6번 슬롯', isEnabled: true, targetMarket: 'KRW-ADA', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, trailingTargetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 7, slotId: 7, slotName: '7번 슬롯', isEnabled: true, targetMarket: 'KRW-AVAX', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, trailingTargetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 8, slotId: 8, slotName: '8번 슬롯', isEnabled: true, targetMarket: 'KRW-DOT', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, trailingTargetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 9, slotId: 9, slotName: '9번 슬롯', isEnabled: true, targetMarket: 'KRW-NEAR', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, trailingTargetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
 ];
 
 export default function SlotManager({ 
   slots = [], 
   onUpdateSlot, 
   onSellSlot, 
+  onResetSlotStats,
   livePriceMap = {},
   botRunning = false,
   onToggleBot,
   onTriggerMockSurge,
   pendingSurgeCountdown = null,
+  pendingSurgeCountdowns = {},
   selectedSlotId = 1,
   onSelectSlot,
   krwBalance = 1000000,
   currentUser = null
 }) {
-  // 어떤 상황에서도 슬롯이 화면에서 비어있지 않도록 보장
   const displaySlots = (Array.isArray(slots) && slots.length > 0) ? slots : DEFAULT_SLOTS;
 
   const [editingSlotId, setEditingSlotId] = useState(null);
   const [activeTabSlotId, setActiveTabSlotId] = useState(1);
-  const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
-  const [selectedStatsSlot, setSelectedStatsSlot] = useState(null);
-
-  // 편집 폼 상태 (추천전략 vs 셀프전략 지원, 기본값 0원)
   const [editForm, setEditForm] = useState({
-    name: '',
-    isEnabled: true,
-    targetMarket: 'KRW-BTC',
-    tradeAmountKrw: 0,
-    strategyType: 'RECOMMENDED', // 'RECOMMENDED' | 'SELF'
+    tradeAmountKrw: 50000,
+    strategyType: 'RECOMMENDED',
     surgeWindowSeconds: 5,
     surgeRatePct: 1.5,
     surgeMinVolumeKrw: 10000000,
-    targetProfitPct: 3.0,
+    trailingTargetProfitPct: 3.0,
     trailingCallbackPct: 1.0,
     stopLossPct: 2.0
   });
+
+  const [selectedStatsSlot, setSelectedStatsSlot] = useState(null);
+  const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
 
   const handleStartEdit = (e, slot) => {
     e.stopPropagation();
     setEditingSlotId(slot.slotId);
     setEditForm({
-      name: slot.slotName || `슬롯 ${slot.slotId}`,
-      isEnabled: slot.isEnabled,
-      targetMarket: slot.targetMarket || 'KRW-BTC',
-      tradeAmountKrw: slot.tradeAmountKrw !== undefined ? slot.tradeAmountKrw : 0,
+      tradeAmountKrw: slot.tradeAmountKrw !== undefined ? slot.tradeAmountKrw : 50000,
       strategyType: slot.strategyType || 'RECOMMENDED',
       surgeWindowSeconds: slot.surgeWindowSeconds !== undefined ? slot.surgeWindowSeconds : 5,
       surgeRatePct: slot.surgeRatePct !== undefined ? slot.surgeRatePct : 1.5,
       surgeMinVolumeKrw: slot.surgeMinVolumeKrw !== undefined ? slot.surgeMinVolumeKrw : 10000000,
-      targetProfitPct: slot.targetProfitPct || 3.0,
-      trailingCallbackPct: slot.trailingCallbackPct || 1.0,
-      stopLossPct: slot.stopLossPct || 2.0
+      trailingTargetProfitPct: slot.trailingTargetProfitPct !== undefined ? slot.trailingTargetProfitPct : 3.0,
+      trailingCallbackPct: slot.trailingCallbackPct !== undefined ? slot.trailingCallbackPct : 1.0,
+      stopLossPct: slot.stopLossPct !== undefined ? slot.stopLossPct : 2.0
     });
   };
 
-  const handleSaveEdit = async (slotId) => {
+  const handleSaveEdit = (slotId) => {
     if (editForm.tradeAmountKrw > 0 && editForm.tradeAmountKrw < 5000) {
-      alert('업비트 원화 마켓의 최소 주문 가능 금액은 5,000원입니다.\n1회 매수금액을 5,000원 이상으로 설정해 주세요!');
+      alert('업비트 원화 마켓의 최소 주문 가능 금액은 5,000원입니다.\n매수금액을 5,000원 이상으로 설정해 주세요!');
       return;
     }
+
     if (onUpdateSlot) {
-      await onUpdateSlot(slotId, editForm);
+      onUpdateSlot(slotId, {
+        tradeAmountKrw: editForm.tradeAmountKrw,
+        strategyType: editForm.strategyType,
+        surgeWindowSeconds: editForm.surgeWindowSeconds,
+        surgeRatePct: editForm.surgeRatePct,
+        surgeMinVolumeKrw: editForm.surgeMinVolumeKrw,
+        trailingTargetProfitPct: editForm.trailingTargetProfitPct,
+        trailingCallbackPct: editForm.trailingCallbackPct,
+        stopLossPct: editForm.stopLossPct
+      });
     }
     setEditingSlotId(null);
   };
@@ -134,108 +138,60 @@ export default function SlotManager({
   };
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-4 sm:p-6 backdrop-blur-xl shadow-2xl space-y-5">
-      {/* 1. 상단 타이틀 & 봇 가동 제어 바 */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3 sm:pb-4">
-        <div className="flex items-center gap-2.5 sm:gap-3">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 shadow-md">
-            <Radio className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse" />
+    <div className="space-y-4">
+      {/* 1. 상단 슬롯 헤더 & 1~9번 슬롯 탭 네비게이션 통합 바 (1줄 콤팩트 디자인) */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl backdrop-blur-md">
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="p-1.5 sm:p-2 rounded-xl bg-gradient-to-tr from-emerald-500/20 via-teal-500/15 to-indigo-500/20 border border-emerald-500/30 text-emerald-400">
+            <Layers className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-black text-white tracking-tight whitespace-nowrap">
-                멀티 슬롯 자동매매 매니저
-              </h2>
-              <span className="text-[10px] sm:text-xs px-2 py-0.2 sm:px-2.5 sm:py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-bold whitespace-nowrap">
-                {displaySlots.length}슬롯
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 mt-0.5 hidden sm:block">
-              100% 전자동 알고리즘으로 시세 급등을 감지하고, 완료 즉시 텔레그램으로 수익 결과를 전송합니다.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* 💡 주문 가능 원화 잔고 부족 시 친절한 안내 배너 (최소 5,000원 이상 필요) */}
-      {krwBalance < 5000 && (
-        <div className="p-3 sm:p-3.5 rounded-2xl bg-amber-950/40 border border-amber-500/30 text-amber-300 flex items-center justify-between gap-2 text-xs animate-in fade-in">
-          <div className="flex items-center gap-2.5">
-            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
-            <span>
-              <strong>원화 잔고 안내:</strong> 현재 주문 가능 원화(<strong>{Math.round(krwBalance).toLocaleString()}원</strong>)가 업비트 최소 주문금액(<strong>5,000원</strong>)보다 부족합니다. 원화를 조금만 충전하시면 슬롯이 즉시 자동 가동됩니다! ✨
+          <div className="flex items-center gap-2">
+            <h3 className="font-black text-slate-100 text-xs sm:text-sm tracking-tight whitespace-nowrap">
+              멀티 슬롯 실시간 자동매매
+            </h3>
+            <span className="text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-bold border border-emerald-500/30 whitespace-nowrap">
+              {displaySlots.filter(s => s.isEnabled).length}/{displaySlots.length} 가동
             </span>
           </div>
         </div>
-      )}
 
-      {/* ⚡ 실시간 급등 감지 레이더 상단 실시간 3초 카운트다운 알림 바 */}
-      {pendingSurgeCountdown && (
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-500/25 via-yellow-500/20 to-amber-500/25 border-2 border-amber-400 text-amber-300 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xl shadow-amber-500/20 animate-in fade-in">
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <div className="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-black text-lg shrink-0 animate-bounce shadow">
-              ⚡
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black tracking-wide">
-                  급등 레이더 포착
-                </span>
-                <h3 className="font-extrabold text-white text-sm sm:text-base">
-                  {formatMarketName(pendingSurgeCountdown.market)} 급등 포착!
-                </h3>
-              </div>
-              <p className="text-xs text-amber-200 mt-0.5">
-                <strong>{pendingSurgeCountdown.slotId}번 슬롯</strong>에 <strong>{pendingSurgeCountdown.secondsLeft}초 후 전자동 시장가 매수 주문</strong>이 실행됩니다.
-              </p>
-            </div>
+        {/* 2. 1~9번 슬롯 탭 버튼 바 (9개 슬롯 모두 짤림 없이 1줄 핏) */}
+        {displaySlots.length > 1 && (
+          <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto pb-0.5 lg:pb-0 scrollbar-none">
+            {displaySlots.map((slot) => {
+              const isSelected = (selectedSlotId === slot.slotId);
+              const hasPosition = (slot.positionStatus === 'IN_POSITION' || slot.positionStatus === 'HOLDING' || slot.positionStatus === 'TRAILING_ACTIVE') || Boolean(slot.entryPrice && slot.entryPrice > 0);
+              return (
+                <button
+                  key={slot.slotId}
+                  onClick={() => onSelectSlot && onSelectSlot(slot.slotId)}
+                  className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold shrink-0 transition-colors border cursor-pointer whitespace-nowrap ${
+                    isSelected
+                      ? 'bg-emerald-500 text-black border-emerald-400 font-extrabold shadow-sm'
+                      : !slot.isEnabled
+                        ? 'bg-slate-950/60 text-slate-500 border-slate-800 hover:text-slate-400'
+                        : hasPosition
+                        ? 'bg-slate-800/90 text-emerald-300 border-emerald-500/30 hover:bg-slate-800'
+                        : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white hover:bg-slate-800'
+                  }`}
+                >
+                  <span>{slot.slotId}번</span>
+                  <span className="font-normal truncate max-w-[48px] sm:max-w-[60px]">
+                    {!slot.isEnabled ? '정지' : (hasPosition && slot.targetMarket ? slot.targetMarket.replace('KRW-', '') : '대기')}
+                  </span>
+                  {!slot.isEnabled ? (
+                    <span className="text-[9px] text-slate-500 font-mono">⏸️</span>
+                  ) : hasPosition ? (
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span>
+                  ) : (
+                    <span className="text-[9px] text-emerald-400">⚡</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
-
-          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-            <div className="px-4 py-2 rounded-xl bg-amber-400 text-slate-950 font-mono font-black text-sm flex items-center gap-1.5 shadow-lg animate-pulse">
-              <Clock className="w-4 h-4" />
-              <span>{pendingSurgeCountdown.secondsLeft}초 후 자동 매수...</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 2. 슬롯 탭 바 (2개 이상 슬롯일 때만 표시, 모바일 가로 스크롤) */}
-      {displaySlots.length > 1 && (
-        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1.5 scrollbar-none border-b border-slate-800/60">
-          {displaySlots.map((slot) => {
-            const isSelected = (selectedSlotId === slot.slotId);
-            const hasPosition = (slot.positionStatus === 'IN_POSITION' || slot.positionStatus === 'HOLDING' || slot.positionStatus === 'TRAILING_ACTIVE') || Boolean(slot.entryPrice && slot.entryPrice > 0);
-            return (
-              <button
-                key={slot.slotId}
-                onClick={() => onSelectSlot && onSelectSlot(slot.slotId)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all border cursor-pointer whitespace-nowrap ${
-                  isSelected
-                    ? 'bg-emerald-500 text-black border-emerald-400 shadow-lg shadow-emerald-500/20 scale-105'
-                    : !slot.isEnabled
-                      ? 'bg-slate-900/60 text-slate-500 border-slate-800'
-                      : hasPosition
-                      ? 'bg-slate-800/90 text-emerald-300 border-emerald-500/30'
-                      : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white hover:bg-slate-800'
-                }`}
-              >
-                <span>{slot.slotId}번</span>
-                <span className="text-[11px] font-normal truncate max-w-[80px]">
-                  {!slot.isEnabled ? '정지' : (hasPosition && slot.targetMarket ? slot.targetMarket.replace('KRW-', '') : '대기')}
-                </span>
-                {!slot.isEnabled ? (
-                  <span className="text-[10px] text-slate-500 font-mono">⏸️</span>
-                ) : hasPosition ? (
-                  <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse"></span>
-                ) : (
-                  <span className="text-[10px] text-emerald-400">⚡</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
+        )}
+      </div>
 
       {/* 3. 슬롯 카드 그리드 (1개 슬롯은 화면 가운데 정렬, 멀티 슬롯은 PC 3열 그리드 배치) */}
       <div className={displaySlots.length === 1 ? "flex justify-center py-2" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4"}>
@@ -243,7 +199,12 @@ export default function SlotManager({
           const isSelected = (selectedSlotId === slot.slotId);
           const isEditing = (editingSlotId === slot.slotId);
           const hasPosition = (slot.positionStatus === 'IN_POSITION' || slot.positionStatus === 'HOLDING' || slot.positionStatus === 'TRAILING_ACTIVE') || Boolean(slot.entryPrice && slot.entryPrice > 0);
-          const isSurgeCounting = (pendingSurgeCountdown && pendingSurgeCountdown.slotId === slot.slotId);
+          
+          // ⚡ 각 슬롯별 독립적인 카운트다운 상태 매핑
+          const slotCountdown = (pendingSurgeCountdowns && pendingSurgeCountdowns[slot.slotId]) || 
+            (pendingSurgeCountdown && pendingSurgeCountdown.slotId === slot.slotId ? pendingSurgeCountdown : null);
+          const isSurgeCounting = Boolean(slotCountdown);
+
           const marketData = livePriceMap[slot.targetMarket] || {};
           const currentPrice = marketData.trade_price || slot.entryPrice || 0;
           const profitPct = (slot.entryPrice && currentPrice) 
@@ -302,53 +263,37 @@ export default function SlotManager({
                 </div>
               )}
 
-              {/* 1. 상단 슬롯 헤더 (일반/수정 공통 일관된 배치) */}
+              {/* 1. 상단 슬롯 헤더 (| 1번 슬롯 | 추천전략 |    | [Power] ON | [통계] | [수정] |) */}
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${
+                  {/* 슬롯 번호 버튼형 뱃지 */}
+                  <div className={`px-2.5 py-1 rounded-xl text-xs sm:text-sm font-black flex items-center justify-center border shadow-sm shrink-0 whitespace-nowrap ${
                     !slot.isEnabled
-                      ? 'bg-slate-800 text-slate-500 border border-slate-700'
+                      ? 'bg-slate-800 text-slate-400 border-slate-700'
                       : hasPosition 
-                      ? 'bg-rose-500/25 text-rose-300 border border-rose-500/40' 
+                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 shadow-rose-500/10' 
                       : (isSelfStrategy 
-                          ? 'bg-purple-500/25 text-purple-200 border border-purple-400/40' 
-                          : 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40')
+                          ? 'bg-purple-500/20 text-purple-200 border-purple-400/40 shadow-purple-500/10' 
+                          : 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40 shadow-emerald-500/10')
                   }`}>
-                    {slot.slotId}
+                    {slot.slotId}번 슬롯
                   </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 flex-nowrap overflow-hidden">
-                      <span className="text-xs sm:text-sm font-black text-white whitespace-nowrap truncate">
-                        {slot.slotName || `${slot.slotId}번 슬롯`}
-                      </span>
-                      <span className={`text-[9px] sm:text-[10px] px-1.5 py-0.2 rounded-full font-extrabold tracking-tight border shadow-sm shrink-0 whitespace-nowrap ${
-                        !slot.isEnabled
-                          ? 'bg-slate-800 text-slate-400 border-slate-700'
-                          : isSelfStrategy 
-                          ? 'bg-purple-500/30 text-purple-200 border-purple-400/60 shadow-purple-500/20' 
-                          : 'bg-emerald-500/20 text-emerald-300 border-emerald-400/50 shadow-emerald-500/20'
-                      }`}>
-                        <span className="sm:hidden">{!slot.isEnabled ? '정지' : (isSelfStrategy ? '셀프' : '추천')}</span>
-                        <span className="hidden sm:inline">{!slot.isEnabled ? '⏸️ 정지' : (isSelfStrategy ? '🛠️ 셀프' : '🎯 추천')}</span>
-                      </span>
-                    </div>
-                    <span className="text-[11px] sm:text-xs text-slate-400 whitespace-nowrap truncate block">
-                      {!slot.isEnabled ? (
-                        <span className="text-slate-500 font-bold">⏸️ 슬롯 정지됨 (감시 중단)</span>
-                      ) : isSurgeCounting ? (
-                        <span className="text-amber-300 font-bold animate-pulse">⚡ 급등 포착: {formatMarketName(pendingSurgeCountdown.market)}</span>
-                      ) : hasPosition ? (
-                        <span className="text-white font-bold">🪙 {formatMarketName(slot.targetMarket)} 보유 중</span>
-                      ) : (
-                        <span className="text-slate-400">전종목 급등 포착 대기</span>
-                      )}
-                    </span>
-                  </div>
+
+                  {/* 전략 뱃지 */}
+                  <span className={`text-[10px] px-2 py-0.8 rounded-lg font-extrabold tracking-tight border shadow-sm shrink-0 whitespace-nowrap ${
+                    !slot.isEnabled
+                      ? 'bg-slate-900 text-slate-500 border-slate-800'
+                      : isSelfStrategy 
+                      ? 'bg-purple-950/60 text-purple-300 border-purple-500/40' 
+                      : 'bg-emerald-950/60 text-emerald-300 border-emerald-500/40'
+                  }`}>
+                    {isSelfStrategy ? '셀프전략' : '추천전략'}
+                  </span>
                 </div>
 
-                {/* 상태 뱃지 & 액션 버튼 */}
-                <div className="flex items-center gap-1 shrink-0">
-                  {/* ⚡ 개별 슬롯 자동매매 ON/OFF 토글 스위치 */}
+                {/* 우측 액션 메뉴: | [Power] ON | [통계 아이콘] | [수정 아이콘] | */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {/* ⚡ ON / OFF 스위치 */}
                   <button
                     type="button"
                     onClick={(e) => {
@@ -358,15 +303,15 @@ export default function SlotManager({
                         isEnabled: !slot.isEnabled
                       });
                     }}
-                    className={`px-2 py-1 rounded-lg text-[10px] font-black flex items-center gap-1 border transition shadow-sm cursor-pointer whitespace-nowrap ${
+                    className={`px-2.5 py-1 rounded-lg text-xs font-black flex items-center gap-1.5 border transition shadow-sm cursor-pointer whitespace-nowrap ${
                       slot.isEnabled
-                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/50 hover:bg-emerald-500/30'
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/60 hover:bg-emerald-500/30'
                         : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white hover:bg-slate-700'
                     }`}
-                    title={slot.isEnabled ? '슬롯 자동매매 일시정지' : '슬롯 자동매매 가동 시작'}
+                    title={slot.isEnabled ? '슬롯 자동매매 OFF (일시정지)' : '슬롯 자동매매 ON (가동 시작)'}
                   >
-                    <Power className={`w-3 h-3 ${slot.isEnabled ? 'text-emerald-400 animate-pulse' : 'text-slate-500'}`} />
-                    <span>{slot.isEnabled ? '가동' : '정지'}</span>
+                    <Power className={`w-3.5 h-3.5 ${slot.isEnabled ? 'text-emerald-400 animate-pulse' : 'text-slate-500'}`} />
+                    <span>{slot.isEnabled ? 'ON' : 'OFF'}</span>
                   </button>
 
                   {isEditing ? (
@@ -375,24 +320,26 @@ export default function SlotManager({
                         e.stopPropagation();
                         setEditingSlotId(null);
                       }}
-                      className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition"
-                      title="설정 닫기"
+                      className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition cursor-pointer"
+                      title="수정 닫기"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
                   ) : (
                     <>
+                      {/* 통계(아이콘) 버튼 */}
                       <button
                         onClick={(e) => handleOpenStats(e, slot)}
-                        className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition"
-                        title="통계"
+                        className="p-1.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-emerald-300 border border-slate-700/80 transition cursor-pointer"
+                        title="통계 보기"
                       >
                         <BarChart3 className="w-3.5 h-3.5" />
                       </button>
+                      {/* 수정(아이콘) 버튼 */}
                       <button
                         onClick={(e) => handleStartEdit(e, slot)}
-                        className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition"
-                        title="설정"
+                        className="p-1.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-emerald-300 border border-slate-700/80 transition cursor-pointer"
+                        title="슬롯 설정 수정"
                       >
                         <Settings2 className="w-3.5 h-3.5" />
                       </button>
@@ -402,7 +349,7 @@ export default function SlotManager({
               </div>
 
               {/* 2. 중앙 콘텐츠 영역 (정확히 동일한 여백과 높이 배분) */}
-              {isSurgeCounting ? (
+              {isSurgeCounting && slotCountdown ? (
                 /* ⚡ 급등 레이더 포착 상세 정보 & 3초 카운트다운 게이지 */
                 <div className="flex-1 flex flex-col justify-center my-2 space-y-2 animate-in fade-in">
                   <div className="p-2.5 rounded-xl bg-amber-950/70 border border-amber-400/60 space-y-1.5">
@@ -412,7 +359,7 @@ export default function SlotManager({
                         <span className="text-[11px] font-black text-amber-300">🚨 실시간 급등 포착</span>
                       </div>
                       <span className="px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black text-[10px]">
-                        +{pendingSurgeCountdown.rate || '2.6'}% 급등
+                        +{slotCountdown.rate || '2.6'}% 급등
                       </span>
                     </div>
 
@@ -420,13 +367,13 @@ export default function SlotManager({
                       <div>
                         <span className="text-[10px] text-amber-200/70 block">포착 종목</span>
                         <span className="font-bold text-white text-xs truncate block">
-                          {formatMarketName(pendingSurgeCountdown.market)}
+                          {formatMarketName(slotCountdown.market)}
                         </span>
                       </div>
                       <div className="text-right">
                         <span className="text-[10px] text-amber-200/70 block">포착 현재가</span>
                         <span className="font-mono font-bold text-amber-300 text-xs">
-                          {Math.round(pendingSurgeCountdown.price || 0).toLocaleString()}원
+                          {Math.round(slotCountdown.price || 0).toLocaleString()}원
                         </span>
                       </div>
                     </div>
@@ -434,7 +381,7 @@ export default function SlotManager({
                     <div className="flex items-center justify-between text-[11px] bg-slate-950/60 px-2 py-1 rounded-lg border border-amber-500/20">
                       <span className="text-slate-400">주문 예정 금액</span>
                       <span className="font-mono font-bold text-emerald-400">
-                        {Math.round(pendingSurgeCountdown.amount || slot.tradeAmountKrw || 50000).toLocaleString()}원
+                        {Math.round(slotCountdown.amount || slot.tradeAmountKrw || 50000).toLocaleString()}원
                       </span>
                     </div>
                   </div>
@@ -445,7 +392,7 @@ export default function SlotManager({
                       <Clock className="w-3.5 h-3.5" />
                       <span>3초 뒤 전자동 매수 체결</span>
                     </span>
-                    <span className="font-mono text-sm font-extrabold">{pendingSurgeCountdown.secondsLeft}초</span>
+                    <span className="font-mono text-sm font-extrabold">{slotCountdown.secondsLeft}초</span>
                   </div>
                 </div>
               ) : isEditing ? (
@@ -477,122 +424,179 @@ export default function SlotManager({
                     </button>
                   </div>
 
-                  {/* 1회 매수금액 설정 */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between text-[10px]">
-                      <label className="text-slate-400 font-bold">1회 매수금액 (KRW)</label>
-                      <span className="text-slate-500">주문가능: {Math.round(krwBalance).toLocaleString()}원</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="number"
-                        min="0"
-                        step="5000"
-                        value={editForm.tradeAmountKrw}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, tradeAmountKrw: Number(e.target.value) }))}
-                        placeholder="최소 5,000원 이상"
-                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-white font-mono text-xs font-bold focus:outline-none focus:border-emerald-400"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setEditForm(prev => ({ ...prev, tradeAmountKrw: Math.max(0, Math.floor(krwBalance)) }))}
-                        className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-300 text-[10px] font-bold shrink-0 border border-slate-700"
-                      >
-                        최대
-                      </button>
+                  {/* 매수금액(KRW) - 1줄 컴팩트 레이아웃 */}
+                  <div className="bg-slate-950/60 p-2 rounded-xl border border-slate-800/80">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <label className="text-xs text-slate-300 font-bold whitespace-nowrap">매수금액(KRW)</label>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-1 justify-end max-w-[260px]">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={editForm.tradeAmountKrw !== undefined ? editForm.tradeAmountKrw : 5000}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            setEditForm(prev => ({ ...prev, tradeAmountKrw: val === '' ? '' : Number(val) }));
+                          }}
+                          placeholder="5000"
+                          className="w-24 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-right text-emerald-300 font-mono text-xs font-bold focus:outline-none focus:border-emerald-400 transition-colors"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setEditForm(prev => ({ ...prev, tradeAmountKrw: Math.max(0, Math.floor(krwBalance)) }))}
+                          className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-300 text-[11px] font-bold shrink-0 border border-slate-700 cursor-pointer active:scale-95 transition-all"
+                          title="주문 가능 전액 입력"
+                        >
+                          최대
+                        </button>
+                        <span className="text-[10px] text-slate-500 whitespace-nowrap hidden sm:inline" title="현재 업비트 보유 원화 잔고">
+                          (가능: {Math.round(krwBalance).toLocaleString()}원)
+                        </span>
+                      </div>
                     </div>
                     {editForm.tradeAmountKrw > 0 && editForm.tradeAmountKrw < 5000 && (
-                      <p className="text-[10px] text-rose-400 font-bold flex items-center gap-1 pt-0.5">
+                      <p className="text-[10px] text-rose-400 font-bold flex items-center gap-1 pt-1">
                         <AlertTriangle className="w-3 h-3 shrink-0" />
                         <span>업비트 최소 주문금액은 5,000원 이상이어야 합니다.</span>
                       </p>
                     )}
                   </div>
 
-                  {/* 🛠️ 셀프전략 전용 상세 옵션 (급등 감지 기준 & 감시익절/콜백/손절) */}
+                  {/* 🛠️ 셀프전략 전용 상세 옵션 (1. 매수 조건 & 2. 매도 조건 분리) */}
                   {editForm.strategyType === 'SELF' ? (
-                    <div className="space-y-2 p-2.5 rounded-xl bg-slate-950/90 border border-purple-500/30">
-                      <div className="text-xs text-purple-300 flex items-center justify-between font-medium">
-                        <span>⚡ 급등 감지 기준 (자동매수 조건)</span>
-                        <span className="text-[10px] text-slate-400 font-normal">조건 만족 시 자동 매수</span>
-                      </div>
-                      
-                      {/* 초 단위 감시 시간 & 상승률 & 거래대금 */}
-                      <div className="grid grid-cols-3 gap-1.5 text-center">
-                        <div className="bg-slate-900/80 p-1.5 rounded-lg border border-slate-800">
-                          <label className="text-xs text-slate-300 block mb-0.5 font-normal">감시 시간(초)</label>
-                          <div className="flex items-center justify-center gap-0.5">
+                    <div className="space-y-2.5">
+                      {/* ⚡ 1. 자동 매수 조건 (급등 포착 기준) */}
+                      <div className="p-2.5 rounded-xl bg-amber-950/20 border border-amber-500/30 space-y-2">
+                        <div className="text-xs text-amber-300 flex items-center justify-between font-bold">
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                            ⚡ 1. 자동 매수 조건 (급등 포착)
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-200 font-normal">
+                            조건 만족 시 자동 매수
+                          </span>
+                        </div>
+                        
+                        {/* 초 단위 감시 시간 & 상승률 & 최소거래대금 (스피너 없는 순수 텍스트 인풋) */}
+                        <div className="grid grid-cols-3 gap-1.5 text-center items-center">
+                          <div className="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800 text-center">
+                            <label className="text-[11px] text-slate-300 block mb-1 font-medium whitespace-nowrap text-center" title="지정한 시간 동안의 가격 급등을 추적합니다">
+                              감시 시간(초)
+                            </label>
                             <input
-                              type="number"
-                              min="1"
-                              max="300"
-                              step="1"
+                              type="text"
+                              inputMode="numeric"
                               value={editForm.surgeWindowSeconds}
-                              onChange={(e) => setEditForm(prev => ({ ...prev, surgeWindowSeconds: Math.max(1, Number(e.target.value)) }))}
-                              className="w-full bg-slate-950 border border-slate-700 rounded px-1 py-0.5 text-amber-300 font-mono text-xs text-center font-bold"
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^0-9]/g, '');
+                                setEditForm(prev => ({ ...prev, surgeWindowSeconds: val === '' ? '' : Math.max(1, Number(val)) }));
+                              }}
+                              className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 text-center font-mono text-xs font-bold text-amber-300 focus:border-amber-400 focus:outline-none transition-colors"
                             />
-                            <span className="text-[10px] text-slate-400 font-normal">초</span>
                           </div>
-                        </div>
-                        <div className="bg-slate-900/80 p-1.5 rounded-lg border border-slate-800">
-                          <label className="text-xs text-slate-300 block mb-0.5 font-normal">상승률(%)</label>
-                          <div className="flex items-center justify-center gap-0.5">
+                          <div className="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800 text-center">
+                            <label className="text-[11px] text-slate-300 block mb-1 font-medium whitespace-nowrap text-center" title="감시 시간 내 최저가 대비 상승해야 하는 목표 비율">
+                              상승률(+%)
+                            </label>
                             <input
-                              type="number"
-                              step="0.1"
-                              min="0.1"
+                              type="text"
+                              inputMode="decimal"
                               value={editForm.surgeRatePct}
-                              onChange={(e) => setEditForm(prev => ({ ...prev, surgeRatePct: Number(e.target.value) }))}
-                              className="w-full bg-slate-950 border border-slate-700 rounded px-1 py-0.5 text-rose-300 font-mono text-xs text-center font-bold"
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^0-9.]/g, '');
+                                setEditForm(prev => ({ ...prev, surgeRatePct: val }));
+                              }}
+                              className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 text-center font-mono text-xs font-bold text-amber-300 focus:border-amber-400 focus:outline-none transition-colors"
                             />
-                            <span className="text-[10px] text-slate-400 font-normal">%</span>
                           </div>
-                        </div>
-                        <div className="bg-slate-900/80 p-1.5 rounded-lg border border-slate-800">
-                          <label className="text-xs text-slate-300 block mb-0.5 font-normal whitespace-nowrap">최소거래대금(원)</label>
-                          <input
-                            type="number"
-                            step="1000000"
-                            min="100000"
-                            value={editForm.surgeMinVolumeKrw}
-                            onChange={(e) => setEditForm(prev => ({ ...prev, surgeMinVolumeKrw: Number(e.target.value) }))}
-                            className="w-full bg-slate-950 border border-slate-700 rounded px-1 py-0.5 text-emerald-300 font-mono text-[11px] text-center font-bold truncate"
-                            title={`${Math.round(editForm.surgeMinVolumeKrw).toLocaleString()}원`}
-                          />
+                          <div className="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800 text-center">
+                            <label className="text-[11px] text-slate-300 block mb-1 font-medium whitespace-nowrap text-center" title="동반되어야 할 최소 거래대금 (1,000 = 1,000만원)">
+                              최소대금(만원)
+                            </label>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={editForm.surgeMinVolumeManwon !== undefined ? editForm.surgeMinVolumeManwon : Math.round((editForm.surgeMinVolumeKrw || 10000000) / 10000)}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^0-9]/g, '');
+                                setEditForm(prev => ({
+                                  ...prev,
+                                  surgeMinVolumeManwon: val,
+                                  surgeMinVolumeKrw: (Number(val) || 0) * 10000
+                                }));
+                              }}
+                              className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 text-center font-mono text-xs font-bold text-emerald-300 focus:border-emerald-400 focus:outline-none transition-colors"
+                              title={`실제 적용: ${Math.round(editForm.surgeMinVolumeKrw || 10000000).toLocaleString()}원`}
+                            />
+                          </div>
                         </div>
                       </div>
 
-                      {/* 감시익절 / 콜백 / 손절 */}
-                      <div className="grid grid-cols-3 gap-1.5 text-center pt-1.5 border-t border-slate-800">
-                        <div>
-                          <label className="text-xs text-slate-300 block mb-0.5 font-normal" title="이 수익률 도달 이후부터 최고가 추적을 시작합니다">감시익절(%)</label>
-                          <input
-                            type="number"
-                            step="0.1"
-                            value={editForm.targetProfitPct}
-                            onChange={(e) => setEditForm(prev => ({ ...prev, targetProfitPct: Number(e.target.value) }))}
-                            className="w-full bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-emerald-300 font-mono text-xs text-center font-bold"
-                          />
+                      {/* 🎯 2. 자동 매도 조건 (트레일링 익절 & 손절) */}
+                      <div className="p-2.5 rounded-xl bg-slate-950/90 border border-slate-700/80 space-y-2">
+                        <div className="text-xs text-slate-200 flex items-center justify-between font-bold">
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                            🎯 2. 자동 매도 조건 (익절 &amp; 손절)
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 font-normal">
+                            조건 도달 시 즉시 매도
+                          </span>
                         </div>
-                        <div>
-                          <label className="text-xs text-slate-300 block mb-0.5 font-normal" title="최고점 대비 하락 시 즉시 익절 매도합니다">콜백(%)</label>
-                          <input
-                            type="number"
-                            step="0.1"
-                            value={editForm.trailingCallbackPct}
-                            onChange={(e) => setEditForm(prev => ({ ...prev, trailingCallbackPct: Number(e.target.value) }))}
-                            className="w-full bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-cyan-300 font-mono text-xs text-center font-bold"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs text-slate-300 block mb-0.5 font-normal" title="손실 제한 즉시 손절매">손절(%)</label>
-                          <input
-                            type="number"
-                            step="0.1"
-                            value={editForm.stopLossPct}
-                            onChange={(e) => setEditForm(prev => ({ ...prev, stopLossPct: Number(e.target.value) }))}
-                            className="w-full bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-rose-300 font-mono text-xs text-center font-bold"
-                          />
+
+                        {/* 감시익절 (빨간색) / 콜백 (파란색) / 손절 (파란색) - 스피너 없는 순수 텍스트 인풋 */}
+                        <div className="grid grid-cols-3 gap-1.5 text-center items-center">
+                          {/* 감시익절 - 빨간색 (수익/상승) */}
+                          <div className="bg-rose-950/25 p-1.5 rounded-lg border border-rose-500/40 text-center">
+                            <label className="text-[11px] text-rose-300 block mb-1 font-bold whitespace-nowrap text-center" title="이 수익률 도달 시 최고점 추적(트레일링)을 시작합니다">
+                              감시익절(+%)
+                            </label>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={editForm.targetProfitPct}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^0-9.]/g, '');
+                                setEditForm(prev => ({ ...prev, targetProfitPct: val }));
+                              }}
+                              className="w-full bg-slate-950 border border-rose-500/50 rounded-lg py-1.5 text-center font-mono text-xs font-bold text-rose-400 focus:border-rose-400 focus:outline-none transition-colors"
+                            />
+                          </div>
+
+                          {/* 콜백 - 파란색 (하락/되돌림) */}
+                          <div className="bg-blue-950/25 p-1.5 rounded-lg border border-blue-500/40 text-center">
+                            <label className="text-[11px] text-blue-300 block mb-1 font-bold whitespace-nowrap text-center" title="최고점 도달 후 이만큼 하락 시 수익 확정 매도합니다">
+                              콜백(-%)
+                            </label>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={editForm.trailingCallbackPct}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^0-9.]/g, '');
+                                setEditForm(prev => ({ ...prev, trailingCallbackPct: val }));
+                              }}
+                              className="w-full bg-slate-950 border border-blue-500/50 rounded-lg py-1.5 text-center font-mono text-xs font-bold text-blue-400 focus:border-blue-400 focus:outline-none transition-colors"
+                            />
+                          </div>
+
+                          {/* 손절 - 파란색 (하락/손실제한) */}
+                          <div className="bg-blue-950/25 p-1.5 rounded-lg border border-blue-500/40 text-center">
+                            <label className="text-[11px] text-blue-300 block mb-1 font-bold whitespace-nowrap text-center" title="원금 손실 방지를 위해 즉시 시장가 매도합니다">
+                              손절(-%)
+                            </label>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={editForm.stopLossPct}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^0-9.]/g, '');
+                                setEditForm(prev => ({ ...prev, stopLossPct: val }));
+                              }}
+                              className="w-full bg-slate-950 border border-blue-500/50 rounded-lg py-1.5 text-center font-mono text-xs font-bold text-blue-400 focus:border-blue-400 focus:outline-none transition-colors"
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -605,7 +609,7 @@ export default function SlotManager({
                       </div>
                       <p className="text-[11px] text-slate-300 leading-relaxed font-normal">
                         • <strong>5초</strong> 동안 <strong>+1.5%</strong> 급등 &amp; <strong>1,000만원</strong> 수급 시 자동 매수<br />
-                        • 감시익절 <strong>+3.0%</strong> 추적 시작 | 콜백 <strong>-1.0%</strong> | 손절 <strong>-2.0%</strong>
+                        • 감시익절 <strong className="text-rose-400">+3.0%</strong> 추적 시작 | 콜백 <strong className="text-blue-400">-1.0%</strong> | 손절 <strong className="text-blue-400">-2.0%</strong>
                       </p>
                     </div>
                   )}
@@ -664,8 +668,8 @@ export default function SlotManager({
                         {hasPosition ? `${isProfit ? '+' : ''}${profitPct.toFixed(2)}%` : '포지션 대기'}
                       </span>
                       {hasPosition && (
-                        <span className="text-[10px] font-mono text-slate-400 block mt-0.5">
-                          현재: {Math.round(currentPrice).toLocaleString()}원
+                        <span className="text-[10px] font-mono text-slate-400 block mt-0.5" title={`최고 기록 수익률: +${Math.max(profitPct, slot.highestProfitPct || 0).toFixed(2)}%`}>
+                          최고: <strong className="text-rose-300 font-bold">+{Math.max(profitPct, slot.highestProfitPct || 0).toFixed(2)}%</strong>
                         </span>
                       )}
                     </div>
@@ -715,10 +719,41 @@ export default function SlotManager({
                 ) : (
                   <>
                     <span className="text-[11px] text-slate-400 flex items-center gap-1.5">
-                      <span className={`w-2 h-2 rounded-full ${!slot.isEnabled ? 'bg-slate-600' : hasPosition ? 'bg-emerald-400 animate-ping' : (isSurgeCounting ? 'bg-amber-400 animate-ping' : (isZeroAmount ? 'bg-amber-400' : 'bg-slate-500'))}`}></span>
-                      <strong className={!slot.isEnabled ? 'text-slate-500' : hasPosition ? 'text-emerald-300' : (isSurgeCounting ? 'text-amber-300' : (isZeroAmount ? 'text-amber-400/90' : 'text-slate-400'))}>
-                        {!slot.isEnabled ? '⏸️ 슬롯 가동 중지됨 (감시 중단)' : hasPosition ? '포지션 보유 (수익 추적)' : (isSurgeCounting ? '급등 포착! 자동 매수 대기' : (isZeroAmount ? '매수금액 설정 대기 (0원)' : '급등 신호 감시 중'))}
-                      </strong>
+                      {!slot.isEnabled ? (
+                        <>
+                          <span className="w-2 h-2 rounded-full bg-slate-600"></span>
+                          <strong className="text-slate-500">⏸️ 슬롯 가동 중지됨 (감시 중단)</strong>
+                        </>
+                      ) : hasPosition ? (
+                        <>
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                          </span>
+                          <strong className="text-emerald-300">🎯 실시간 수익 추적 중</strong>
+                        </>
+                      ) : isSurgeCounting ? (
+                        <>
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                          </span>
+                          <strong className="text-amber-300 animate-pulse">⚡ 급등 포착! 자동 매수 대기</strong>
+                        </>
+                      ) : isZeroAmount ? (
+                        <>
+                          <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                          <strong className="text-amber-400/90">매수금액 설정 대기 (0원)</strong>
+                        </>
+                      ) : (
+                        <>
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400"></span>
+                          </span>
+                          <strong className="text-cyan-300">🟢 실시간 레이더 감시 중</strong>
+                        </>
+                      )}
                     </span>
 
                     {/* ⚡ 각 슬롯별 개별 '긴급 강제 매도' 상시 배치 버튼 */}
@@ -837,12 +872,29 @@ export default function SlotManager({
               </div>
             </div>
 
-            <button
-              onClick={() => setIsStatsModalOpen(false)}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-700 hover:to-slate-600 text-white font-bold text-xs transition cursor-pointer shadow-lg active:scale-[0.99]"
-            >
-              확인 및 닫기
-            </button>
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (window.confirm(`${selectedStatsSlot.slotId}번 슬롯의 누적 통계를 초기화하시겠습니까?`)) {
+                    if (onResetSlotStats) {
+                      await onResetSlotStats(selectedStatsSlot.slotId);
+                    }
+                    setIsStatsModalOpen(false);
+                  }
+                }}
+                className="py-2.5 rounded-xl bg-slate-800 hover:bg-rose-950/60 text-slate-400 hover:text-rose-400 border border-slate-700 hover:border-rose-500/40 text-xs font-bold transition cursor-pointer"
+              >
+                통계 초기화
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsStatsModalOpen(false)}
+                className="py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs transition cursor-pointer shadow-md"
+              >
+                확인 및 닫기
+              </button>
+            </div>
           </div>
         </div>,
         document.body

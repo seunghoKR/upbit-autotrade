@@ -117,6 +117,11 @@ export const sellSlotPosition = async (slotId, sellData = {}) => {
   return res.data;
 };
 
+export const resetSlotStats = async (slotId, payload = {}) => {
+  const res = await axios.post(`${API_BASE}/slots/${slotId}/reset-stats`, payload);
+  return res.data;
+};
+
 // 비상 Panic Sell (전량 즉시 시장가 매도)
 export const panicSellAll = async (payload = {}) => {
   const res = await axios.post(`${API_BASE}/panic-sell`, payload);
@@ -158,6 +163,17 @@ export const updateAdminUser = async (userId, data) => {
 // ✈️ 회원 대상 텔레그램 알림 테스트 메시지 전송
 export const sendTelegramTestMessage = async (userId) => {
   const res = await axios.post(`${API_BASE}/admin/users/${userId}/test-telegram`);
+  return res.data;
+};
+
+// 🤖 텔레그램 봇 토큰 조회 및 업데이트/검증
+export const getTelegramConfig = async () => {
+  const res = await axios.get(`${API_BASE}/admin/telegram-config`);
+  return res.data;
+};
+
+export const updateTelegramBotToken = async (botToken) => {
+  const res = await axios.post(`${API_BASE}/admin/telegram-config`, { botToken });
   return res.data;
 };
 

@@ -42,17 +42,37 @@ function generateUpbitJwt(string $accessKey, string $secretKey, ?string $querySt
     return "Bearer {$encodedHeader}.{$encodedPayload}.{$encodedSignature}";
 }
 
-function sendTelegramDirectMessage(string $text, ?string $targetChatId = null): bool {
-    $botToken = getenv('TELEGRAM_BOT_TOKEN') ?: '8801000924:AAGspDXeDkHyGI0CHuSxFvyq_f5vmoezU';
+function getTelegramBotToken(): string {
+    static $cached = null;
+    if ($cached !== null) return $cached;
+    try {
+        $pdo = Database::getConnection();
+        $stmt = $pdo->query("SELECT telegram_bot_token FROM nurioh_settings WHERE id = 1");
+        if ($stmt) {
+            $row = $stmt->fetch();
+            if (!empty($row['telegram_bot_token'])) {
+                $cached = trim((string)$row['telegram_bot_token']);
+                return $cached;
+            }
+        }
+    } catch (Exception $e) {}
+    $cached = getenv('TELEGRAM_BOT_TOKEN') ?: '8801000924:AAGspDXeDkHyGI0CHuSxFvyq_f5vmoezU';
+    return $cached;
+}
+
+function sendTelegramDirectMessage(string $text, ?string $targetChatId = null): array {
+    $botToken = getTelegramBotToken();
     $targetId = trim((string)$targetChatId);
-    if (!$botToken || !$targetId) return false;
+    if (!$botToken || !$targetId) {
+        return ['success' => false, 'error' => '텔레그램 봇 토큰 또는 수신자 Chat ID가 설정되지 않았습니다.'];
+    }
 
     $url = "https://api.telegram.org/bot{$botToken}/sendMessage";
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 4);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
     curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
@@ -61,14 +81,23 @@ function sendTelegramDirectMessage(string $text, ?string $targetChatId = null): 
         'parse_mode' => 'HTML'
     ]));
     $res = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr = curl_error($ch);
     curl_close($ch);
-    return !empty($res);
+
+    if ($res === false) {
+        return ['success' => false, 'error' => "cURL 통신 실패: {$curlErr}"];
+    }
+    $json = json_decode($res, true);
+    if (isset($json['ok']) && $json['ok'] === true) {
+        return ['success' => true, 'data' => $json];
+    }
+    $desc = $json['description'] ?? "HTTP {$httpCode} 전송 오류";
+    return ['success' => false, 'error' => $desc, 'httpCode' => $httpCode];
 }
 
 function sendTelegramAdminAlert(string $text): bool {
-    $botToken = getenv('TELEGRAM_BOT_TOKEN') ?: '8801000924:AAGspDXeDkHyGI0CHuSxFvyq_f5vmoezU';
     $defaultAdminChatId = getenv('TELEGRAM_CHAT_ID') ?: '5618137472';
-    if (!$botToken) return false;
 
     $targetChatIds = [];
     if ($defaultAdminChatId) $targetChatIds[] = $defaultAdminChatId;
@@ -87,7 +116,8 @@ function sendTelegramAdminAlert(string $text): bool {
 
     $allSuccess = true;
     foreach ($targetChatIds as $targetId) {
-        if (!sendTelegramDirectMessage($text, $targetId)) {
+        $res = sendTelegramDirectMessage($text, $targetId);
+        if (!$res['success']) {
             $allSuccess = false;
         }
     }
@@ -315,6 +345,9 @@ try {
     } catch (Exception $e) {}
     try {
         $pdo->exec("ALTER TABLE nurioh_settings ADD COLUMN excluded_markets TEXT DEFAULT NULL AFTER surge_min_volume_krw");
+    } catch (Exception $e) {}
+    try {
+        $pdo->exec("ALTER TABLE nurioh_settings ADD COLUMN telegram_bot_token VARCHAR(255) DEFAULT NULL AFTER excluded_markets");
     } catch (Exception $e) {}
     try {
         $pdo->exec("ALTER TABLE nurioh_slots MODIFY COLUMN position_status VARCHAR(32) DEFAULT 'IDLE'");
@@ -723,7 +756,13 @@ try {
             $slots = $slotStmt->fetchAll() ?: [];
         }
 
-        $formattedSlots = array_map(function($s) {
+        $formattedSlots = array_map(function($s) use ($pdo) {
+            $realizedProfit = (float)($s['total_realized_profit_krw'] ?? 0);
+            if ($realizedProfit > 50000000 || $realizedProfit < -50000000) {
+                // 비정상적인 천문학적 더미/오류 데이터 0원으로 자동 정화
+                $pdo->prepare("UPDATE nurioh_slots SET total_realized_profit_krw = 0 WHERE id = ?")->execute([$s['id']]);
+                $realizedProfit = 0;
+            }
             return [
                 'id' => (int)$s['id'],
                 'slotId' => (int)$s['slot_id'],
@@ -745,7 +784,7 @@ try {
                 'highestProfitPct' => (float)($s['highest_profit_pct'] ?? 0),
                 'totalTrades' => (int)($s['total_trades'] ?? 0),
                 'winTrades' => (int)($s['win_trades'] ?? 0),
-                'totalRealizedProfitKrw' => (float)($s['total_realized_profit_krw'] ?? 0)
+                'totalRealizedProfitKrw' => $realizedProfit
             ];
         }, $slots);
 
@@ -824,7 +863,70 @@ try {
         exit;
     }
 
-    // 4-B. POST admin/users/{id}/test-telegram : 회원 대상 텔레그램 테스트 메시지 전송
+    // 4-B. GET/POST admin/telegram-config : 텔레그램 봇 토큰 조회 및 업데이트/검증
+    if ($path === 'admin/telegram-config') {
+        if ($method === 'GET') {
+            $curToken = getTelegramBotToken();
+            $maskedToken = strlen($curToken) > 10 ? substr($curToken, 0, 6) . '...' . substr($curToken, -4) : $curToken;
+            
+            // Telegram getMe 호출하여 토큰 검증
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, "https://api.telegram.org/bot{$curToken}/getMe");
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            $res = curl_exec($ch);
+            curl_close($ch);
+            $botInfo = json_decode($res, true) ?: ['ok' => false];
+
+            echo json_encode([
+                'success' => true,
+                'botToken' => $curToken,
+                'maskedToken' => $maskedToken,
+                'isValid' => !empty($botInfo['ok']),
+                'botInfo' => $botInfo['result'] ?? null,
+                'error' => !empty($botInfo['ok']) ? null : ($botInfo['description'] ?? '토큰 인증 실패')
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        } else if ($method === 'POST') {
+            $newToken = trim((string)($input['botToken'] ?? ''));
+            if (!$newToken) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'error' => '봇 토큰을 입력해 주세요.']);
+                exit;
+            }
+
+            // Telegram getMe로 검증
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, "https://api.telegram.org/bot{$newToken}/getMe");
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 4);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            $res = curl_exec($ch);
+            curl_close($ch);
+            $botInfo = json_decode($res, true);
+
+            if (empty($botInfo['ok'])) {
+                http_response_code(400);
+                $errDesc = $botInfo['description'] ?? '텔레그램 API 인증 실패 (토큰 확인 필요)';
+                echo json_encode(['success' => false, 'error' => "유효하지 않은 봇 토큰입니다: {$errDesc}"]);
+                exit;
+            }
+
+            // DB 저장
+            $pdo->exec("INSERT INTO nurioh_settings (id, telegram_bot_token) VALUES (1, " . $pdo->quote($newToken) . ") ON DUPLICATE KEY UPDATE telegram_bot_token = " . $pdo->quote($newToken));
+
+            $botUser = $botInfo['result']['username'] ?? '알 수 없음';
+            echo json_encode([
+                'success' => true,
+                'message' => "텔레그램 봇(@{$botUser}) 토큰이 성공적으로 등록 및 검증되었습니다! 🚀",
+                'bot' => $botInfo['result']
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+    }
+
+    // 4-C. POST admin/users/{id}/test-telegram : 회원 대상 텔레그램 테스트 메시지 전송
     if (preg_match('#^admin/users/([0-9]+)/test-telegram$#', $path, $matches) && $method === 'POST') {
         $targetUserId = (int)$matches[1];
         $stmt = $pdo->prepare("SELECT name, nickname, telegram_chat_id FROM nurioh_users WHERE id = ?");
@@ -852,15 +954,15 @@ try {
                    "현재 <b>실시간 급등 매수 및 매도(익절/손절) 신호</b>가 정상 발송 대기 중입니다! 🚀\n\n" .
                    "⏱ 테스트 시각: {$timeStr}";
 
-        $sent = sendTelegramDirectMessage($testMsg, $chatId);
-        if ($sent) {
+        $res = sendTelegramDirectMessage($testMsg, $chatId);
+        if ($res['success']) {
             echo json_encode([
                 'success' => true,
                 'message' => "[{$userName}] 님의 텔레그램(ID: {$chatId})으로 테스트 메시지가 성공적으로 발송되었습니다! 🚀"
             ], JSON_UNESCAPED_UNICODE);
         } else {
             http_response_code(500);
-            echo json_encode(['success' => false, 'error' => '텔레그램 봇 메시지 전송에 실패했습니다. (Bot Token / Chat ID 확인 필요)']);
+            echo json_encode(['success' => false, 'error' => '텔레그램 봇 메시지 전송에 실패했습니다: ' . ($res['error'] ?? '알 수 없는 오류')]);
         }
         exit;
     }
@@ -1090,12 +1192,12 @@ try {
         $tradeAmount = (float)($input['tradeAmountKrw'] ?? 0);
         $isEnabled = isset($input['isEnabled']) ? (int)$input['isEnabled'] : 1;
         $strategyType = $input['strategyType'] ?? 'RECOMMENDED';
-        $surgeWindowSeconds = (int)($input['surgeWindowSeconds'] ?? 5);
-        $surgeRatePct = (float)($input['surgeRatePct'] ?? 1.5);
-        $surgeMinVolumeKrw = (float)($input['surgeMinVolumeKrw'] ?? 10000000);
-        $targetProfitPct = (float)($input['targetProfitPct'] ?? 3.0);
-        $trailingCallbackPct = (float)($input['trailingCallbackPct'] ?? 1.0);
-        $stopLossPct = (float)($input['stopLossPct'] ?? 2.0);
+        $surgeWindowSeconds = max(1, abs((int)($input['surgeWindowSeconds'] ?? 5)));
+        $surgeRatePct = abs((float)($input['surgeRatePct'] ?? 1.5));
+        $surgeMinVolumeKrw = abs((float)($input['surgeMinVolumeKrw'] ?? 10000000));
+        $targetProfitPct = abs((float)($input['targetProfitPct'] ?? 3.0));
+        $trailingCallbackPct = abs((float)($input['trailingCallbackPct'] ?? 1.0));
+        $stopLossPct = abs((float)($input['stopLossPct'] ?? 2.0));
 
         $stmt = $pdo->prepare("UPDATE nurioh_slots SET 
             target_market = ?, 
@@ -1238,6 +1340,8 @@ try {
                        "🎯 <i>실시간 트레일링 스탑 익절 감시가 시작되었습니다.</i>";
         if ($userChatId) {
             sendTelegramDirectMessage($buyAlertMsg, $userChatId);
+        } else {
+            sendTelegramAdminAlert($buyAlertMsg);
         }
 
         echo json_encode([
@@ -1308,11 +1412,16 @@ try {
         $amountKrw = (float)($slot['entry_amount_krw'] ?? ($slot['trade_amount_krw'] ?? 5000));
         $exitPrice = $currentPrice > 0 ? $currentPrice : (float)($slot['highest_price'] ?? $entryPrice);
         
-        $profitPct = ($entryPrice > 0 && $exitPrice > 0) 
-            ? ((($exitPrice - $entryPrice) / $entryPrice) * 100)
-            : (float)($slot['highest_profit_pct'] ?? 0);
-        
-        $profitKrw = $amountKrw * ($profitPct / 100);
+        $profitPct = 0;
+        $profitKrw = 0;
+        if ($entryPrice > 0 && $exitPrice > 0) {
+            $rawPct = (($exitPrice - $entryPrice) / $entryPrice) * 100;
+            // 코인 단가 불일치 등으로 인한 비정상적 수치 방지 (-99% ~ +500% 제한)
+            if ($rawPct >= -99.0 && $rawPct <= 500.0) {
+                $profitPct = $rawPct;
+                $profitKrw = $amountKrw * ($profitPct / 100);
+            }
+        }
         $isProfit = $profitPct >= 0;
 
         // 슬롯 초기화 및 실현 손익 통계 누적
@@ -1352,6 +1461,8 @@ try {
         $userChatId = $uRow['telegram_chat_id'] ?? null;
         if ($userChatId) {
             sendTelegramDirectMessage($alertMsg, $userChatId);
+        } else {
+            sendTelegramAdminAlert($alertMsg);
         }
 
         echo json_encode([
@@ -1362,6 +1473,19 @@ try {
             'isProfit' => $isProfit,
             'order' => $orderRes,
             'upbitError' => $orderErr
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // 8.1 POST slots/{id}/reset-stats : 슬롯 개별 누적 통계 초기화
+    if (preg_match('#^slots/([0-9]+)/reset-stats$#', $path, $matches) && $method === 'POST') {
+        $slotId = (int)$matches[1];
+        $userId = (int)($input['userId'] ?? 1);
+        $pdo->prepare("UPDATE nurioh_slots SET total_trades = 0, win_trades = 0, total_realized_profit_krw = 0 WHERE user_id = ? AND slot_id = ?")
+            ->execute([$userId, $slotId]);
+        echo json_encode([
+            'success' => true, 
+            'message' => "{$slotId}번 슬롯 누적 통계가 0으로 초기화되었습니다."
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }

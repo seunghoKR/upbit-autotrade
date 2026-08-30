@@ -23,7 +23,10 @@ import {
   registerApiKey, 
   linkTelegram, 
   saveAutoTradingSettings,
-  requestUserProfileUpdate 
+  requestUserProfileUpdate,
+  sendTelegramTestMessage,
+  getTelegramConfig,
+  updateTelegramBotToken
 } from '../services/api';
 
 // 📞 전화번호 자동 하이픈 포맷터 (숫자만 입력 시 010-1234-5678 자동 포맷)
@@ -73,6 +76,14 @@ export default function MyPageModal({
   const [profileSuccessMsg, setProfileSuccessMsg] = useState('');
   const [profileErrorMsg, setProfileErrorMsg] = useState('');
 
+  // ✈️ 텔레그램 상태
+  const [isTestingTelegram, setIsTestingTelegram] = useState(false);
+  const [telegramTestMsg, setTelegramTestMsg] = useState('');
+  const [botConfig, setBotConfig] = useState(null);
+  const [botTokenInput, setBotTokenInput] = useState('');
+  const [isSavingBotToken, setIsSavingBotToken] = useState(false);
+  const [botTokenMsg, setBotTokenMsg] = useState('');
+
   // 2. 자동매매 핵심 설정 상태
   const [isAgreed, setIsAgreed] = useState(true);
   const [maxTotalLimitKrw, setMaxTotalLimitKrw] = useState(1000000);
@@ -114,6 +125,26 @@ export default function MyPageModal({
       }
     }
   }, [isOpen, user?.id, user?.name, user?.phone, user?.nickname, user?.email, user?.telegramId]);
+
+  const loadBotConfig = async () => {
+    try {
+      const res = await getTelegramConfig();
+      if (res && res.success) {
+        setBotConfig(res);
+        if (res.botToken) {
+          setBotTokenInput(res.botToken);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load telegram config:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen && activeTab === 'TELEGRAM') {
+      loadBotConfig();
+    }
+  }, [isOpen, activeTab]);
 
   if (!isOpen) return null;
 
@@ -190,7 +221,7 @@ export default function MyPageModal({
 
   // 텔레그램 연동 저장
   const handleTelegramSave = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!telegramId.trim()) return;
 
     try {
@@ -199,6 +230,44 @@ export default function MyPageModal({
       if (onReloadUser) onReloadUser();
     } catch (err) {
       alert('텔레그램 연동 실패: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  // 🔔 텔레그램 테스트 알림 즉시 발송
+  const handleTestMyTelegram = async () => {
+    if (!telegramId.trim()) {
+      alert('먼저 텔레그램 Chat ID를 입력하고 저장해 주세요!');
+      return;
+    }
+    setIsTestingTelegram(true);
+    setTelegramTestMsg('');
+    try {
+      const res = await sendTelegramTestMessage(user?.id || 1);
+      setTelegramTestMsg('✅ ' + (res?.message || '텔레그램 테스트 메시지가 전송되었습니다! 텔레그램 앱을 확인해 보세요.'));
+    } catch (err) {
+      setTelegramTestMsg('❌ 전송 실패: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setIsTestingTelegram(false);
+    }
+  };
+
+  // 🤖 운영자/개발자 전용: 텔레그램 봇 토큰 저장 및 검증
+  const handleSaveBotToken = async (e) => {
+    if (e) e.preventDefault();
+    if (!botTokenInput.trim()) {
+      alert('봇 토큰을 입력해 주세요.');
+      return;
+    }
+    setIsSavingBotToken(true);
+    setBotTokenMsg('');
+    try {
+      const res = await updateTelegramBotToken(botTokenInput.trim());
+      setBotTokenMsg('✅ ' + (res?.message || '봇 토큰이 성공적으로 저장 및 검증되었습니다!'));
+      loadBotConfig();
+    } catch (err) {
+      setBotTokenMsg('❌ ' + (err.response?.data?.error || err.message));
+    } finally {
+      setIsSavingBotToken(false);
     }
   };
 
@@ -520,43 +589,138 @@ export default function MyPageModal({
         {/* TAB 2: ✈️ 텔레그램 승인 알림 연동 (승인 회원 전용) */}
         {/* ========================================================= */}
         {activeTab === 'TELEGRAM' && isApproved && (
-          <form onSubmit={handleTelegramSave} className="space-y-4 animate-in fade-in">
-            <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-3">
-              <div className="flex items-center gap-2">
-                <Send className="w-5 h-5 text-indigo-400" />
-                <h4 className="font-bold text-white text-sm">스마트폰 텔레그램 1:1 알림 연동</h4>
+          <div className="space-y-4 animate-in fade-in">
+            {/* 1. 회원 본인의 1:1 텔레그램 Chat ID 연동 */}
+            <form onSubmit={handleTelegramSave} className="p-4 sm:p-5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-3.5">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <Send className="w-5 h-5 text-indigo-400" />
+                  <h4 className="font-bold text-white text-sm">스마트폰 텔레그램 1:1 알림 연동</h4>
+                </div>
+                {user?.telegramId ? (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                    연동 완료 (ID: {user.telegramId})
+                  </span>
+                ) : (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
+                    미연동
+                  </span>
+                )}
               </div>
 
-              <p className="text-xs text-slate-400 leading-relaxed">
-                텔레그램 봇(<code>@nurioh_trade_bot</code>)을 통해 각 슬롯의 매도 손익 정산 알림을 받아보실 수 있습니다.
+              <p className="text-xs text-slate-300 leading-relaxed">
+                텔레그램 봇을 통해 각 슬롯의 <strong>실시간 급등 매수 및 매도(익절/손절) 체결 정산 알림</strong>을 스마트폰으로 즉시 받아보실 수 있습니다. 📱
               </p>
 
               <div>
-                <label className="text-xs text-slate-400 font-bold block mb-1">내 텔레그램 Chat ID</label>
-                <input
-                  type="text"
-                  value={telegramId}
-                  onChange={(e) => setTelegramId(e.target.value)}
-                  placeholder="예: 5618137472"
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-slate-100 font-mono text-sm focus:outline-none focus:border-indigo-400"
-                />
+                <label className="text-xs text-slate-300 font-bold block mb-1">내 텔레그램 Chat ID</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={telegramId}
+                    onChange={(e) => setTelegramId(e.target.value)}
+                    placeholder="예: 8906266842"
+                    className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 font-mono text-sm focus:outline-none focus:border-indigo-400"
+                  />
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition flex items-center justify-center gap-1 cursor-pointer shadow whitespace-nowrap"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>저장</span>
+                  </button>
+                </div>
               </div>
 
               <div className="p-3 rounded-xl bg-indigo-950/30 border border-indigo-500/20 text-xs text-indigo-300 space-y-1">
                 <p><strong>💡 내 Chat ID 찾는 법:</strong></p>
-                <p>1. 텔레그램에서 <code>@userinfobot</code>을 검색하여 대화를 시작하세요.</p>
+                <p>1. 텔레그램 검색창에서 <code>@userinfobot</code>을 검색하여 대화를 시작하세요.</p>
                 <p>2. 봇이 알려주는 <strong>Id 숫자</strong>를 복사하여 위 입력창에 넣으시면 됩니다.</p>
               </div>
 
-              <button
-                type="submit"
-                className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow"
-              >
-                <Send className="w-4 h-4" />
-                <span>텔레그램 연동 저장</span>
-              </button>
-            </div>
-          </form>
+              {/* 🔔 텔레그램 테스트 메시지 즉시 발송 버튼 */}
+              <div className="pt-2 border-t border-slate-800/80">
+                <button
+                  type="button"
+                  disabled={isTestingTelegram || !telegramId.trim()}
+                  onClick={handleTestMyTelegram}
+                  className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 hover:text-white font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer border border-indigo-500/30"
+                >
+                  <Send className={`w-3.5 h-3.5 ${isTestingTelegram ? 'animate-spin' : ''}`} />
+                  <span>{isTestingTelegram ? '테스트 메시지 발송 중...' : '🔔 내 텔레그램으로 알림 테스트 발송'}</span>
+                </button>
+
+                {telegramTestMsg && (
+                  <div className={`mt-2 p-2.5 rounded-xl text-xs font-medium border ${
+                    telegramTestMsg.startsWith('✅')
+                      ? 'bg-emerald-950/40 text-emerald-300 border-emerald-500/30'
+                      : 'bg-rose-950/40 text-rose-300 border-rose-500/30'
+                  }`}>
+                    {telegramTestMsg}
+                  </div>
+                )}
+              </div>
+            </form>
+
+            {/* 2. 👑 운영자 / 개발자 전용: 텔레그램 봇 토큰(BotFather Token) 관리 */}
+            {(user?.role === 'ADMIN' || user?.role === 'OPERATOR' || user?.role === 'DEVELOPER') && (
+              <form onSubmit={handleSaveBotToken} className="p-4 sm:p-5 rounded-2xl bg-slate-950/70 border border-purple-500/40 space-y-3.5 shadow-lg">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <Crown className="w-5 h-5 text-purple-400" />
+                    <div>
+                      <h4 className="font-bold text-white text-sm">🤖 텔레그램 알림 봇 토큰 (Bot Token) 관리</h4>
+                      <span className="text-[10px] text-purple-300">운영자/개발자 전용 시스템 설정</span>
+                    </div>
+                  </div>
+                  {botConfig?.isValid ? (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                      ✅ @{botConfig.botInfo?.username || '봇'} 연결 정상
+                    </span>
+                  ) : (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-bold border border-rose-500/30 animate-pulse">
+                      ⚠️ 봇 토큰 확인 필요
+                    </span>
+                  )}
+                </div>
+
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  텔레그램 <code>@BotFather</code>에서 발급받은 봇 토큰(HTTP API Token)을 입력하시면 시스템 전체의 텔레그램 알림 전송에 즉시 적용됩니다.
+                </p>
+
+                <div>
+                  <label className="text-xs text-slate-300 font-bold block mb-1">텔레그램 Bot API Token</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={botTokenInput}
+                      onChange={(e) => setBotTokenInput(e.target.value)}
+                      placeholder="예: 7123456789:AAFxxx... (BotFather 발급 토큰)"
+                      className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 font-mono text-xs focus:outline-none focus:border-purple-400"
+                    />
+                    <button
+                      type="submit"
+                      disabled={isSavingBotToken}
+                      className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition flex items-center justify-center gap-1 cursor-pointer shadow whitespace-nowrap"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>{isSavingBotToken ? '검증 중...' : '토큰 저장 & 검증'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {botTokenMsg && (
+                  <div className={`p-2.5 rounded-xl text-xs font-medium border ${
+                    botTokenMsg.startsWith('✅')
+                      ? 'bg-emerald-950/40 text-emerald-300 border-emerald-500/30'
+                      : 'bg-rose-950/40 text-rose-300 border-rose-500/30'
+                  }`}>
+                    {botTokenMsg}
+                  </div>
+                )}
+              </form>
+            )}
+          </div>
         )}
 
         {/* ========================================================= */}

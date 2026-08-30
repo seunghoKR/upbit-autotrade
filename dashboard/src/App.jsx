@@ -36,6 +36,7 @@ import {
   updateSlotConfig,
   buySlotPosition,
   sellSlotPosition,
+  resetSlotStats,
   panicSellAll,
   approveTrade,
   rejectTrade,
@@ -155,9 +156,10 @@ export default function App() {
   const [currentRsi, setCurrentRsi] = useState(50);
   const [currentBb, setCurrentBb] = useState(null);
 
-  // ⚡ 실시간 급등 감지 3초 카운트다운 상태
-  const [pendingSurgeCountdown, setPendingSurgeCountdown] = useState(null);
-  const countdownTimerRef = useRef(null);
+  // ⚡ 각 슬롯별 독립적인 실시간 급등 감지 3초 카운트다운 상태 ({ [slotId]: countdownData })
+  const [pendingSurgeCountdowns, setPendingSurgeCountdowns] = useState({});
+  const countdownTimersRef = useRef({});
+  const activeSurgeCoinsRef = useRef(new Set());
 
   // 회원 등급에 따른 슬롯 개수 제한 적용 (Free: 1개, Pro: 3개, VIP/운영자/개발자: 9개)
   const isPrivileged = (currentUser?.role === 'OPERATOR' || currentUser?.role === 'DEVELOPER' || currentUser?.role === 'ADMIN' || currentUser?.tier === 'VIP');
@@ -211,17 +213,39 @@ export default function App() {
         if (status.slots && Array.isArray(status.slots) && status.slots.length > 0) {
           const normalizedSlots = status.slots.map(s => {
             const hasPosition = (s.positionStatus === 'IN_POSITION' || s.positionStatus === 'HOLDING' || s.positionStatus === 'TRAILING_ACTIVE') || Boolean(s.entryPrice && s.entryPrice > 0);
+            const tracker = slotTrackersRef.current[s.slotId];
+            
+            const entryPrice = hasPosition ? (s.entryPrice || s.position?.entryPrice) : null;
+            let highestPrice = hasPosition ? (s.highestPrice || s.position?.highestPrice || entryPrice) : null;
+            let highestProfitPct = hasPosition ? (s.highestProfitPct || s.position?.highestProfitPct || 0) : 0;
+
+            if (hasPosition && tracker) {
+              if (tracker.highestPrice > (highestPrice || 0)) {
+                highestPrice = tracker.highestPrice;
+                highestProfitPct = tracker.highestProfitPct;
+              }
+            } else if (hasPosition && !tracker && entryPrice) {
+              slotTrackersRef.current[s.slotId] = {
+                entryPrice,
+                highestPrice: highestPrice || entryPrice,
+                highestProfitPct: highestProfitPct || 0,
+                targetMarket: s.targetMarket
+              };
+            } else if (!hasPosition) {
+              delete slotTrackersRef.current[s.slotId];
+            }
+
             return {
               ...s,
               id: s.id || s.slotId,
               slotId: s.slotId,
               slotName: s.slotName || s.name || `${s.slotId}번 슬롯`,
               positionStatus: hasPosition ? 'IN_POSITION' : 'IDLE',
-              entryPrice: hasPosition ? (s.entryPrice || s.position?.entryPrice) : null,
+              entryPrice: entryPrice,
               entryVolume: hasPosition ? (s.entryVolume || s.position?.entryVolume) : null,
-              entryAmountKrw: hasPosition ? (s.entryAmountKrw || s.position?.entryAmountKrw || (s.entryPrice * s.entryVolume)) : null,
-              highestPrice: hasPosition ? (s.highestPrice || s.position?.highestPrice || s.entryPrice) : null,
-              highestProfitPct: hasPosition ? (s.highestProfitPct || s.position?.highestProfitPct || 0) : 0,
+              entryAmountKrw: hasPosition ? (s.entryAmountKrw || s.position?.entryAmountKrw || (entryPrice * s.entryVolume)) : null,
+              highestPrice: highestPrice,
+              highestProfitPct: highestProfitPct,
               targetMarket: s.targetMarket || 'KRW-BTC'
             };
           });
@@ -252,7 +276,9 @@ export default function App() {
   // ⚡ 실시간 업비트 웹소켓 및 급등 감지 연동 레퍼런스
   const slotsRef = useRef(slots);
   const currentUserRef = useRef(currentUser);
-  const isExecutingBuyRef = useRef(false);
+  const accountsRef = useRef(accounts);
+  const slotTrackersRef = useRef({});
+  const isExecutingBuyRef = useRef({});
   const isExecutingSellRef = useRef({});
 
   const settingsRef = useRef(settings);
@@ -264,6 +290,10 @@ export default function App() {
   useEffect(() => {
     currentUserRef.current = currentUser;
   }, [currentUser]);
+
+  useEffect(() => {
+    accountsRef.current = accounts;
+  }, [accounts]);
 
   useEffect(() => {
     settingsRef.current = settings;
@@ -280,100 +310,153 @@ export default function App() {
           setLivePrice(tick);
         }
 
-        // 🎯 1.1 보유 중인 슬롯의 실시간 트레일링 익절 & 손절 자동 검사
+        // 🎯 1.1 각 슬롯별 보유 포지션 실시간 트레일링 스탑 & 손절 조건 감시
         const currentSlots = slotsRef.current || [];
-        const activeUser = currentUserRef.current;
         const currentSettings = settingsRef.current || {};
+        const activeUser = currentUserRef.current;
+        const tickPrice = tick.trade_price;
+        const tickCode = tick.code;
+
+        if (!tickPrice || !tickCode) return;
 
         for (const slot of currentSlots) {
-          if (!slot.isEnabled || slot.positionStatus !== 'IN_POSITION' || slot.targetMarket !== tick.code) {
-            continue;
+          if (!slot.isEnabled || slot.positionStatus !== 'IN_POSITION') continue;
+          if (slot.targetMarket !== tickCode) continue;
+
+          // 진입가 대비 현재 수익률 계산
+          const entryPrice = slot.entryPrice || tickPrice;
+          const currentProfitPct = ((tickPrice - entryPrice) / entryPrice) * 100;
+
+          // 🛡️ Live slotTrackersRef를 통해 최고가/최고수익률 실시간 보존 (5초 폴링에 덮어써지지 않음!)
+          if (!slotTrackersRef.current[slot.slotId]) {
+            slotTrackersRef.current[slot.slotId] = {
+              entryPrice,
+              highestPrice: slot.highestPrice || entryPrice,
+              highestProfitPct: slot.highestProfitPct || 0,
+              targetMarket: tickCode
+            };
           }
 
-          const entryPrice = slot.entryPrice || tick.trade_price;
-          if (!entryPrice || entryPrice <= 0) continue;
+          const tracker = slotTrackersRef.current[slot.slotId];
+          if (tickPrice > tracker.highestPrice) {
+            tracker.highestPrice = tickPrice;
+            tracker.highestProfitPct = Math.max(tracker.highestProfitPct, currentProfitPct);
+            slotTrackersRef.current[slot.slotId] = tracker;
 
-          const currentPrice = tick.trade_price;
-          const profitPct = ((currentPrice - entryPrice) / entryPrice) * 100;
-          const highestPrice = Math.max(slot.highestPrice || entryPrice, currentPrice);
-          const highestProfitPct = Math.max(slot.highestProfitPct || 0, profitPct);
+            // 슬롯 UI 상태에도 비동기 업데이트
+            setSlots(prevSlots => prevSlots.map(s => {
+              if (s.slotId === slot.slotId) {
+                return { ...s, highestPrice: tracker.highestPrice, highestProfitPct: tracker.highestProfitPct };
+              }
+              return s;
+            }));
+          }
 
-          // 🎯 추천전략 슬롯 vs 셀프전략 슬롯 파라미터 분기
+          const highestProfitPct = tracker.highestProfitPct;
+          const highestPrice = tracker.highestPrice;
+
+          // 🎯 추천전략 vs 셀프전략 분기
           const isSelf = (slot.strategyType === 'SELF');
-          const targetProfit = isSelf 
-            ? (slot.targetProfitPct || 3.0) 
-            : (currentSettings.TRAILING_TARGET_PROFIT_PCT || 3.0);
-          const callback = isSelf 
-            ? (slot.trailingCallbackPct || 1.0) 
-            : (currentSettings.TRAILING_CALLBACK_PCT || 1.0);
-          const stopLoss = isSelf 
-            ? -(slot.stopLossPct || 2.0) 
-            : -(currentSettings.STOP_LOSS_PCT || 2.0);
+          const targetProfitPct = isSelf 
+            ? (parseFloat(slot.trailingTargetProfitPct) || 3.0) 
+            : (parseFloat(currentSettings.TRAILING_TARGET_PROFIT_PCT) || 3.0);
+          const callbackPct = isSelf 
+            ? (parseFloat(slot.trailingCallbackPct) || 1.0) 
+            : (parseFloat(currentSettings.TRAILING_CALLBACK_PCT) || 1.0);
+          const stopLossPct = isSelf 
+            ? (parseFloat(slot.stopLossPct) || 2.0) 
+            : (parseFloat(currentSettings.STOP_LOSS_PCT) || 2.0);
 
-          // 익절 조건 (최고점 찍고 콜백 또는 목표달성) 또는 손절 조건
-          const isTakeProfit = (highestProfitPct >= targetProfit && (highestProfitPct - profitPct) >= callback);
-          const isStopLoss = (profitPct <= stopLoss);
+          // 1) 트레일링 익절 매도 조건: 목표 수익률(예: +3.0%) 도달 후, 최고점 대비 callbackPct(예: 1.0%) 이상 하락 시
+          const isTargetReached = (highestProfitPct >= targetProfitPct);
+          const dropFromPeak = highestProfitPct - currentProfitPct;
+          const isTrailingProfitHit = isTargetReached && (dropFromPeak >= callbackPct);
 
-          if ((isTakeProfit || isStopLoss) && !isExecutingSellRef.current[slot.slotId]) {
+          // 2) 고정 손절 매도 조건: 손절선(-stopLossPct) 이하로 하락 시
+          const isStopLossHit = (currentProfitPct <= -stopLossPct);
+
+          if ((isTrailingProfitHit || isStopLossHit) && !isExecutingSellRef.current[slot.slotId]) {
             isExecutingSellRef.current[slot.slotId] = true;
-            console.log(`🚨 [Auto Sell Triggered] ${slot.slotId}번 슬롯: 수익률 ${profitPct.toFixed(2)}% (익절:${isTakeProfit}, 손절:${isStopLoss})`);
-            
-            sellSlotPosition(slot.slotId, { currentPrice })
-              .then((res) => {
-                // 브라우저 웹 푸시 알림 발송
-                if ('Notification' in window && Notification.permission === 'granted') {
-                  const isWin = profitPct >= 0;
-                  new Notification(isWin ? '🟢 [수익 실현 익절 완료]' : '🔴 [손실 제한 손절 완료]', {
-                    body: `${slot.slotId}번 슬롯 (${slot.targetMarket}): 실현수익률 ${isWin ? '+' : ''}${profitPct.toFixed(2)}%`,
-                    icon: '/favicon.png'
-                  });
-                }
-                loadData();
+            delete slotTrackersRef.current[slot.slotId];
+
+            const reason = isTrailingProfitHit 
+              ? `트레일링 익절 매도 (최고 +${highestProfitPct.toFixed(2)}% 달성 후 -${dropFromPeak.toFixed(2)}% 콜백 하락 감지)`
+              : `손절 매도 (-${stopLossPct}% 손절 기준선 도달)`;
+
+            console.log(`🚨 [Auto Sell Trigger] 슬롯 ${slot.slotId} (${slot.targetMarket}): ${reason} [현재수익률: ${currentProfitPct.toFixed(2)}%]`);
+
+            // 즉시 슬롯 매도 실행 API 호출
+            sellSlotPosition(slot.slotId, {
+              userId: activeUser?.id || 1,
+              currentPrice: tickPrice,
+              reason: reason
+            })
+              .then(async (res) => {
+                console.log('✅ [Auto Sell Success]', res);
+                await loadData();
               })
               .catch(err => {
-                console.error('Auto Sell Error:', err);
+                console.error('❌ [Auto Sell Failed]', err);
               })
               .finally(() => {
                 setTimeout(() => {
                   delete isExecutingSellRef.current[slot.slotId];
-                }, 10000);
+                }, 5000);
               });
           }
         }
       },
       onSurge: (tick, buffer) => {
-        if (isExecutingBuyRef.current || pendingSurgeCountdown) return;
-
+        const marketCode = tick.code.toUpperCase();
         const currentSettings = settingsRef.current || {};
         const excludedList = (currentSettings.EXCLUDED_MARKETS || []).map(m => String(m).trim().toUpperCase());
 
-        // 🚫 1. 매매 제외 코인(Blacklist)은 급등 레이더 감시 및 자동 매수에서 즉시 100% 제외!
-        const marketCode = tick.code.toUpperCase();
+        // 🚫 1. 매매 제외 코인(Blacklist)은 급등 레이더 감시 및 자동 매수에서 즉시 제외!
         const shortSymbol = marketCode.replace('KRW-', '');
         if (excludedList.includes(marketCode) || excludedList.includes(shortSymbol) || excludedList.includes(`KRW-${shortSymbol}`)) {
           return;
         }
 
+        // 🚫 2. 이미 카운트다운 진행 중이거나 이미 매수 보유 중인 코인은 중복 진입 방지!
+        if (activeSurgeCoinsRef.current.has(marketCode)) {
+          return;
+        }
+
         const currentSlots = slotsRef.current || [];
+        const isAlreadyHeld = currentSlots.some(s => 
+          s.targetMarket === marketCode && 
+          (s.positionStatus === 'IN_POSITION' || s.positionStatus === 'HOLDING' || s.positionStatus === 'TRAILING_ACTIVE')
+        );
+        if (isAlreadyHeld) {
+          return;
+        }
+
         const activeUser = currentUserRef.current;
         const now = Date.now();
 
-        // 🛡️ 실제 주문 가능 원화 잔고 확인 (잔고 부족 시 매수 시도 원천 차단)
-        const krwAccount = (accounts || []).find(a => a.currency === 'KRW');
+        // 🛡️ 실제 주문 가능 원화 잔고 실시간 확인 (accountsRef live 동기화)
+        const currentAccounts = accountsRef.current || [];
+        const hasLiveRealAccounts = Array.isArray(currentAccounts) && currentAccounts.length > 0 && currentAccounts.some(a => parseFloat(a.balance || 0) > 0 || parseFloat(a.locked || 0) > 0);
+        const krwAccount = currentAccounts.find(a => a.currency === 'KRW');
         const availableKrw = parseFloat(krwAccount?.balance || 0);
 
-        // 🎯 1.2 감시 대기 중(IDLE & isEnabled & tradeAmountKrw >= 5000)인 슬롯 찾기
+        // 🎯 3. 현재 가동 중(isEnabled)이고 비어있는(IDLE) 슬롯 중 현재 매수 중이 아닌 슬롯 탐색!
         for (const slot of currentSlots) {
-          if (!slot.isEnabled || slot.positionStatus === 'IN_POSITION' || (slot.tradeAmountKrw || 0) < 5000) {
+          if (!slot.isEnabled || slot.positionStatus === 'IN_POSITION' || slot.positionStatus === 'HOLDING' || (slot.tradeAmountKrw || 0) < 5000) {
             continue;
           }
 
-          // 🛡️ 원화 잔고가 슬롯 1회 매수 설정액보다 부족하면 감시 및 매수 진행 금지!
-          if (hasRealAccounts && availableKrw < (slot.tradeAmountKrw || 5000)) {
+          // 이미 매수 주문 처리 중이면 패스 (다른 비어있는 슬롯으로 탐색!)
+          if (isExecutingBuyRef.current[slot.slotId]) {
             continue;
           }
 
-          // 🎯 추천전략 슬롯 vs 셀프전략 슬롯 급등 감지 파라미터 분기
+          // 🛡️ 잔고 확인: 잔고 부족 시 아예 슬롯에 진입하지 않고 패스!
+          if (hasLiveRealAccounts && availableKrw < (slot.tradeAmountKrw || 5000)) {
+            continue;
+          }
+
+          // 🎯 추천전략 vs 셀프전략 파라미터 분기
           const isSelf = (slot.strategyType === 'SELF');
           const windowSeconds = isSelf 
             ? (slot.surgeWindowSeconds || 5) 
@@ -390,7 +473,6 @@ export default function App() {
           const recentTicks = buffer.filter(t => t.timestamp >= cutoff);
           if (recentTicks.length < 2) continue;
 
-          // 10초 감시 설정 시 10초 이내라도(1초, 2초, 4초 만에라도) 윈도우 내 최저가 대비 목표 상승률에 도달하면 즉시 포착!
           let minPrice = recentTicks[0].price;
           for (let i = 0; i < recentTicks.length; i++) {
             if (recentTicks[i].price < minPrice) minPrice = recentTicks[i].price;
@@ -399,52 +481,40 @@ export default function App() {
           const priceDiffRate = ((currentPrice - minPrice) / minPrice) * 100;
           const totalVolumeKrw = recentTicks.reduce((sum, item) => sum + item.amount, 0);
 
-          // 급등 조건 충족 시: [1단계] 발견 알림 ➔ [2단계] 3초 카운트다운 후 매수 체결 ➔ [3단계] 익절/손절 매도 체결
+          // ⚡ 급등 조건 충족 시: 0초 즉시 자동 시장가 매수 집행!
           if (priceDiffRate >= rateThreshold && totalVolumeKrw >= minVolumeKrw) {
-            console.log(`🚨 [Client Surge Trigger] 포착! ${slot.slotId}번 슬롯 (${isSelf ? '셀프전략' : '추천전략'}): ${tick.code} +${priceDiffRate.toFixed(2)}% (${windowSeconds}초 윈도우 내 ${Math.round(totalVolumeKrw).toLocaleString()}원)`);
+            const assignedSlotId = slot.slotId;
+            const tradeAmount = slot.tradeAmountKrw || 50000;
+            console.log(`🚨 [Client Surge Trigger] ${assignedSlotId}번 슬롯 매수 시도: ${marketCode} +${priceDiffRate.toFixed(2)}% (${windowSeconds}초 내 ${Math.round(totalVolumeKrw).toLocaleString()}원)`);
 
-            // [1단계] 🚨 발견 알림 발송 & 슬롯 화면 카운트다운 표시
-            if ('Notification' in window && Notification.permission === 'granted') {
-              new Notification('🚨 [급등 코인 포착! 3초 후 매수]', {
-                body: `${slot.slotId}번 슬롯: ${tick.code} +${priceDiffRate.toFixed(2)}% 급등 감지 (3초 후 시장가 매수 집행)`,
-                icon: '/favicon.png'
-              });
-            }
+            // 코인 중복 진입 락 및 매수 실행 플래그 등록
+            activeSurgeCoinsRef.current.add(marketCode);
+            isExecutingBuyRef.current[assignedSlotId] = true;
 
-            setSelectedSlotId(slot.slotId);
-            setPendingSurgeCountdown({
-              slotId: slot.slotId,
-              market: tick.code,
-              price: currentPrice,
-              amount: slot.tradeAmountKrw,
-              rate: priceDiffRate.toFixed(2),
-              secondsLeft: 3
-            });
+            (async () => {
+              try {
+                // 1. 실제 업비트 시장가 매수 주문 먼저 전송 (체결 성공 여부 확인 후 UI 반영)
+                const buyRes = await buySlotPosition(assignedSlotId, {
+                  userId: activeUser?.id || 1,
+                  market: marketCode,
+                  amountKrw: tradeAmount,
+                  currentPrice: currentPrice
+                });
 
-            let secondsLeft = 3;
-            if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+                if (buyRes && buyRes.success !== false && !buyRes.error) {
+                  console.log(`✅ [Auto Buy Success Slot ${assignedSlotId}]`, buyRes);
+                  setSelectedSlotId(assignedSlotId);
 
-            countdownTimerRef.current = setInterval(async () => {
-              secondsLeft -= 1;
-              if (secondsLeft > 0) {
-                setPendingSurgeCountdown(prev => prev ? { ...prev, secondsLeft } : null);
-              } else {
-                clearInterval(countdownTimerRef.current);
-                countdownTimerRef.current = null;
-                setPendingSurgeCountdown(null);
-                isExecutingBuyRef.current = true;
-
-                try {
-                  // [2단계] ⏱️ 3초 후 시장가 매수 집행
+                  // 2. 실제 체결 성공 시에만 슬롯 상태를 IN_POSITION으로 업데이트
                   setSlots(prevSlots => prevSlots.map(s => {
-                    if (s.slotId === slot.slotId) {
+                    if (s.slotId === assignedSlotId) {
                       return {
                         ...s,
                         positionStatus: 'IN_POSITION',
-                        targetMarket: tick.code,
+                        targetMarket: marketCode,
                         entryPrice: currentPrice,
-                        entryVolume: slot.tradeAmountKrw / currentPrice,
-                        entryAmountKrw: slot.tradeAmountKrw,
+                        entryVolume: tradeAmount / currentPrice,
+                        entryAmountKrw: tradeAmount,
                         highestPrice: currentPrice,
                         highestProfitPct: 0
                       };
@@ -452,32 +522,31 @@ export default function App() {
                     return s;
                   }));
 
-                  const buyRes = await buySlotPosition(slot.slotId, {
-                    userId: activeUser?.id || 1,
-                    market: tick.code,
-                    amountKrw: slot.tradeAmountKrw,
-                    currentPrice: currentPrice
-                  });
-                  console.log('✅ [Auto Buy Success]', buyRes);
-
-                  // [2단계 체결 알림] ✅ 매수 체결 완료 푸시
+                  // 3. 브라우저 푸시 알림
                   if ('Notification' in window && Notification.permission === 'granted') {
-                    new Notification('✅ [급등 코인 매수 체결 완료]', {
-                      body: `${slot.slotId}번 슬롯: ${tick.code} ${Math.round(slot.tradeAmountKrw).toLocaleString()}원 매수 체결 (트레일링 익절 감시 시작)`,
+                    new Notification('⚡ [급등 코인 즉시 매수 체결]', {
+                      body: `${assignedSlotId}번 슬롯: ${marketCode} (+${priceDiffRate.toFixed(2)}%) ${Math.round(tradeAmount).toLocaleString()}원 즉시 체결! (트레일링 익절 감시 시작)`,
                       icon: '/favicon.png'
                     });
                   }
 
                   await loadData();
-                } catch (buyErr) {
-                  console.error('❌ [Auto Buy Failed]', buyErr);
-                } finally {
-                  setTimeout(() => {
-                    isExecutingBuyRef.current = false;
-                  }, 15000); // 15초 쿨다운
+                } else {
+                  console.warn(`⚠️ [Auto Buy Skipped/Failed Slot ${assignedSlotId}]`, buyRes?.error || '체결 불발');
+                  // 체결 불발 시 슬롯 상태를 절대 변경하지 않음 (즉시 깨끗한 빈 슬롯 유지)
                 }
+              } catch (buyErr) {
+                console.error(`❌ [Auto Buy Failed Slot ${assignedSlotId}]`, buyErr);
+                // 체결 실패 시 즉시 빈 슬롯 유지
+              } finally {
+                setTimeout(() => {
+                  activeSurgeCoinsRef.current.delete(marketCode);
+                  if (isExecutingBuyRef.current && typeof isExecutingBuyRef.current === 'object') {
+                    delete isExecutingBuyRef.current[assignedSlotId];
+                  }
+                }, 5000);
               }
-            }, 1000);
+            })();
 
             break; // 한 번에 한 슬롯만 트리거
           }
@@ -500,7 +569,9 @@ export default function App() {
     return () => {
       upbitClientEngine.destroy();
       if (ws) ws.close();
-      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+      if (countdownTimersRef.current) {
+        Object.values(countdownTimersRef.current).forEach(timer => clearInterval(timer));
+      }
       clearInterval(interval);
     };
   }, []);
@@ -677,6 +748,17 @@ export default function App() {
     await loadData();
   };
 
+  // 📊 슬롯 개별 누적 통계 초기화
+  const handleResetSlotStats = async (slotId) => {
+    const userId = currentUser?.id || 1;
+    try {
+      await resetSlotStats(slotId, { userId });
+      await loadData();
+    } catch (err) {
+      console.error('Reset slot stats error:', err);
+    }
+  };
+
   // 🚨 Panic Sell 전량 매도
   const handlePanicSellAll = async () => {
     const userId = currentUser?.id || 1;
@@ -689,7 +771,7 @@ export default function App() {
     loadData();
   };
 
-  // ⚡ 모의 급등 신호 테스트 핸들러 (급등 감지 신호 발생 후 3초 카운트다운 ➔ 자동 매수 주문 실행)
+  // ⚡ 모의 급등 신호 테스트 핸들러 (비어있는 슬롯을 찾아 0초 즉시 모의 매수 집행)
   const handleTriggerMockSurge = (targetMarket = 'RANDOM') => {
     try {
       const candidateMarkets = ['KRW-STX', 'KRW-SUI', 'KRW-NEAR', 'KRW-SOL', 'KRW-DOGE', 'KRW-ADA', 'KRW-AVAX', 'KRW-XRP'];
@@ -697,6 +779,7 @@ export default function App() {
         ? candidateMarkets[Math.floor(Math.random() * candidateMarkets.length)]
         : targetMarket;
 
+      // 비어있는(IDLE) 슬롯 탐색
       const availableSlot = slots.find(s => s.isEnabled && s.positionStatus !== 'IN_POSITION') || slots[0];
       const slotId = availableSlot ? availableSlot.slotId : 1;
       const tradeAmount = (availableSlot && availableSlot.tradeAmountKrw > 0) ? availableSlot.tradeAmountKrw : 50000;
@@ -704,80 +787,48 @@ export default function App() {
       const currentPrice = livePriceMap[chosenMarket]?.trade_price || 
         (chosenMarket === 'KRW-SOL' ? 245000 : (chosenMarket === 'KRW-SUI' ? 4250 : (chosenMarket === 'KRW-STX' ? 2890 : 850)));
 
-      if (countdownTimerRef.current) {
-        clearInterval(countdownTimerRef.current);
-      }
-
-      // 1. 해당 슬롯 선택 및 3초 카운트다운 알림 신호 시작!
       setSelectedSlotId(slotId);
-      let secondsLeft = 3;
-      setPendingSurgeCountdown({
-        slotId,
+
+      // 프론트엔드 슬롯 상태 즉시 IN_POSITION으로 업데이트
+      setSlots(prevSlots => prevSlots.map(s => {
+        if (s.slotId === slotId) {
+          return {
+            ...s,
+            targetMarket: chosenMarket,
+            positionStatus: 'IN_POSITION',
+            entryPrice: currentPrice,
+            entryVolume: tradeAmount / currentPrice,
+            entryAmountKrw: tradeAmount,
+            highestPrice: currentPrice,
+            highestProfitPct: 0
+          };
+        }
+        return s;
+      }));
+
+      // 체결 이력에 기록
+      const executedSignal = {
+        id: `SIG-${Date.now()}`,
+        type: 'BUY',
+        slotId: slotId,
         market: chosenMarket,
         price: currentPrice,
         amount: tradeAmount,
-        rate: '2.6',
-        secondsLeft: 3
-      });
+        reason: '실시간 급등 레이더 포착 (+2.6% 돌파)',
+        status: 'EXECUTED',
+        timestamp: new Date().toLocaleTimeString('ko-KR')
+      };
 
-      countdownTimerRef.current = setInterval(async () => {
-        secondsLeft -= 1;
-        if (secondsLeft > 0) {
-          setPendingSurgeCountdown(prev => prev ? { ...prev, secondsLeft } : null);
-        } else {
-          // 2. 3초 종료 시점: 즉시 전자동 매수 체결!
-          clearInterval(countdownTimerRef.current);
-          countdownTimerRef.current = null;
-          setPendingSurgeCountdown(null);
+      setTradeHistory(prev => [executedSignal, ...prev.slice(0, 49)]);
 
-          // 프론트엔드 슬롯 상태 IN_POSITION으로 업데이트
-          setSlots(prevSlots => prevSlots.map(s => {
-            if (s.slotId === slotId) {
-              return {
-                ...s,
-                targetMarket: chosenMarket,
-                positionStatus: 'IN_POSITION',
-                entryPrice: currentPrice,
-                entryVolume: tradeAmount / currentPrice,
-                highestPrice: currentPrice,
-                highestProfitPct: 0
-              };
-            }
-            return s;
-          }));
-
-          // 체결 이력에 기록
-          const executedSignal = {
-            id: `SIG-${Date.now()}`,
-            type: 'BUY',
-            slotId: slotId,
-            market: chosenMarket,
-            price: currentPrice,
-            amount: tradeAmount,
-            reason: `[실시간 급등 감시 레이더] ${chosenMarket} +2.6% 급등 포착 (3초 알림 후 전자동 매수 체결)`,
-            status: 'EXECUTED',
-            executedAt: new Date().toISOString()
-          };
-          setTradeHistory(prev => [executedSignal, ...prev]);
-
-          // 백엔드 API 호출하여 DB 동기화
-          try {
-            await buySlotPosition(slotId, {
-              userId: currentUser?.id || 1,
-              market: chosenMarket,
-              amountKrw: tradeAmount,
-              currentPrice: currentPrice
-            });
-          } catch (e) {
-            console.log('백엔드 매수 체결 동기화:', e.message);
-          }
-
-          await loadData();
-        }
-      }, 1000);
-
-    } catch (err) {
-      console.error('Mock surge countdown error:', err);
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('⚡ [급등 매수 체결 완료]', {
+          body: `${slotId}번 슬롯: ${chosenMarket} ${tradeAmount.toLocaleString()}원 즉시 체결 완료!`,
+          icon: '/favicon.png'
+        });
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -886,11 +937,12 @@ export default function App() {
           slots={visibleSlots}
           onUpdateSlot={handleUpdateSlot}
           onSellSlot={handleSellSlot}
+          onResetSlotStats={handleResetSlotStats}
           livePriceMap={livePriceMap}
           botRunning={botRunning}
           onToggleBot={handleToggleBot}
           onTriggerMockSurge={handleTriggerMockSurge}
-          pendingSurgeCountdown={pendingSurgeCountdown}
+          pendingSurgeCountdowns={pendingSurgeCountdowns}
           selectedSlotId={selectedSlotId}
           onSelectSlot={setSelectedSlotId}
           krwBalance={parseFloat(accounts.find(a => a.currency === 'KRW')?.balance || '0')}
