@@ -212,10 +212,12 @@ export default function App() {
         else setAccountError(null);
         if (status.slots && Array.isArray(status.slots) && status.slots.length > 0) {
           const normalizedSlots = status.slots.map(s => {
-            const hasPosition = (s.positionStatus === 'IN_POSITION' || s.positionStatus === 'HOLDING' || s.positionStatus === 'TRAILING_ACTIVE') || Boolean(s.entryPrice && s.entryPrice > 0);
+            const rawEntryPrice = s.entryPrice || s.position?.entryPrice || 0;
+            const isCorrupted = (rawEntryPrice > 0 && rawEntryPrice < 10) || (s.highestProfitPct > 500);
+            const hasPosition = !isCorrupted && ((s.positionStatus === 'IN_POSITION' || s.positionStatus === 'HOLDING' || s.positionStatus === 'TRAILING_ACTIVE') || Boolean(rawEntryPrice > 0));
             const tracker = slotTrackersRef.current[s.slotId];
             
-            const entryPrice = hasPosition ? (s.entryPrice || s.position?.entryPrice) : null;
+            const entryPrice = hasPosition ? rawEntryPrice : null;
             let highestPrice = hasPosition ? (s.highestPrice || s.position?.highestPrice || entryPrice) : null;
             let highestProfitPct = hasPosition ? (s.highestProfitPct || s.position?.highestProfitPct || 0) : 0;
 

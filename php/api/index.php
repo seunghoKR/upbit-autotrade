@@ -763,6 +763,18 @@ try {
                 $pdo->prepare("UPDATE nurioh_slots SET total_realized_profit_krw = 0 WHERE id = ?")->execute([$s['id']]);
                 $realizedProfit = 0;
             }
+
+            // 🛡️ 이전 모의 테스트로 인해 진입단가가 5원 등으로 잘못 저장된 더미 포지션 자동 초기화
+            if ($s['position_status'] === 'IN_POSITION' && ((float)($s['entry_price'] ?? 0) < 10 || (float)($s['highest_profit_pct'] ?? 0) > 500)) {
+                $pdo->prepare("UPDATE nurioh_slots SET position_status = 'IDLE', entry_price = NULL, entry_volume = NULL, entry_amount_krw = NULL, highest_price = NULL, highest_profit_pct = 0 WHERE id = ?")
+                    ->execute([$s['id']]);
+                $s['position_status'] = 'IDLE';
+                $s['entry_price'] = null;
+                $s['entry_volume'] = null;
+                $s['entry_amount_krw'] = null;
+                $s['highest_price'] = null;
+                $s['highest_profit_pct'] = 0;
+            }
             return [
                 'id' => (int)$s['id'],
                 'slotId' => (int)$s['slot_id'],
