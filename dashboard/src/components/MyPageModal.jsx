@@ -13,6 +13,7 @@ import {
   Crown, 
   Copy, 
   Check, 
+  Save,
   ExternalLink,
   ChevronRight,
   Clock,
@@ -22,7 +23,6 @@ import {
 import { 
   registerApiKey, 
   linkTelegram, 
-  saveAutoTradingSettings,
   requestUserProfileUpdate,
   sendTelegramTestMessage,
   getTelegramConfig,
@@ -51,7 +51,6 @@ export default function MyPageModal({
   user, 
   hasApiKey = false,
   slots = [], 
-  onUpdateSlot, 
   onOpenApiModal,
   onOpenPricing,
   onReloadUser,
@@ -84,17 +83,6 @@ export default function MyPageModal({
   const [isSavingBotToken, setIsSavingBotToken] = useState(false);
   const [botTokenMsg, setBotTokenMsg] = useState('');
 
-  // 2. 자동매매 핵심 설정 상태
-  const [isAgreed, setIsAgreed] = useState(true);
-  const [maxTotalLimitKrw, setMaxTotalLimitKrw] = useState(1000000);
-  const [executionMode, setExecutionMode] = useState('AUTO'); // 'AUTO' | 'MANUAL'
-  const [slotLimits, setSlotLimits] = useState({
-    1: 50000, 2: 50000, 3: 30000, 4: 30000, 5: 20000
-  });
-
-  const [isSaving, setIsSaving] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
-
   useEffect(() => {
     if (isOpen && user) {
       setName(user.name || user.nickname || '');
@@ -107,21 +95,6 @@ export default function MyPageModal({
 
       if (!isApproved) {
         setActiveTab('APPLY');
-      }
-
-      if (user.autoTrading) {
-        setIsAgreed(user.autoTrading.isAgreed ?? true);
-        setMaxTotalLimitKrw(user.autoTrading.maxTotalLimitKrw ?? 1000000);
-        setExecutionMode(user.autoTrading.executionMode || 'AUTO');
-        if (user.autoTrading.slotLimits) {
-          setSlotLimits(user.autoTrading.slotLimits);
-        }
-      } else if (slots && slots.length > 0) {
-        const limits = {};
-        slots.forEach(s => {
-          limits[s.slotId] = s.tradeAmountKrw !== undefined ? s.tradeAmountKrw : 50000;
-        });
-        setSlotLimits(limits);
       }
     }
   }, [isOpen, user?.id, user?.name, user?.phone, user?.nickname, user?.email, user?.telegramId]);
@@ -147,9 +120,6 @@ export default function MyPageModal({
   }, [isOpen, activeTab]);
 
   if (!isOpen) return null;
-
-  const currentTotalSlotAmount = Object.values(slotLimits).reduce((a, b) => Number(a) + Number(b), 0);
-  const isLimitExceeded = maxTotalLimitKrw > 0 && currentTotalSlotAmount > maxTotalLimitKrw;
 
   // 🎁 무료 사용 승인 신청 / 회원 정보 수정 핸들러
   const handleProfileSubmit = async (e) => {
@@ -348,7 +318,7 @@ export default function MyPageModal({
 
         {/* 2. 탭 네비게이션 (모바일/PC 1줄 5분할 정돈) */}
         {isApproved ? (
-          <div className="grid grid-cols-5 gap-1 sm:gap-1.5 border-b border-slate-800 pb-3">
+          <div className="grid grid-cols-4 gap-1.5 sm:gap-2 border-b border-slate-800 pb-3">
             {/* 1) 👤 내 정보 */}
             <button
               onClick={() => setActiveTab('PROFILE')}
@@ -359,8 +329,7 @@ export default function MyPageModal({
               }`}
             >
               <User className="w-3.5 h-3.5 shrink-0" />
-              <span className="sm:hidden">내정보</span>
-              <span className="hidden sm:inline">내 정보</span>
+              <span>내 정보</span>
             </button>
 
             {/* 2) 🔑 API 키 */}
@@ -373,8 +342,7 @@ export default function MyPageModal({
               }`}
             >
               <KeyRound className="w-3.5 h-3.5 shrink-0" />
-              <span className="sm:hidden">API키</span>
-              <span className="hidden sm:inline">API 키</span>
+              <span>API 키</span>
             </button>
 
             {/* 3) ✈️ 텔레그램 */}
@@ -387,25 +355,10 @@ export default function MyPageModal({
               }`}
             >
               <Send className="w-3.5 h-3.5 shrink-0" />
-              <span className="sm:hidden">텔레</span>
-              <span className="hidden sm:inline">텔레그램</span>
+              <span>텔레그램</span>
             </button>
 
-            {/* 4) ⚡ 슬롯 설정 */}
-            <button
-              onClick={() => setActiveTab('AUTO_TRADING')}
-              className={`py-2 px-1 sm:px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap truncate text-xs sm:text-sm font-bold ${
-                activeTab === 'AUTO_TRADING'
-                  ? 'bg-indigo-600 text-white font-black shadow-md shadow-indigo-600/30'
-                  : 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
-              }`}
-            >
-              <Zap className="w-3.5 h-3.5 shrink-0" />
-              <span className="sm:hidden">슬롯</span>
-              <span className="hidden sm:inline">슬롯 설정</span>
-            </button>
-
-            {/* 5) 👑 플랜 */}
+            {/* 4) 👑 플랜 */}
             <button
               onClick={() => setActiveTab('PRICING')}
               className={`py-2 px-1 sm:px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap truncate text-xs sm:text-sm font-bold ${
@@ -415,8 +368,7 @@ export default function MyPageModal({
               }`}
             >
               <Crown className="w-3.5 h-3.5 shrink-0" />
-              <span className="sm:hidden">플랜</span>
-              <span className="hidden sm:inline">멤버십 플랜</span>
+              <span>멤버십 플랜</span>
             </button>
           </div>
         ) : (
@@ -723,68 +675,7 @@ export default function MyPageModal({
           </div>
         )}
 
-        {/* ========================================================= */}
-        {/* TAB 3: ⚡ 자동매매 슬롯별 한도 설정 (승인 회원 전용) */}
-        {/* ========================================================= */}
-        {activeTab === 'AUTO_TRADING' && isApproved && (
-          <div className="space-y-4 animate-in fade-in text-sm text-slate-200">
-            {/* 1. 슬롯별 1회 매수 한도 금액 설정 */}
-            <div className="bg-slate-950/70 p-4 sm:p-5 rounded-2xl border border-slate-800 space-y-4">
-              <h4 className="text-sm font-bold text-slate-100 flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-amber-400" />
-                  슬롯별 1회 매수 설정 금액 (KRW)
-                </span>
-                <span className="text-xs text-slate-400 font-normal">
-                  총 배정: <strong className="text-indigo-400 font-bold">{currentTotalSlotAmount.toLocaleString()}원</strong>
-                </span>
-              </h4>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {slots.slice(0, user?.maxSlots || 9).map((slot) => {
-                  const currentVal = slotLimits[slot.slotId] ?? (slot.tradeAmountKrw || 50000);
-                  return (
-                    <div key={slot.slotId} className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <span className="font-bold text-xs text-slate-200 block truncate">
-                          {slot.slotId}번 ({slot.targetMarket ? slot.targetMarket.replace('KRW-', '') : '슬롯'})
-                        </span>
-                        <span className="text-[10px] text-slate-400">1회 진입금액</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <input
-                          type="number"
-                          step="10000"
-                          min="0"
-                          value={currentVal}
-                          onChange={(e) => handleSlotAmountChange(slot.slotId, e.target.value)}
-                          className="w-24 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-right font-mono text-xs text-emerald-400 font-bold focus:outline-none focus:border-indigo-400"
-                        />
-                        <span className="text-xs text-slate-400">원</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 저장 버튼 */}
-            <div className="flex items-center justify-end gap-3 pt-2">
-              {isSaved && (
-                <span className="text-xs text-emerald-400 flex items-center gap-1 font-bold animate-in fade-in">
-                  <CheckCircle2 className="w-4 h-4" /> 설정이 안전하게 저장되었습니다!
-                </span>
-              )}
-              <button
-                onClick={handleSaveAutoSettings}
-                disabled={isSaving}
-                className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition flex items-center gap-2 cursor-pointer shadow-lg shadow-indigo-600/20 disabled:opacity-50"
-              >
-                <span>{isSaving ? '저장 중...' : '슬롯 한도 설정 저장'}</span>
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* ========================================================= */}
         {/* TAB 5: 👑 멤버십 플랜 안내 (승인 회원 전용) */}
