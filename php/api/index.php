@@ -783,9 +783,6 @@ try {
             $slots = $slotStmt->fetchAll() ?: [];
         }
 
-        // 🛡️ 과거 상폐 코인(EMC2, DAWN 등)이나 지갑 잔재로 오염된 슬롯 포지션 전면 정화
-        $pdo->query("UPDATE nurioh_slots SET position_status = 'IDLE', entry_price = NULL, entry_volume = NULL, entry_amount_krw = NULL, highest_price = NULL, highest_profit_pct = 0 WHERE target_market IN ('KRW-EMC2', 'KRW-DAWN', 'KRW-KNC', 'KRW-DOGE', 'KRW-XRP', 'KRW-BTT', 'KRW-SAND', 'KRW-QTUM') OR entered_at IS NULL");
-
         $formattedSlots = array_map(function($s) use ($pdo) {
             $realizedProfit = (float)($s['total_realized_profit_krw'] ?? 0);
             if ($realizedProfit > 50000000 || $realizedProfit < -50000000) {
@@ -799,7 +796,7 @@ try {
             $amount = (float)($s['entry_amount_krw'] ?? ($vol * $entryP));
 
             // 🛡️ 수량이 없거나 비정상 단가 포지션은 즉시 깨끗한 빈 슬롯(IDLE)으로 초기화
-            if ($s['position_status'] === 'IN_POSITION' && ($vol <= 0.00001 || $amount < 4000 || $entryP <= 0)) {
+            if ($s['position_status'] === 'IN_POSITION' && ($vol <= 0.0000001 || $entryP <= 0)) {
                 $pdo->prepare("UPDATE nurioh_slots SET position_status = 'IDLE', entry_price = NULL, entry_volume = NULL, entry_amount_krw = NULL, highest_price = NULL, highest_profit_pct = 0 WHERE id = ?")
                     ->execute([$s['id']]);
                 $s['position_status'] = 'IDLE';
@@ -1398,6 +1395,78 @@ try {
             'entryPrice' => $calcPrice,
             'entryVolume' => $calcVolume,
             'market' => $market
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // 7.5. POST slots/{id}/import : 업비트 실보유 코인을 특정 슬롯에 수동 연동 (Import)
+    if (preg_match('#^slots/([0-9]+)/import$#', $path, $matches) && $method === 'POST') {
+        $slotId = (int)$matches[1];
+        $userId = (int)($input['userId'] ?? 1);
+        $market = strtoupper($input['market'] ?? 'KRW-BTC');
+        $entryPrice = (float)($input['entryPrice'] ?? 0);
+        $entryVolume = (float)($input['entryVolume'] ?? 0);
+        $entryAmount = (float)($input['entryAmountKrw'] ?? ($entryPrice * $entryVolume));
+        $currentPrice = (float)($input['currentPrice'] ?? $entryPrice);
+
+        if ($entryPrice <= 0 && $currentPrice > 0) {
+            $entryPrice = $currentPrice;
+        }
+
+        $highestPrice = max($entryPrice, $currentPrice);
+        $profitPct = ($entryPrice > 0) ? (($currentPrice - $entryPrice) / $entryPrice * 100) : 0;
+
+        // 슬롯 상태를 IN_POSITION으로 업데이트
+        $stmt = $pdo->prepare("UPDATE nurioh_slots SET 
+            position_status = 'IN_POSITION',
+            target_market = ?,
+            entry_price = ?,
+            entry_volume = ?,
+            entry_amount_krw = ?,
+            highest_price = ?,
+            highest_profit_pct = ?,
+            entered_at = NOW()
+            WHERE user_id = ? AND slot_id = ?");
+        $stmt->execute([
+            $market,
+            $entryPrice,
+            $entryVolume,
+            $entryAmount,
+            $highestPrice,
+            max(0, $profitPct),
+            $userId,
+            $slotId
+        ]);
+
+        // 텔레그램 알림 발송
+        $uStmt = $pdo->prepare("SELECT telegram_chat_id FROM nurioh_users WHERE id = ?");
+        $uStmt->execute([$userId]);
+        $uRow = $uStmt->fetch();
+        $userChatId = $uRow['telegram_chat_id'] ?? null;
+
+        $timeStr = date('Y-m-d H:i:s');
+        $importMsg = "<b>📥 [누리오 트레이더] 업비트 보유 코인 슬롯 연동 완료</b>\n\n" .
+                     "🎰 <b>배정 슬롯:</b> <b>{$slotId}번 슬롯</b>\n" .
+                     "📌 <b>연동 코인:</b> <code>{$market}</code>\n" .
+                     "💰 <b>보유 수량:</b> " . number_format($entryVolume, 4) . "\n" .
+                     "📊 <b>진입 단가:</b> " . number_format($entryPrice) . " KRW\n" .
+                     "💵 <b>평가 금액:</b> " . number_format((int)$entryAmount) . " KRW\n" .
+                     "⏱ <b>연동 시각:</b> {$timeStr}\n\n" .
+                     "🎯 <i>해당 슬롯의 트레일링 스탑 익절 및 손절 감시가 시작되었습니다.</i>";
+        if ($userChatId) {
+            sendTelegramDirectMessage($importMsg, $userChatId);
+        } else {
+            sendTelegramAdminAlert($importMsg);
+        }
+
+        echo json_encode([
+            'success' => true,
+            'message' => "{$slotId}번 슬롯에 {$market} 코인이 성공적으로 연동되었습니다!",
+            'slotId' => $slotId,
+            'market' => $market,
+            'entryPrice' => $entryPrice,
+            'entryVolume' => $entryVolume,
+            'entryAmountKrw' => $entryAmount
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }

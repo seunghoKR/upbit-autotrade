@@ -35,6 +35,7 @@ import {
   getSlots,
   updateSlotConfig,
   buySlotPosition,
+  importSlotPosition,
   sellSlotPosition,
   resetSlotStats,
   panicSellAll,
@@ -768,6 +769,51 @@ export default function App() {
     await loadData();
   };
 
+  // 📥 업비트 실보유 코인 특정 슬롯에 수동 연동 (Import)
+  const handleImportCoin = async (slotId, coinData) => {
+    const userId = currentUser?.id || 1;
+    try {
+      const res = await importSlotPosition(slotId, { ...coinData, userId });
+      if (res && res.success) {
+        // 프론트엔드 슬롯 상태 즉시 IN_POSITION으로 업데이트
+        setSlots(prevSlots => {
+          const next = prevSlots.map(s => {
+            if (s.slotId === slotId) {
+              return {
+                ...s,
+                positionStatus: 'IN_POSITION',
+                targetMarket: coinData.market,
+                entryPrice: coinData.entryPrice,
+                entryVolume: coinData.entryVolume,
+                entryAmountKrw: coinData.entryAmountKrw,
+                highestPrice: coinData.currentPrice || coinData.entryPrice,
+                highestProfitPct: 0
+              };
+            }
+            return s;
+          });
+          slotsRef.current = next;
+          return next;
+        });
+
+        // Live Tracker 초기화
+        slotTrackersRef.current[slotId] = {
+          entryPrice: coinData.entryPrice,
+          highestPrice: coinData.currentPrice || coinData.entryPrice,
+          highestProfitPct: 0,
+          targetMarket: coinData.market
+        };
+
+        alert(`✅ [연동 완료] ${slotId}번 슬롯에 ${coinData.market} 코인이 성공적으로 등록되었습니다!\n실시간 트레일링 익절 & 손절 감시가 가동됩니다.`);
+        await loadData();
+      }
+    } catch (err) {
+      console.error('Import coin error:', err);
+      alert('코인 연동 중 오류가 발생했습니다: ' + (err.response?.data?.error || err.message));
+      throw err;
+    }
+  };
+
   // 📊 슬롯 개별 누적 통계 초기화
   const handleResetSlotStats = async (slotId) => {
     const userId = currentUser?.id || 1;
@@ -958,6 +1004,8 @@ export default function App() {
           onUpdateSlot={handleUpdateSlot}
           onSellSlot={handleSellSlot}
           onResetSlotStats={handleResetSlotStats}
+          onImportCoin={handleImportCoin}
+          accounts={accounts}
           livePriceMap={livePriceMap}
           botRunning={botRunning}
           onToggleBot={handleToggleBot}

@@ -24,8 +24,10 @@ import {
   AlertTriangle,
   Settings2,
   Check,
-  X
+  X,
+  Download
 } from 'lucide-react';
+import ImportCoinModal from './ImportCoinModal';
 
 const DEFAULT_SLOTS = [
   { id: 1, slotId: 1, slotName: '1번 슬롯', isEnabled: true, targetMarket: 'KRW-BTC', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, trailingTargetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
@@ -44,6 +46,8 @@ export default function SlotManager({
   onUpdateSlot, 
   onSellSlot, 
   onResetSlotStats,
+  onImportCoin,
+  accounts = [],
   livePriceMap = {},
   botRunning = false,
   onToggleBot,
@@ -72,6 +76,15 @@ export default function SlotManager({
 
   const [selectedStatsSlot, setSelectedStatsSlot] = useState(null);
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
+
+  const [selectedImportSlot, setSelectedImportSlot] = useState(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+  const handleOpenImport = (e, slot) => {
+    e.stopPropagation();
+    setSelectedImportSlot(slot);
+    setIsImportModalOpen(true);
+  };
 
   const handleStartEdit = (e, slot) => {
     e.stopPropagation();
@@ -324,6 +337,16 @@ export default function SlotManager({
                   >
                     <Power className={`w-3.5 h-3.5 ${slot.isEnabled ? 'text-emerald-400 animate-pulse' : 'text-slate-500'}`} />
                     <span>{slot.isEnabled ? 'ON' : 'OFF'}</span>
+                  </button>
+
+                  {/* 📥 가져오기(아이콘) 버튼: ON 버튼과 통계버튼 사이에 배치 */}
+                  <button
+                    type="button"
+                    onClick={(e) => handleOpenImport(e, slot)}
+                    className="p-1.5 rounded-lg bg-slate-900/90 hover:bg-emerald-950/60 text-slate-300 hover:text-emerald-400 border border-slate-700/80 hover:border-emerald-500/50 transition cursor-pointer"
+                    title="업비트 보유 코인 이 슬롯으로 가져오기"
+                  >
+                    <Download className="w-3.5 h-3.5" />
                   </button>
 
                   {isEditing ? (
@@ -911,6 +934,17 @@ export default function SlotManager({
         </div>,
         document.body
       )}
+
+      {/* 📥 업비트 계정 보유 코인 슬롯 가져오기 모달 */}
+      <ImportCoinModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        slot={selectedImportSlot}
+        accounts={accounts}
+        livePriceMap={livePriceMap}
+        onImportCoin={onImportCoin}
+        userId={currentUser?.id || 1}
+      />
     </div>
   );
 }
