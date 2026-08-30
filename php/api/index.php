@@ -1559,20 +1559,44 @@ try {
 
         // 📢 텔레그램 실현 손익 정산 알림 발송
         $slotName = $slot['slot_name'] ?? "{$slotId}번 슬롯";
-        $emoji = $isProfit ? '🟢 [수익 실현 매도 완료]' : '🔴 [손실 제한 매도 완료]';
-        $sign = $isProfit ? '+' : '';
-        $pctStr = "{$sign}" . number_format($profitPct, 2) . "%";
-        $krwStr = "{$sign}" . number_format((int)$profitKrw) . " KRW";
+        $stratName = ($slot['strategy_type'] ?? 'RECOMMENDED') === 'SELF' ? '셀프전략' : '추천전략';
+        $emoji = $isProfit ? '🎉 <b>[NURIOH 트레이더 - 익절 매도 완료]</b>' : '🛡️ <b>[NURIOH 트레이더 - 손절 방어 매도]</b>';
+        $profitSign = $isProfit ? '+' : '';
+        $pctStr = "{$profitSign}" . number_format($profitPct, 2) . "%";
+        $krwStr = "{$profitSign}" . number_format((int)$profitKrw) . " KRW";
+        $entryPriceStr = number_format($entryPrice, ($entryPrice < 100 ? 2 : 0)) . " 원";
+        $exitPriceStr = number_format($exitPrice, ($exitPrice < 100 ? 2 : 0)) . " 원";
+        $investAmountStr = number_format((int)$amountKrw) . " KRW";
+        $highestPctStr = "+" . number_format((float)($slot['highest_profit_pct'] ?? max(0, $profitPct)), 2) . "%";
+        $sellReason = trim((string)($input['reason'] ?? ($isProfit ? '트레일링 최고가 대비 콜백 익절' : '손절선 도달 안전 매도')));
         $timeStr = date('Y-m-d H:i:s');
 
-        $upbitOrderInfo = $orderRes ? "주문번호: {$orderRes['uuid']}" : ($orderErr ?: "모의 정산");
-        $alertMsg = "<b>{$emoji}</b>\n\n" .
-                    "🎰 <b>배정 슬롯:</b> <b>{$slotId}번 슬롯 ({$slotName})</b>\n" .
-                    "📌 <b>암호화폐:</b> <code>{$mkt}</code>\n" .
-                    "📈 <b>실현 수익률:</b> <b>{$pctStr}</b>\n" .
-                    "💵 <b>실현 손익금:</b> <b>{$krwStr}</b>\n" .
-                    "⚡ <b>업비트 주문:</b> {$upbitOrderInfo}\n" .
-                    "⏱ <b>청산 시각:</b> {$timeStr}\n";
+        // 보유 시간 계산
+        $holdingDurationStr = '약 3분';
+        if (!empty($slot['entered_at'])) {
+            $enteredTs = strtotime($slot['entered_at']);
+            $diffSec = max(1, time() - $enteredTs);
+            $mins = floor($diffSec / 60);
+            $secs = $diffSec % 60;
+            $holdingDurationStr = $mins > 0 ? "{$mins}분 {$secs}초" : "{$secs}초";
+        }
+
+        $upbitOrderInfo = $orderRes ? "시장가 전량 체결 (주문: " . substr($orderRes['uuid'] ?? '', 0, 13) . "...)" : ($orderErr ?: "모의 정산 체결");
+
+        $alertMsg = "{$emoji}\n\n" .
+                    "🎰 <b>슬롯:</b> <b>{$slotId}번 슬롯 ({$stratName})</b>\n" .
+                    "📌 <b>종목:</b> <code>{$mkt}</code>\n" .
+                    "🎯 <b>매도 사유:</b> {$sellReason}\n" .
+                    "━━━━━━━━━━━━━━━━━━\n" .
+                    "💰 <b>매수 진입가:</b> {$entryPriceStr}\n" .
+                    "🏁 <b>매도 청산가:</b> {$exitPriceStr}\n" .
+                    "📈 <b>최고 도달률:</b> {$highestPctStr}\n" .
+                    "🏆 <b>최종 실현 수익률:</b> <b>{$pctStr} " . ($isProfit ? '🟢' : '🔴') . "</b>\n" .
+                    "💵 <b>투자 / 실현손익:</b> {$investAmountStr} ➔ <b>{$krwStr}</b>\n" .
+                    "⏱ <b>보유 시간:</b> {$holdingDurationStr}\n" .
+                    "━━━━━━━━━━━━━━━━━━\n" .
+                    "⚡ <b>주문 결과:</b> {$upbitOrderInfo}\n" .
+                    "🕒 <b>체결 시각:</b> {$timeStr}\n";
 
         $uStmt = $pdo->prepare("SELECT telegram_chat_id FROM nurioh_users WHERE id = ?");
         $uStmt->execute([$userId]);
