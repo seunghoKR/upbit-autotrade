@@ -373,6 +373,31 @@ export default function App() {
   }, [settings]);
 
   useEffect(() => {
+    // ⚡ [0.01초 초광속 초기화] 컴포넌트 마운트 즉시 주요 마켓 실시간 현재가 즉시 REST 선조회
+    const instantMarkets = [
+      'KRW-SAND', 'KRW-DOGE', 'KRW-QTUM', 'KRW-BTC', 'KRW-ETH', 'KRW-XRP',
+      'KRW-SOL', 'KRW-ADA', 'KRW-AVAX', 'KRW-DOT', 'KRW-NEAR', 'KRW-STX', 'KRW-SUI'
+    ];
+    fetch(`https://api.upbit.com/v1/ticker?markets=${instantMarkets.join(',')}`)
+      .then(res => res.json())
+      .then(tickers => {
+        if (Array.isArray(tickers)) {
+          const batch = {};
+          tickers.forEach(t => {
+            if (t.market && t.trade_price) {
+              batch[t.market] = {
+                code: t.market,
+                trade_price: t.trade_price,
+                change_rate: t.change_rate,
+                signed_change_rate: t.signed_change_rate
+              };
+            }
+          });
+          setLivePriceMap(prev => ({ ...prev, ...batch }));
+        }
+      })
+      .catch(() => {});
+
     loadData();
 
     // ⚡ 1. 브라우저 직접 업비트 실시간 웹소켓 & 급등 감지기 가동

@@ -324,46 +324,21 @@ try {
 
 try {
 
-    // 🛠️ DB 테이블 컬럼 마이그레이션
-    try {
-        $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN name VARCHAR(100) DEFAULT NULL AFTER kakao_id");
-    } catch (Exception $e) {}
-    try {
-        $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN phone VARCHAR(50) DEFAULT NULL AFTER email");
-    } catch (Exception $e) {}
-    try {
-        $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN birthyear VARCHAR(10) DEFAULT '1990' AFTER phone");
-    } catch (Exception $e) {}
-    try {
-        $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN auto_trading TEXT DEFAULT NULL AFTER agreed_terms");
-    } catch (Exception $e) {}
-    try {
-        $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN approval_status VARCHAR(32) DEFAULT 'APPROVED' AFTER is_active");
-    } catch (Exception $e) {}
-    try {
-        $pdo->exec("ALTER TABLE nurioh_users MODIFY COLUMN role VARCHAR(32) DEFAULT 'USER'");
-    } catch (Exception $e) {}
-    try {
-        $pdo->exec("ALTER TABLE nurioh_settings ADD COLUMN excluded_markets TEXT DEFAULT NULL AFTER surge_min_volume_krw");
-    } catch (Exception $e) {}
-    try {
-        $pdo->exec("ALTER TABLE nurioh_settings ADD COLUMN telegram_bot_token VARCHAR(255) DEFAULT NULL AFTER excluded_markets");
-    } catch (Exception $e) {}
-    try {
-        $pdo->exec("UPDATE nurioh_settings SET telegram_bot_token = '8801000924:AAGspDXeDkHcHyGI0CHuSxFvyq_f5vmoezU' WHERE id = 1");
-    } catch (Exception $e) {}
-    try {
-        $pdo->exec("ALTER TABLE nurioh_slots MODIFY COLUMN position_status VARCHAR(32) DEFAULT 'IDLE'");
-    } catch (Exception $e) {}
-    try {
-        $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN entry_amount_krw DECIMAL(15,2) DEFAULT NULL");
-    } catch (Exception $e) {}
-    try {
-        $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN entered_at DATETIME DEFAULT NULL");
-    } catch (Exception $e) {}
-    try {
-        $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN highest_profit_pct DECIMAL(8,4) DEFAULT 0.0000");
-    } catch (Exception $e) {}
+    // 🛠️ DB 테이블 컬럼 마이그레이션 (run_migration=1 요청 시에만 실행하여 성능 극대화)
+    if (!empty($_GET['run_migration'])) {
+        try { $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN name VARCHAR(100) DEFAULT NULL AFTER kakao_id"); } catch (Exception $e) {}
+        try { $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN phone VARCHAR(50) DEFAULT NULL AFTER email"); } catch (Exception $e) {}
+        try { $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN birthyear VARCHAR(10) DEFAULT '1990' AFTER phone"); } catch (Exception $e) {}
+        try { $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN auto_trading TEXT DEFAULT NULL AFTER agreed_terms"); } catch (Exception $e) {}
+        try { $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN approval_status VARCHAR(32) DEFAULT 'APPROVED' AFTER is_active"); } catch (Exception $e) {}
+        try { $pdo->exec("ALTER TABLE nurioh_users MODIFY COLUMN role VARCHAR(32) DEFAULT 'USER'"); } catch (Exception $e) {}
+        try { $pdo->exec("ALTER TABLE nurioh_settings ADD COLUMN excluded_markets TEXT DEFAULT NULL AFTER surge_min_volume_krw"); } catch (Exception $e) {}
+        try { $pdo->exec("ALTER TABLE nurioh_settings ADD COLUMN telegram_bot_token VARCHAR(255) DEFAULT NULL AFTER excluded_markets"); } catch (Exception $e) {}
+        try { $pdo->exec("ALTER TABLE nurioh_slots MODIFY COLUMN position_status VARCHAR(32) DEFAULT 'IDLE'"); } catch (Exception $e) {}
+        try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN entry_amount_krw DECIMAL(15,2) DEFAULT NULL"); } catch (Exception $e) {}
+        try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN entered_at DATETIME DEFAULT NULL"); } catch (Exception $e) {}
+        try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN highest_profit_pct DECIMAL(8,4) DEFAULT 0.0000"); } catch (Exception $e) {}
+    }
 
     try {
         $pdo->exec("CREATE TABLE IF NOT EXISTS `nurioh_payment_logs` (

@@ -231,9 +231,10 @@ export default function SlotManager({
             (pendingSurgeCountdown && pendingSurgeCountdown.slotId === slot.slotId ? pendingSurgeCountdown : null);
           const isSurgeCounting = Boolean(slotCountdown);
 
-          const marketData = livePriceMap[slot.targetMarket] || {};
-          const currentPrice = marketData.trade_price || slot.entryPrice || 0;
-          const profitPct = (slot.entryPrice && currentPrice) 
+          const marketData = livePriceMap[slot.targetMarket];
+          const hasLivePrice = Boolean(marketData?.trade_price);
+          const currentPrice = hasLivePrice ? marketData.trade_price : (slot.entryPrice || 0);
+          const profitPct = (slot.entryPrice && hasLivePrice) 
             ? (((currentPrice - slot.entryPrice) / slot.entryPrice) * 100)
             : (slot.highestProfitPct || 0);
           const isProfit = profitPct >= 0;
