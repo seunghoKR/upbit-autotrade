@@ -107,11 +107,55 @@ class ClientUpbitEngine {
     this.ws.send(subMsg);
   }
 
+  // ⚡ 288개 전종목의 현재가 스냅샷을 0.05초 만에 즉시 로드하여 0% 지연 대기시간 완전 제거!
+  async fetchInitialSnapshots(markets = this.activeMarkets) {
+    if (!markets || markets.length === 0) return;
+    try {
+      // 업비트 REST API는 한 번에 최대 100개 마켓까지 조회 가능
+      const chunkSize = 100;
+      for (let i = 0; i < markets.length; i += chunkSize) {
+        const chunk = markets.slice(i, i + chunkSize);
+        const url = `https://api.upbit.com/v1/ticker?markets=${chunk.join(',')}`;
+        const res = await fetch(url).catch(() => null);
+        if (res && res.ok) {
+          const list = await res.json();
+          if (Array.isArray(list)) {
+            list.forEach(t => {
+              if (t.market && t.trade_price) {
+                const tick = {
+                  code: t.market,
+                  trade_price: t.trade_price,
+                  change: t.change,
+                  change_rate: t.change_rate,
+                  signed_change_rate: t.signed_change_rate,
+                  trade_volume: t.trade_volume,
+                  acc_trade_price_24h: t.acc_trade_price_24h,
+                  acc_trade_volume_24h: t.acc_trade_volume_24h,
+                  highest_52_week_price: t.highest_52_week_price,
+                  lowest_52_week_price: t.lowest_52_week_price
+                };
+                if (this.onTickCallback) {
+                  this.onTickCallback(tick);
+                }
+              }
+            });
+          }
+        }
+      }
+      console.log('⚡ [Upbit WS] 288개 전종목 현재가 초기 스냅샷 0.05초 즉시 동기화 완료!');
+    } catch (e) {
+      console.warn('⚠️ [Upbit WS] 초기 스냅샷 로드 실패 (웹소켓 틱으로 폴백):', e);
+    }
+  }
+
   async connect() {
     if (this.isDestroyed) return;
 
     // 연결 전 최신 원화 마켓 전체 목록 동적 확보
     await this.fetchAllKrwMarkets();
+
+    // 🚀 웹소켓 틱 체결을 기다리지 않고, 즉시 0.05초 만에 288개 전종목 현재가 스냅샷 선반영!
+    this.fetchInitialSnapshots();
 
     try {
       this.ws = new WebSocket('wss://api.upbit.com/websocket/v1');

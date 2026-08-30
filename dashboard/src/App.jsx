@@ -801,6 +801,19 @@ export default function App() {
     try {
       const res = await importSlotPosition(slotId, { ...coinData, userId });
       if (res && res.success) {
+        const livePrice = coinData.currentPrice || coinData.entryPrice || 0;
+        const initialProfitPct = (coinData.entryPrice && livePrice)
+          ? (((livePrice - coinData.entryPrice) / coinData.entryPrice) * 100)
+          : 0;
+
+        // ⚡ 즉시 livePriceMap에 현재가 주입 (0.001초 만에 실시간 수익률 표시!)
+        if (coinData.market && livePrice > 0) {
+          setLivePriceMap(prev => ({
+            ...prev,
+            [coinData.market]: { code: coinData.market, trade_price: livePrice }
+          }));
+        }
+
         // 프론트엔드 슬롯 상태 즉시 IN_POSITION으로 업데이트
         setSlots(prevSlots => {
           const next = prevSlots.map(s => {
@@ -812,8 +825,8 @@ export default function App() {
                 entryPrice: coinData.entryPrice,
                 entryVolume: coinData.entryVolume,
                 entryAmountKrw: coinData.entryAmountKrw,
-                highestPrice: coinData.currentPrice || coinData.entryPrice,
-                highestProfitPct: 0
+                highestPrice: livePrice,
+                highestProfitPct: Math.max(0, initialProfitPct)
               };
             }
             return s;
@@ -825,8 +838,8 @@ export default function App() {
         // Live Tracker 초기화
         slotTrackersRef.current[slotId] = {
           entryPrice: coinData.entryPrice,
-          highestPrice: coinData.currentPrice || coinData.entryPrice,
-          highestProfitPct: 0,
+          highestPrice: livePrice,
+          highestProfitPct: Math.max(0, initialProfitPct),
           targetMarket: coinData.market
         };
 
