@@ -180,19 +180,36 @@ export default function App() {
   const selectedSlot = visibleSlots.find(s => s.slotId === selectedSlotId) || visibleSlots[0] || effectiveSlots[0];
   const activeMarket = selectedSlot?.targetMarket || settings.DEFAULT_MARKET || 'KRW-BTC';
 
+  // 🛡️ 실시간 유효 로그인 ID 검증 헬퍼 (스토리지에 인증 정보가 없을 때 절대 ID를 반환하지 않음)
+  const getValidAuthUserId = () => {
+    try {
+      const isRemembered = localStorage.getItem('nurioh_remember_me') === 'true';
+      const sessionUserId = sessionStorage.getItem('nurioh_user_id');
+      if (sessionUserId) return sessionUserId;
+      if (isRemembered) {
+        const localUserId = localStorage.getItem('nurioh_user_id');
+        if (localUserId) return localUserId;
+      }
+    } catch (e) {}
+    return null;
+  };
+
   // 1. 초기 데이터 및 회원 프로필 로드 (선택된 모드 유지)
   const loadData = async () => {
     try {
       // 🛡️ 보안 강화: 사용자가 유효하게 로그인된 상태일 때만 프로필과 봇 데이터를 로드함 (비인가 자동 로그인 원천 차단)
-      const isRemembered = localStorage.getItem('nurioh_remember_me') === 'true';
-      const validUserId = sessionStorage.getItem('nurioh_user_id') || (isRemembered ? localStorage.getItem('nurioh_user_id') : null) || currentUser?.id;
-      
+      const validUserId = getValidAuthUserId();
       if (!validUserId) {
         return;
       }
 
       const userRes = await getUserProfile(validUserId).catch(() => null);
+      if (!getValidAuthUserId()) {
+        return;
+      }
+
       if (userRes && userRes.user) {
+        const isRemembered = localStorage.getItem('nurioh_remember_me') === 'true';
         if (isRemembered) {
           localStorage.setItem('nurioh_user_profile', JSON.stringify(userRes.user));
           localStorage.setItem('nurioh_user_id', String(userRes.user.id));
@@ -202,6 +219,7 @@ export default function App() {
         }
 
         setCurrentUser(prev => {
+          if (!getValidAuthUserId()) return null;
           const override = devModeRef.current;
           if (override) {
             return {
@@ -217,6 +235,9 @@ export default function App() {
       }
 
       const status = await getBotStatus(validUserId);
+      if (!getValidAuthUserId()) {
+        return;
+      }
       if (status) {
         setBotRunning(status.botRunning);
         if (status.serverIp) setServerIp(status.serverIp);
@@ -667,18 +688,23 @@ export default function App() {
     }
   };
 
-  // 로그아웃
+  // 🚪 철저한 보안 로그아웃: 모든 스토리지 데이터 및 타이머 파기 후 안전하게 메인 랜딩으로 리셋
   const handleLogout = () => {
     setDevModeOverride(null);
     devModeRef.current = null;
-    localStorage.removeItem('nurioh_user_id');
-    localStorage.removeItem('nurioh_user_profile');
-    localStorage.removeItem('nurioh_remember_me');
-    localStorage.removeItem('nurioh_login_timestamp');
-    sessionStorage.removeItem('nurioh_user_id');
-    sessionStorage.removeItem('nurioh_user_profile');
-    sessionStorage.removeItem('nurioh_login_timestamp');
+    try {
+      localStorage.removeItem('nurioh_user_id');
+      localStorage.removeItem('nurioh_user_profile');
+      localStorage.removeItem('nurioh_remember_me');
+      localStorage.removeItem('nurioh_login_timestamp');
+      sessionStorage.removeItem('nurioh_user_id');
+      sessionStorage.removeItem('nurioh_user_profile');
+      sessionStorage.removeItem('nurioh_login_timestamp');
+      sessionStorage.clear();
+    } catch (e) {}
     setCurrentUser(null);
+    // ⚡ 브라우저 페이지 전체 리셋으로 메모리 잔여 데이터 및 웹소켓 완전 종료
+    window.location.replace('/');
   };
 
   // API 키 등록 핸들러
