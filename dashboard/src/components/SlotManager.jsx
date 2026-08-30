@@ -25,7 +25,8 @@ import {
   Settings2,
   Check,
   X,
-  Download
+  Download,
+  Coins
 } from 'lucide-react';
 import ImportCoinModal from './ImportCoinModal';
 
@@ -314,6 +315,14 @@ export default function SlotManager({
                   }`}>
                     {isSelfStrategy ? '셀프전략' : '추천전략'}
                   </span>
+
+                  {/* 🪙 보유 중인 코인 이름 헤더 뱃지 */}
+                  {hasPosition && (
+                    <span className="text-[11px] px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black font-mono shadow-sm flex items-center gap-1 shrink-0 animate-pulse">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                      <span>{(slot.targetMarket || '').replace('KRW-', '')}</span>
+                    </span>
+                  )}
                 </div>
 
                 {/* 우측 액션 메뉴: | [Power] ON | [통계 아이콘] | [수정 아이콘] | */}
@@ -673,11 +682,18 @@ export default function SlotManager({
                       </div>
                       {hasPosition ? (
                         <div>
-                          <span className="text-sm font-black font-mono text-white block">
-                            {Math.round(slot.entryPrice || currentPrice).toLocaleString()} <span className="text-[10px] font-normal text-slate-400">원</span>
-                          </span>
-                          <span className="text-[10px] font-mono text-slate-400 truncate block mt-0.5" title={`수량: ${slot.entryVolume ? slot.entryVolume.toFixed(6) : ''}`}>
-                            {slot.entryVolume ? slot.entryVolume.toFixed(4) : (slot.entryAmountKrw / currentPrice).toFixed(4)} {(slot.targetMarket || '').replace('KRW-', '')}
+                          {/* 🪙 코인 심볼 대형 강조 뱃지 */}
+                          <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                            <span className="px-2 py-0.5 rounded-lg bg-amber-500/25 text-amber-300 font-black text-sm sm:text-base font-mono border border-amber-500/40 shadow-sm flex items-center gap-1">
+                              <Coins className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                              {(slot.targetMarket || '').replace('KRW-', '')}
+                            </span>
+                            <span className="text-xs text-white font-mono font-black">
+                              {Math.round(slot.entryPrice || currentPrice).toLocaleString()}원
+                            </span>
+                          </div>
+                          <span className="text-[11px] font-mono text-slate-300 truncate block mt-0.5" title={`수량: ${slot.entryVolume ? slot.entryVolume.toFixed(6) : ''}`}>
+                            수량: <strong className="text-slate-100 font-extrabold">{slot.entryVolume ? slot.entryVolume.toFixed(4) : (slot.entryAmountKrw / currentPrice).toFixed(4)}</strong> {(slot.targetMarket || '').replace('KRW-', '')}
                           </span>
                         </div>
                       ) : (
@@ -691,17 +707,19 @@ export default function SlotManager({
                         </span>
                       )}
                     </div>
-                    <div className="text-right">
-                      <span className="text-[10px] text-slate-400 block mb-1">
-                        {hasPosition ? '실시간 수익률' : '상태'}
-                      </span>
-                      <span className={`text-sm font-black font-mono block ${
-                        hasPosition 
-                          ? (isProfit ? 'text-rose-400' : 'text-blue-400')
-                          : 'text-slate-500'
-                      }`}>
-                        {hasPosition ? `${isProfit ? '+' : ''}${profitPct.toFixed(2)}%` : '포지션 대기'}
-                      </span>
+                    <div className="text-right flex flex-col justify-between">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block mb-0.5">
+                          {hasPosition ? '실시간 수익률' : '상태'}
+                        </span>
+                        <span className={`text-base sm:text-lg font-black font-mono block ${
+                          hasPosition 
+                            ? (isProfit ? 'text-rose-400' : 'text-blue-400')
+                            : 'text-slate-500'
+                        }`}>
+                          {hasPosition ? `${isProfit ? '+' : ''}${profitPct.toFixed(2)}%` : '포지션 대기'}
+                        </span>
+                      </div>
                       {hasPosition && (
                         <span className="text-[10px] font-mono text-slate-400 block mt-0.5" title={`최고 기록 수익률: +${Math.max(profitPct, slot.highestProfitPct || 0).toFixed(2)}%`}>
                           최고: <strong className="text-rose-300 font-bold">+{Math.max(profitPct, slot.highestProfitPct || 0).toFixed(2)}%</strong>
