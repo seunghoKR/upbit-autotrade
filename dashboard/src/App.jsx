@@ -213,11 +213,10 @@ export default function App() {
         if (status.slots && Array.isArray(status.slots) && status.slots.length > 0) {
           const normalizedSlots = status.slots.map(s => {
             const rawEntryPrice = parseFloat(s.entryPrice || s.position?.entryPrice || 0);
-            const isCorrupted = (s.highestProfitPct > 5000000);
-            const hasPosition = !isCorrupted && (
-              (s.positionStatus === 'IN_POSITION' || s.positionStatus === 'HOLDING' || s.positionStatus === 'TRAILING_ACTIVE') || 
-              Boolean(rawEntryPrice > 0)
-            );
+            const rawEntryVolume = parseFloat(s.entryVolume || s.position?.entryVolume || 0);
+            const rawAmount = parseFloat(s.entryAmountKrw || (rawEntryPrice * rawEntryVolume) || 0);
+            const isCorrupted = (s.highestProfitPct > 5000000) || (rawEntryVolume <= 0.00001) || (rawAmount < 4000 && rawAmount > 0);
+            const hasPosition = !isCorrupted && (s.positionStatus === 'IN_POSITION') && (rawEntryVolume > 0.00001);
             const tracker = slotTrackersRef.current[s.slotId];
             
             const entryPrice = hasPosition ? rawEntryPrice : null;

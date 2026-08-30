@@ -756,7 +756,7 @@ try {
             $slots = $slotStmt->fetchAll() ?: [];
         }
 
-        // 🛡️ 실계좌 업비트 보유 코인(DKA, BORA 등) 추출
+        // 🛡️ 실계좌 업비트 보유 코인(DKA, BORA 등) 맵 구성
         $heldCoins = [];
         if (!empty($accounts) && is_array($accounts)) {
             foreach ($accounts as $acc) {
@@ -765,8 +765,8 @@ try {
                 $bal = (float)($acc['balance'] ?? 0) + (float)($acc['locked'] ?? 0);
                 $avgPrice = (float)($acc['avg_buy_price'] ?? 0);
                 $evalAmount = $bal * $avgPrice;
-                // 최소 원화 평가금액 3,000원 이상 실제 보유 코인만 슬롯에 자동 매칭
-                if ($bal > 0 && ($evalAmount >= 3000 || $avgPrice > 0)) {
+                // 실제 유의미한 보유 코인(평가금액 5,000원 이상)만 맵에 보관
+                if ($bal > 0 && $evalAmount >= 5000) {
                     $mktKey = "KRW-{$curr}";
                     $heldCoins[$mktKey] = [
                         'market' => $mktKey,
@@ -779,53 +779,6 @@ try {
             }
         }
 
-        // 실계좌 보유 코인 중 아직 슬롯에 등록되지 않은 코인이 있다면 빈 슬롯(IDLE)에 자동 배정!
-        if (!empty($heldCoins)) {
-            $assignedMarkets = [];
-            foreach ($slots as $s) {
-                if ($s['position_status'] === 'IN_POSITION' && !empty($s['target_market'])) {
-                    $assignedMarkets[] = strtoupper($s['target_market']);
-                }
-            }
-
-            foreach ($heldCoins as $mktKey => $held) {
-                if (!in_array($mktKey, $assignedMarkets)) {
-                    // 비어있는(IDLE) 첫 번째 슬롯 탐색하여 자동 배정
-                    foreach ($slots as &$s) {
-                        if ($s['position_status'] !== 'IN_POSITION') {
-                            $pdo->prepare("UPDATE nurioh_slots SET 
-                                position_status = 'IN_POSITION',
-                                target_market = ?,
-                                entry_price = ?,
-                                entry_volume = ?,
-                                entry_amount_krw = ?,
-                                highest_price = ?,
-                                highest_profit_pct = 0,
-                                entered_at = IFNULL(entered_at, NOW())
-                                WHERE id = ?")->execute([
-                                    $held['market'],
-                                    $held['avgBuyPrice'],
-                                    $held['balance'],
-                                    $held['evalAmount'],
-                                    $held['avgBuyPrice'],
-                                    $s['id']
-                                ]);
-                            $s['position_status'] = 'IN_POSITION';
-                            $s['target_market'] = $held['market'];
-                            $s['entry_price'] = $held['avgBuyPrice'];
-                            $s['entry_volume'] = $held['balance'];
-                            $s['entry_amount_krw'] = $held['evalAmount'];
-                            $s['highest_price'] = $held['avgBuyPrice'];
-                            $s['highest_profit_pct'] = 0;
-                            $assignedMarkets[] = $mktKey;
-                            break;
-                        }
-                    }
-                    unset($s);
-                }
-            }
-        }
-
         $formattedSlots = array_map(function($s) use ($pdo, $accounts, $heldCoins) {
             $realizedProfit = (float)($s['total_realized_profit_krw'] ?? 0);
             if ($realizedProfit > 50000000 || $realizedProfit < -50000000) {
@@ -834,10 +787,17 @@ try {
                 $realizedProfit = 0;
             }
 
-            // 🛡️ 만약 슬롯이 IN_POSITION인데, 실제 업비트 계좌에서 매도되어 잔고가 0원이 된 경우에만 IDLE로 복귀
-            if ($s['position_status'] === 'IN_POSITION' && !empty($accounts) && is_array($accounts) && count($accounts) > 1) {
-                $slotMkt = strtoupper($s['target_market'] ?? '');
-                if (!isset($heldCoins[$slotMkt])) {
+            // 🛡️ 1) 수량이 0이거나 평가금액이 5,000원 미만인 먼지/더미 잔고는 깨끗한 빈 슬롯(IDLE)으로 초기화
+            $vol = (float)($s['entry_volume'] ?? 0);
+            $entryP = (float)($s['entry_price'] ?? 0);
+            $amount = (float)($s['entry_amount_krw'] ?? ($vol * $entryP));
+            $slotMkt = strtoupper($s['target_market'] ?? '');
+
+            if ($s['position_status'] === 'IN_POSITION') {
+                $isDustOrZero = ($vol <= 0.00001 || $amount < 4000 || $entryP <= 0);
+                $isSoldOutOnUpbit = (!empty($accounts) && is_array($accounts) && count($accounts) > 0 && !isset($heldCoins[$slotMkt]));
+
+                if ($isDustOrZero || $isSoldOutOnUpbit) {
                     $pdo->prepare("UPDATE nurioh_slots SET position_status = 'IDLE', entry_price = NULL, entry_volume = NULL, entry_amount_krw = NULL, highest_price = NULL, highest_profit_pct = 0 WHERE id = ?")
                         ->execute([$s['id']]);
                     $s['position_status'] = 'IDLE';
@@ -846,15 +806,12 @@ try {
                     $s['entry_amount_krw'] = null;
                     $s['highest_price'] = null;
                     $s['highest_profit_pct'] = 0;
+                } else if (isset($heldCoins[$slotMkt])) {
+                    // 실제 매수된 정상 포지션의 경우 최신 업비트 단가/수량 동기화
+                    $s['entry_price'] = $heldCoins[$slotMkt]['avgBuyPrice'];
+                    $s['entry_volume'] = $heldCoins[$slotMkt]['balance'];
+                    $s['entry_amount_krw'] = $heldCoins[$slotMkt]['evalAmount'];
                 }
-            }
-
-            // 만약 실계좌에 해당 코인이 있다면 단가/수량 최신 업비트 원장 값으로 보정
-            $slotMkt = strtoupper($s['target_market'] ?? '');
-            if (isset($heldCoins[$slotMkt]) && $heldCoins[$slotMkt]['avgBuyPrice'] > 0) {
-                $s['entry_price'] = $heldCoins[$slotMkt]['avgBuyPrice'];
-                $s['entry_volume'] = $heldCoins[$slotMkt]['balance'];
-                $s['entry_amount_krw'] = $heldCoins[$slotMkt]['evalAmount'];
             }
 
             return [
