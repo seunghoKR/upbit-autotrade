@@ -170,6 +170,15 @@ export default function App() {
   const countdownTimersRef = useRef({});
   const activeSurgeCoinsRef = useRef(new Set());
 
+  // 🌐 업비트 원화 마켓 감시 개수 (기본 288개, 캐싱으로 새로고침 시 깜빡임 완전 방지)
+  const [marketCount, setMarketCount] = useState(() => {
+    try {
+      const cached = localStorage.getItem('nurioh_market_count');
+      if (cached && Number(cached) >= 200) return Number(cached);
+    } catch (e) {}
+    return 288;
+  });
+
   // 회원 등급에 따른 슬롯 개수 제한 적용 (Free: 1개, Pro: 3개, VIP/운영자/개발자: 9개)
   const isPrivileged = (currentUser?.role === 'OPERATOR' || currentUser?.role === 'DEVELOPER' || currentUser?.role === 'ADMIN' || currentUser?.tier === 'VIP');
   const maxSlotsAllowed = isPrivileged ? 9 : (currentUser?.tier === 'PRO' ? 3 : 1);
@@ -402,6 +411,12 @@ export default function App() {
 
     // ⚡ 1. 브라우저 직접 업비트 실시간 웹소켓 & 급등 감지기 가동
     upbitClientEngine.init({
+      onMarketsLoaded: (count) => {
+        if (count && count >= 200) {
+          setMarketCount(count);
+          try { localStorage.setItem('nurioh_market_count', String(count)); } catch (e) {}
+        }
+      },
       onBatchTicks: (batchMap) => {
         setLivePriceMap(prev => ({ ...prev, ...batchMap }));
       },
@@ -1064,8 +1079,6 @@ export default function App() {
     // 🆓 무료 체험: 모던하고 깔끔한 딥 슬레이트 & 차콜 테마
     return 'bg-[#090d16] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900/40 via-[#090d16] to-[#04060b]';
   };
-
-  const marketCount = (upbitClientEngine && upbitClientEngine.activeMarkets?.length) || 134;
 
   return (
     <div className={`min-h-screen ${getThemeBgClass()} text-slate-100 selection:bg-emerald-500 selection:text-black flex flex-col font-sans pb-12 transition-colors duration-500`}>

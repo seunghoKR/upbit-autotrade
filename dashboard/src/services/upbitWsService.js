@@ -32,15 +32,17 @@ class ClientUpbitEngine {
     this.onTickCallback = null;
     this.onSurgeCallback = null;
     this.onBatchTicksCallback = null;
+    this.onMarketsLoadedCallback = null;
     this.reconnectTimer = null;
     this.marketRefreshTimer = null;
     this.activeMarkets = [...FALLBACK_KRW_MARKETS];
   }
 
-  init({ onTick, onSurge, onBatchTicks }) {
+  init({ onTick, onSurge, onBatchTicks, onMarketsLoaded }) {
     this.onTickCallback = onTick;
     this.onSurgeCallback = onSurge;
     this.onBatchTicksCallback = onBatchTicks;
+    this.onMarketsLoadedCallback = onMarketsLoaded;
     this.connect();
 
     // 🔄 10분마다 신규 상장 코인을 자동 감지하여 웹소켓 구독 목록 갱신
@@ -80,6 +82,9 @@ class ClientUpbitEngine {
 
       if (markets && markets.length > 50) {
         this.activeMarkets = markets;
+        if (this.onMarketsLoadedCallback) {
+          this.onMarketsLoadedCallback(markets.length);
+        }
         console.log(`🌐 [Upbit WS] 업비트 전체 원화마켓 ${markets.length}개 실시간 동적 로드 완료! (신규 상장 코인 포함)`);
         return markets;
       }
