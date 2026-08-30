@@ -95,31 +95,39 @@ export default function App() {
   const SESSION_MAX_AGE_MS = SESSION_MAX_HOURS * 60 * 60 * 1000;
 
   // 회원 상태 (sessionStorage 우선 -> 자동로그인 체크된 localStorage 확인 + 12시간 세션 만료 검증)
+  // 회원 상태 (sessionStorage 우선 -> 자동로그인 체크된 localStorage 확인 + 12시간 세션 만료 검증)
   const [currentUser, setCurrentUser] = useState(() => {
     try {
-      const loginTimestamp = localStorage.getItem('nurioh_login_timestamp') || sessionStorage.getItem('nurioh_login_timestamp');
-      if (loginTimestamp) {
-        const elapsed = Date.now() - Number(loginTimestamp);
-        if (elapsed > SESSION_MAX_AGE_MS) {
-          // 🛡️ 12시간 경과로 세션 만료: 보안을 위해 토큰 자동 파기 후 재인증 요구
-          localStorage.removeItem('nurioh_user_id');
-          localStorage.removeItem('nurioh_user_profile');
-          localStorage.removeItem('nurioh_remember_me');
-          localStorage.removeItem('nurioh_login_timestamp');
-          sessionStorage.removeItem('nurioh_user_id');
-          sessionStorage.removeItem('nurioh_user_profile');
-          sessionStorage.removeItem('nurioh_login_timestamp');
-          return null;
-        }
+      // 1. 현재 브라우저 탭 세션 확인
+      const sessionProfile = sessionStorage.getItem('nurioh_user_profile');
+      const sessionUserId = sessionStorage.getItem('nurioh_user_id');
+      if (sessionProfile && sessionUserId) {
+        return JSON.parse(sessionProfile);
       }
 
-      const sessionProfile = sessionStorage.getItem('nurioh_user_profile');
-      if (sessionProfile) return JSON.parse(sessionProfile);
-
+      // 2. 사용자가 로그인 시 '자동 로그인'을 명시적으로 체크한 경우에만 로컬 스토리지 허용
       const isRemembered = localStorage.getItem('nurioh_remember_me') === 'true';
       if (isRemembered) {
+        const loginTimestamp = localStorage.getItem('nurioh_login_timestamp');
+        if (loginTimestamp) {
+          const elapsed = Date.now() - Number(loginTimestamp);
+          if (elapsed > SESSION_MAX_AGE_MS) {
+            // 🛡️ 12시간 경과로 세션 만료: 보안을 위해 토큰 자동 파기 후 재인증 요구
+            localStorage.removeItem('nurioh_user_id');
+            localStorage.removeItem('nurioh_user_profile');
+            localStorage.removeItem('nurioh_remember_me');
+            localStorage.removeItem('nurioh_login_timestamp');
+            return null;
+          }
+        }
         const localProfile = localStorage.getItem('nurioh_user_profile');
         if (localProfile) return JSON.parse(localProfile);
+      } else {
+        // 자동 로그인이 체크되어 있지 않다면 남아있는 로컬 잔여 데이터 완전 삭제 (다른 브라우저/새 창 보안 강화)
+        localStorage.removeItem('nurioh_user_id');
+        localStorage.removeItem('nurioh_user_profile');
+        localStorage.removeItem('nurioh_remember_me');
+        localStorage.removeItem('nurioh_login_timestamp');
       }
     } catch (e) {}
     return null;
@@ -174,17 +182,22 @@ export default function App() {
   // 1. 초기 데이터 및 회원 프로필 로드 (선택된 모드 유지)
   const loadData = async () => {
     try {
-      const savedUserId = sessionStorage.getItem('nurioh_user_id') || localStorage.getItem('nurioh_user_id') || currentUser?.id;
-      if (!savedUserId) {
+      // 🛡️ 보안 강화: 사용자가 유효하게 로그인된 상태일 때만 프로필과 봇 데이터를 로드함 (비인가 자동 로그인 원천 차단)
+      const isRemembered = localStorage.getItem('nurioh_remember_me') === 'true';
+      const validUserId = sessionStorage.getItem('nurioh_user_id') || (isRemembered ? localStorage.getItem('nurioh_user_id') : null) || currentUser?.id;
+      
+      if (!validUserId) {
         return;
       }
 
-      const userRes = await getUserProfile(savedUserId).catch(() => null);
+      const userRes = await getUserProfile(validUserId).catch(() => null);
       if (userRes && userRes.user) {
-        if (localStorage.getItem('nurioh_remember_me') === 'true') {
+        if (isRemembered) {
           localStorage.setItem('nurioh_user_profile', JSON.stringify(userRes.user));
+          localStorage.setItem('nurioh_user_id', String(userRes.user.id));
         } else {
           sessionStorage.setItem('nurioh_user_profile', JSON.stringify(userRes.user));
+          sessionStorage.setItem('nurioh_user_id', String(userRes.user.id));
         }
 
         setCurrentUser(prev => {
@@ -202,7 +215,7 @@ export default function App() {
         });
       }
 
-      const status = await getBotStatus(savedUserId);
+      const status = await getBotStatus(validUserId);
       if (status) {
         setBotRunning(status.botRunning);
         if (status.serverIp) setServerIp(status.serverIp);
