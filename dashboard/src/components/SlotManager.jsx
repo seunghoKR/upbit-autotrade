@@ -679,11 +679,23 @@ export default function SlotManager({
                       {hasPosition ? (
                         <div className="space-y-1">
                           {/* 1. | 🪙 SAND | */}
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="px-2.5 py-0.5 rounded-lg bg-amber-500/25 text-amber-300 font-black text-sm font-mono border border-amber-500/40 shadow-sm flex items-center gap-1">
                               <Coins className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                               {(slot.targetMarket || '').replace('KRW-', '')}
                             </span>
+                            {(() => {
+                              const vol = parseFloat(slot.entryVolume || 0);
+                              const evalKrw = vol > 0 && currentPrice > 0 ? (vol * currentPrice) : (slot.entryAmountKrw || 0);
+                              if (evalKrw > 0 && evalKrw < 5000) {
+                                return (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-bold border border-rose-500/30 whitespace-nowrap" title={`현재 평가금액이 약 ${Math.round(evalKrw).toLocaleString()}원으로 업비트 최소 거래금액(5,000원) 미만입니다.`}>
+                                    ⚠️ 5천원 미달(매도불가)
+                                  </span>
+                                );
+                              }
+                              return null;
+                            })()}
                           </div>
 
                           {/* 2. 진입단가: 50원 */}

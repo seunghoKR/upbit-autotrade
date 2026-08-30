@@ -412,7 +412,106 @@ export default function App() {
       })
       .catch(() => {});
 
-    // ⚡ 2초마다 슬롯에 배정된 코인들의 REST 현재가를 백그라운드에서 안전하게 최신화
+    // 🎯 각 슬롯별 보유 포지션 실시간 트레일링 스탑 & 손절 조건 감시 및 즉각 집행 (슬롯 개별 ON 스위치 기준)
+    const evaluateSlotRisk = (tickCode, tickPrice) => {
+      const currentSlots = slotsRef.current || [];
+      const currentSettings = settingsRef.current || {};
+      const activeUser = currentUserRef.current;
+
+      if (!tickPrice || !tickCode) return;
+
+      for (const slot of currentSlots) {
+        // 개별 슬롯이 ON이고 포지션 보유 중인 경우 무조건 손절/익절 감시 실행!
+        if (!slot.isEnabled || slot.positionStatus !== 'IN_POSITION') continue;
+        if (slot.targetMarket !== tickCode) continue;
+
+        // 진입가 대비 현재 수익률 계산
+        const entryPrice = slot.entryPrice || tickPrice;
+        if (!entryPrice || entryPrice <= 0) continue;
+        const currentProfitPct = ((tickPrice - entryPrice) / entryPrice) * 100;
+        if (Math.abs(currentProfitPct) > 1000) continue;
+
+        // 🛡️ Live slotTrackersRef를 통해 최고가/최고수익률 실시간 보존
+        if (!slotTrackersRef.current[slot.slotId]) {
+          slotTrackersRef.current[slot.slotId] = {
+            entryPrice,
+            highestPrice: slot.highestPrice || entryPrice,
+            highestProfitPct: slot.highestProfitPct || 0,
+            targetMarket: tickCode
+          };
+        }
+
+        const tracker = slotTrackersRef.current[slot.slotId];
+        if (tickPrice > tracker.highestPrice) {
+          tracker.highestPrice = tickPrice;
+          tracker.highestProfitPct = Math.max(tracker.highestProfitPct, currentProfitPct);
+          slotTrackersRef.current[slot.slotId] = tracker;
+
+          // 슬롯 UI 상태에도 비동기 업데이트
+          setSlots(prevSlots => prevSlots.map(s => {
+            if (s.slotId === slot.slotId) {
+              return { ...s, highestPrice: tracker.highestPrice, highestProfitPct: tracker.highestProfitPct };
+            }
+            return s;
+          }));
+        }
+
+        const highestProfitPct = tracker.highestProfitPct;
+        const highestPrice = tracker.highestPrice;
+
+        // 🎯 추천전략 vs 셀프전략 분기
+        const isSelf = (slot.strategyType === 'SELF');
+        const targetProfitPct = isSelf 
+          ? (parseFloat(slot.trailingTargetProfitPct !== undefined ? slot.trailingTargetProfitPct : (slot.targetProfitPct || 3.0))) 
+          : (parseFloat(currentSettings.TRAILING_TARGET_PROFIT_PCT) || 3.0);
+        const callbackPct = isSelf 
+          ? (parseFloat(slot.trailingCallbackPct) || 1.0) 
+          : (parseFloat(currentSettings.TRAILING_CALLBACK_PCT) || 1.0);
+        const stopLossPct = isSelf 
+          ? (parseFloat(slot.stopLossPct) || 2.0) 
+          : (parseFloat(currentSettings.STOP_LOSS_PCT) || 2.0);
+
+        // 1) 트레일링 익절 매도 조건: 목표 수익률 도달 후 최고점 대비 callbackPct 이상 하락 시
+        const isTargetReached = (highestProfitPct >= targetProfitPct);
+        const dropFromPeak = highestProfitPct - currentProfitPct;
+        const isTrailingProfitHit = isTargetReached && (dropFromPeak >= callbackPct);
+
+        // 2) 고정 손절 매도 조건: 손절선(-stopLossPct) 이하로 하락 시
+        const isStopLossHit = (currentProfitPct <= -stopLossPct);
+
+        if ((isTrailingProfitHit || isStopLossHit) && !isExecutingSellRef.current[slot.slotId]) {
+          isExecutingSellRef.current[slot.slotId] = true;
+          delete slotTrackersRef.current[slot.slotId];
+
+          const reason = isTrailingProfitHit 
+            ? `트레일링 익절 매도 (최고 +${highestProfitPct.toFixed(2)}% 달성 후 -${dropFromPeak.toFixed(2)}% 콜백 하락 감지)`
+            : `손절 매도 (-${stopLossPct}% 손절 기준선 도달)`;
+
+          console.log(`🚨 [Auto Sell Trigger] 슬롯 ${slot.slotId} (${slot.targetMarket}): ${reason} [현재수익률: ${currentProfitPct.toFixed(2)}%]`);
+
+          // 즉시 슬롯 매도 실행 API 호출
+          sellSlotPosition(slot.slotId, {
+            userId: activeUser?.id || 1,
+            currentPrice: tickPrice,
+            reason: reason
+          })
+            .then(async (res) => {
+              console.log('✅ [Auto Sell Success]', res);
+              await loadData();
+            })
+            .catch(err => {
+              console.error('❌ [Auto Sell Failed]', err);
+            })
+            .finally(() => {
+              setTimeout(() => {
+                delete isExecutingSellRef.current[slot.slotId];
+              }, 5000);
+            });
+        }
+      }
+    };
+
+    // ⚡ 2초마다 슬롯에 배정된 코인들의 REST 현재가를 백그라운드에서 안전하게 최신화 & 손절/익절 감시
     const syncTimer = setInterval(() => {
       const activeCoins = Array.from(new Set(
         (slotsRef.current || [])
@@ -433,6 +532,7 @@ export default function App() {
                   change_rate: t.change_rate,
                   signed_change_rate: t.signed_change_rate
                 };
+                evaluateSlotRisk(t.market, t.trade_price);
               }
             });
             setLivePriceMap(prev => ({ ...prev, ...batch }));
@@ -453,110 +553,18 @@ export default function App() {
       },
       onBatchTicks: (batchMap) => {
         setLivePriceMap(prev => ({ ...prev, ...batchMap }));
+        Object.values(batchMap).forEach(tick => {
+          if (tick.code && tick.trade_price) {
+            evaluateSlotRisk(tick.code, tick.trade_price);
+          }
+        });
       },
       onTick: (tick) => {
         setLivePriceMap(prev => ({ ...prev, [tick.code]: tick }));
         if (tick.code === activeMarket) {
           setLivePrice(tick);
         }
-
-        // 🎯 1.1 각 슬롯별 보유 포지션 실시간 트레일링 스탑 & 손절 조건 감시 (봇 가동 중에만 매도 집행)
-        const currentSlots = slotsRef.current || [];
-        const currentSettings = settingsRef.current || {};
-        const activeUser = currentUserRef.current;
-        const tickPrice = tick.trade_price;
-        const tickCode = tick.code;
-
-        if (!tickPrice || !tickCode) return;
-
-        for (const slot of currentSlots) {
-          if (!botRunningRef.current || !slot.isEnabled || slot.positionStatus !== 'IN_POSITION') continue;
-          if (slot.targetMarket !== tickCode) continue;
-
-          // 진입가 대비 현재 수익률 계산
-          const entryPrice = slot.entryPrice || tickPrice;
-          if (!entryPrice || entryPrice <= 0) continue;
-          const currentProfitPct = ((tickPrice - entryPrice) / entryPrice) * 100;
-          if (Math.abs(currentProfitPct) > 1000) continue;
-
-          // 🛡️ Live slotTrackersRef를 통해 최고가/최고수익률 실시간 보존 (5초 폴링에 덮어써지지 않음!)
-          if (!slotTrackersRef.current[slot.slotId]) {
-            slotTrackersRef.current[slot.slotId] = {
-              entryPrice,
-              highestPrice: slot.highestPrice || entryPrice,
-              highestProfitPct: slot.highestProfitPct || 0,
-              targetMarket: tickCode
-            };
-          }
-
-          const tracker = slotTrackersRef.current[slot.slotId];
-          if (tickPrice > tracker.highestPrice) {
-            tracker.highestPrice = tickPrice;
-            tracker.highestProfitPct = Math.max(tracker.highestProfitPct, currentProfitPct);
-            slotTrackersRef.current[slot.slotId] = tracker;
-
-            // 슬롯 UI 상태에도 비동기 업데이트
-            setSlots(prevSlots => prevSlots.map(s => {
-              if (s.slotId === slot.slotId) {
-                return { ...s, highestPrice: tracker.highestPrice, highestProfitPct: tracker.highestProfitPct };
-              }
-              return s;
-            }));
-          }
-
-          const highestProfitPct = tracker.highestProfitPct;
-          const highestPrice = tracker.highestPrice;
-
-          // 🎯 추천전략 vs 셀프전략 분기
-          const isSelf = (slot.strategyType === 'SELF');
-          const targetProfitPct = isSelf 
-            ? (parseFloat(slot.trailingTargetProfitPct) || 3.0) 
-            : (parseFloat(currentSettings.TRAILING_TARGET_PROFIT_PCT) || 3.0);
-          const callbackPct = isSelf 
-            ? (parseFloat(slot.trailingCallbackPct) || 1.0) 
-            : (parseFloat(currentSettings.TRAILING_CALLBACK_PCT) || 1.0);
-          const stopLossPct = isSelf 
-            ? (parseFloat(slot.stopLossPct) || 2.0) 
-            : (parseFloat(currentSettings.STOP_LOSS_PCT) || 2.0);
-
-          // 1) 트레일링 익절 매도 조건: 목표 수익률(예: +3.0%) 도달 후, 최고점 대비 callbackPct(예: 1.0%) 이상 하락 시
-          const isTargetReached = (highestProfitPct >= targetProfitPct);
-          const dropFromPeak = highestProfitPct - currentProfitPct;
-          const isTrailingProfitHit = isTargetReached && (dropFromPeak >= callbackPct);
-
-          // 2) 고정 손절 매도 조건: 손절선(-stopLossPct) 이하로 하락 시
-          const isStopLossHit = (currentProfitPct <= -stopLossPct);
-
-          if ((isTrailingProfitHit || isStopLossHit) && !isExecutingSellRef.current[slot.slotId]) {
-            isExecutingSellRef.current[slot.slotId] = true;
-            delete slotTrackersRef.current[slot.slotId];
-
-            const reason = isTrailingProfitHit 
-              ? `트레일링 익절 매도 (최고 +${highestProfitPct.toFixed(2)}% 달성 후 -${dropFromPeak.toFixed(2)}% 콜백 하락 감지)`
-              : `손절 매도 (-${stopLossPct}% 손절 기준선 도달)`;
-
-            console.log(`🚨 [Auto Sell Trigger] 슬롯 ${slot.slotId} (${slot.targetMarket}): ${reason} [현재수익률: ${currentProfitPct.toFixed(2)}%]`);
-
-            // 즉시 슬롯 매도 실행 API 호출
-            sellSlotPosition(slot.slotId, {
-              userId: activeUser?.id || 1,
-              currentPrice: tickPrice,
-              reason: reason
-            })
-              .then(async (res) => {
-                console.log('✅ [Auto Sell Success]', res);
-                await loadData();
-              })
-              .catch(err => {
-                console.error('❌ [Auto Sell Failed]', err);
-              })
-              .finally(() => {
-                setTimeout(() => {
-                  delete isExecutingSellRef.current[slot.slotId];
-                }, 5000);
-              });
-          }
-        }
+        evaluateSlotRisk(tick.code, tick.trade_price);
       },
       onSurge: (tick, buffer) => {
         const marketCode = tick.code.toUpperCase();
