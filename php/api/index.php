@@ -1221,6 +1221,14 @@ try {
         $trailingCallbackPct = abs((float)($input['trailingCallbackPct'] ?? 1.0));
         $stopLossPct = abs((float)($input['stopLossPct'] ?? 2.0));
 
+        // 🛡️ 만약 현재 슬롯이 IN_POSITION 상태라면, target_market을 임의로 변경하지 않고 기존 보유 코인 마켓을 철저히 보존!
+        $checkStmt = $pdo->prepare("SELECT position_status, target_market FROM nurioh_slots WHERE user_id = ? AND slot_id = ?");
+        $checkStmt->execute([$userId, $slotId]);
+        $existingSlot = $checkStmt->fetch();
+        if ($existingSlot && $existingSlot['position_status'] === 'IN_POSITION' && !empty($existingSlot['target_market'])) {
+            $targetMarket = $existingSlot['target_market'];
+        }
+
         $stmt = $pdo->prepare("UPDATE nurioh_slots SET 
             target_market = ?, 
             trade_amount_krw = ?, 
@@ -1262,6 +1270,22 @@ try {
         $market = trim((string)($input['market'] ?? 'KRW-BTC'));
         $tradeAmount = (float)($input['amountKrw'] ?? 0);
         $currentPrice = (float)($input['currentPrice'] ?? 0);
+
+        if ($currentPrice <= 0) {
+            // 업비트 공개 API로 실시간 현재가 확인
+            $ch = curl_init("https://api.upbit.com/v1/ticker?markets={$market}");
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            $tRes = curl_exec($ch);
+            curl_close($ch);
+            if ($tRes) {
+                $tData = json_decode($tRes, true);
+                if (!empty($tData[0]['trade_price'])) {
+                    $currentPrice = (float)$tData[0]['trade_price'];
+                }
+            }
+        }
 
         if ($tradeAmount < 5000) {
             http_response_code(400);

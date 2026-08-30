@@ -259,8 +259,7 @@ export default function App() {
             const rawEntryPrice = parseFloat(s.entryPrice || s.position?.entryPrice || 0);
             const rawEntryVolume = parseFloat(s.entryVolume || s.position?.entryVolume || 0);
             const rawAmount = parseFloat(s.entryAmountKrw || (rawEntryPrice * rawEntryVolume) || 0);
-            const isCorrupted = (s.highestProfitPct > 5000000) || (rawEntryVolume <= 0.00001) || (rawAmount < 4000 && rawAmount > 0);
-            const hasPosition = !isCorrupted && (s.positionStatus === 'IN_POSITION') && (rawEntryVolume > 0.00001);
+            const hasPosition = (s.positionStatus === 'IN_POSITION') && (rawEntryPrice > 0);
             const tracker = slotTrackersRef.current[s.slotId];
             
             const entryPrice = hasPosition ? rawEntryPrice : null;
@@ -290,7 +289,8 @@ export default function App() {
               slotName: s.slotName || s.name || `${s.slotId}번 슬롯`,
               positionStatus: hasPosition ? 'IN_POSITION' : 'IDLE',
               entryPrice: entryPrice,
-              entryVolume: hasPosition ? (s.entryVolume || s.position?.entryVolume) : null,
+              entryVolume: hasPosition ? (rawEntryVolume > 0 ? rawEntryVolume : (entryPrice > 0 ? rawAmount / entryPrice : null)) : null,
+              entryAmountKrw: hasPosition ? (rawAmount > 0 ? rawAmount : (entryPrice && rawEntryVolume ? entryPrice * rawEntryVolume : null)) : null,
               highestPrice: highestPrice,
               highestProfitPct: highestProfitPct,
               targetMarket: s.targetMarket || 'KRW-BTC',
@@ -359,6 +359,7 @@ export default function App() {
   const slotsRef = useRef(slots);
   const currentUserRef = useRef(currentUser);
   const accountsRef = useRef(accounts);
+  const botRunningRef = useRef(botRunning);
   const slotTrackersRef = useRef({});
   const isExecutingBuyRef = useRef({});
   const isExecutingSellRef = useRef({});
@@ -376,6 +377,10 @@ export default function App() {
   useEffect(() => {
     accountsRef.current = accounts;
   }, [accounts]);
+
+  useEffect(() => {
+    botRunningRef.current = botRunning;
+  }, [botRunning]);
 
   useEffect(() => {
     settingsRef.current = settings;
@@ -426,7 +431,7 @@ export default function App() {
           setLivePrice(tick);
         }
 
-        // 🎯 1.1 각 슬롯별 보유 포지션 실시간 트레일링 스탑 & 손절 조건 감시
+        // 🎯 1.1 각 슬롯별 보유 포지션 실시간 트레일링 스탑 & 손절 조건 감시 (봇 가동 중에만 매도 집행)
         const currentSlots = slotsRef.current || [];
         const currentSettings = settingsRef.current || {};
         const activeUser = currentUserRef.current;
@@ -436,12 +441,14 @@ export default function App() {
         if (!tickPrice || !tickCode) return;
 
         for (const slot of currentSlots) {
-          if (!slot.isEnabled || slot.positionStatus !== 'IN_POSITION') continue;
+          if (!botRunningRef.current || !slot.isEnabled || slot.positionStatus !== 'IN_POSITION') continue;
           if (slot.targetMarket !== tickCode) continue;
 
           // 진입가 대비 현재 수익률 계산
           const entryPrice = slot.entryPrice || tickPrice;
+          if (!entryPrice || entryPrice <= 0) continue;
           const currentProfitPct = ((tickPrice - entryPrice) / entryPrice) * 100;
+          if (Math.abs(currentProfitPct) > 1000) continue;
 
           // 🛡️ Live slotTrackersRef를 통해 최고가/최고수익률 실시간 보존 (5초 폴링에 덮어써지지 않음!)
           if (!slotTrackersRef.current[slot.slotId]) {
