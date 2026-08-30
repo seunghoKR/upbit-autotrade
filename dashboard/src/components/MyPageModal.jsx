@@ -614,15 +614,15 @@ export default function MyPageModal({
               </div>
             </form>
 
-            {/* 2. 👑 운영자 / 개발자 전용: 텔레그램 봇 토큰(BotFather Token) 관리 */}
-            {(user?.role === 'ADMIN' || user?.role === 'OPERATOR' || user?.role === 'DEVELOPER') && (
-              <form onSubmit={handleSaveBotToken} className="p-4 sm:p-5 rounded-2xl bg-slate-950/70 border border-purple-500/40 space-y-3.5 shadow-lg">
+            {/* 2. 👑 최고 개발자 전용: 텔레그램 봇 토큰(BotFather Token) 관리 (일반 운영자 비노출) */}
+            {(user?.role === 'ADMIN' || user?.role === 'DEVELOPER') && (
+              <form onSubmit={handleSaveBotToken} className="p-4 sm:p-5 rounded-2xl bg-slate-950/70 border border-amber-500/40 space-y-3.5 shadow-lg">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
                   <div className="flex items-center gap-2">
-                    <Crown className="w-5 h-5 text-purple-400" />
+                    <Crown className="w-5 h-5 text-amber-400" />
                     <div>
                       <h4 className="font-bold text-white text-sm">🤖 텔레그램 알림 봇 토큰 (Bot Token) 관리</h4>
-                      <span className="text-[10px] text-purple-300">운영자/개발자 전용 시스템 설정</span>
+                      <span className="text-[10px] text-amber-300 font-bold">👑 개발자 전용 시스템 설정</span>
                     </div>
                   </div>
                   {botConfig?.isValid ? (
