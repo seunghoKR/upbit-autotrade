@@ -661,15 +661,16 @@ export default function SlotManager({
               ) : (
                 /* 📊 일반 보기 모드 */
                 <div className="flex-1 flex flex-col justify-center my-2 space-y-2">
-                  <div className="grid grid-cols-2 gap-2 bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
+                  <div className="grid grid-cols-2 gap-2 bg-slate-900/60 p-3 rounded-xl border border-slate-800/80 items-center">
                     <div>
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <span className="text-[10px] text-slate-400 font-bold">
-                          {hasPosition ? '진입단가 / 수량' : '매수금액'}
-                        </span>
-                        {/* ⏱️ 초 단위 급등감지 조건 뱃지 (미보유 시에만 표시) */}
-                        {!hasPosition && (
-                          isSelfStrategy ? (
+                      {/* 미보유 상태 시: 매수금액 헤더 & 감시 뱃지 */}
+                      {!hasPosition && (
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className="text-[10px] text-slate-400 font-bold">
+                            매수금액
+                          </span>
+                          {/* ⏱️ 초 단위 급등감지 조건 뱃지 (미보유 시에만 표시) */}
+                          {isSelfStrategy ? (
                             <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 font-mono font-extrabold border border-purple-500/30 whitespace-nowrap" title={`${slot.surgeWindowSeconds || 5}초 동안 +${slot.surgeRatePct || 1.5}% 상승 & ${Math.round((slot.surgeMinVolumeKrw || 10000000)/10000).toLocaleString()}만원 이상 거래대금 시 자동매수`}>
                               ⏱️ {slot.surgeWindowSeconds || 5}초 감시
                             </span>
@@ -677,24 +678,31 @@ export default function SlotManager({
                             <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-mono font-extrabold border border-emerald-500/30 whitespace-nowrap" title="5초 동안 +1.5% 급등 & 1,000만원 거래대금 감지 시 자동매수">
                               🎯 5초 추천감시
                             </span>
-                          )
-                        )}
-                      </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* 보유 상태 시: 깔끔한 3단 라인 구조 (| 코인 | -> 진입단가: xx원 -> 수량: xx 코인) */}
                       {hasPosition ? (
-                        <div>
-                          {/* 🪙 코인 심볼 대형 강조 뱃지 */}
-                          <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                            <span className="px-2 py-0.5 rounded-lg bg-amber-500/25 text-amber-300 font-black text-sm sm:text-base font-mono border border-amber-500/40 shadow-sm flex items-center gap-1">
+                        <div className="space-y-1">
+                          {/* 1. | 🪙 SAND | */}
+                          <div className="flex items-center gap-1.5">
+                            <span className="px-2.5 py-0.5 rounded-lg bg-amber-500/25 text-amber-300 font-black text-sm font-mono border border-amber-500/40 shadow-sm flex items-center gap-1">
                               <Coins className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                               {(slot.targetMarket || '').replace('KRW-', '')}
                             </span>
-                            <span className="text-xs text-white font-mono font-black">
-                              {Math.round(slot.entryPrice || currentPrice).toLocaleString()}원
-                            </span>
                           </div>
-                          <span className="text-[11px] font-mono text-slate-300 truncate block mt-0.5" title={`수량: ${slot.entryVolume ? slot.entryVolume.toFixed(6) : ''}`}>
-                            수량: <strong className="text-slate-100 font-extrabold">{slot.entryVolume ? slot.entryVolume.toFixed(4) : (slot.entryAmountKrw / currentPrice).toFixed(4)}</strong> {(slot.targetMarket || '').replace('KRW-', '')}
-                          </span>
+
+                          {/* 2. 진입단가: 50원 */}
+                          <div className="text-xs font-mono text-slate-300 flex items-center gap-1">
+                            <span className="text-slate-400">진입단가:</span>
+                            <span className="text-white font-extrabold">{Math.round(slot.entryPrice || currentPrice).toLocaleString()}원</span>
+                          </div>
+
+                          {/* 3. 수량: 100.8065 SAND */}
+                          <div className="text-[11px] font-mono text-slate-400 truncate" title={`수량: ${slot.entryVolume ? slot.entryVolume.toFixed(6) : ''}`}>
+                            <span className="text-slate-400">수량:</span> <strong className="text-slate-200">{slot.entryVolume ? slot.entryVolume.toFixed(4) : (slot.entryAmountKrw / currentPrice).toFixed(4)}</strong> {(slot.targetMarket || '').replace('KRW-', '')}
+                          </div>
                         </div>
                       ) : (
                         <span className="text-sm font-black font-mono text-white flex items-center gap-1.5">
@@ -707,7 +715,7 @@ export default function SlotManager({
                         </span>
                       )}
                     </div>
-                    <div className="text-right flex flex-col justify-between">
+                    <div className="text-right flex flex-col justify-between py-0.5">
                       <div>
                         <span className="text-[10px] text-slate-400 block mb-0.5">
                           {hasPosition ? '실시간 수익률' : '상태'}
