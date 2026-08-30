@@ -24,7 +24,8 @@ export default function Header({
   onOpenAdmin,
   onOpenMyPage,
   onOpenManual,
-  onLogout
+  onLogout,
+  marketCount = 134
 }) {
   const role = user?.role || 'USER';
   const tier = user?.tier || 'FREE_TRIAL';
@@ -52,11 +53,26 @@ export default function Header({
                 className="w-full h-full object-cover"
               />
             </div>
-            <div className="flex items-center gap-1">
-              <h1 className="text-base sm:text-lg font-black text-white tracking-tight whitespace-nowrap">NURIOH</h1>
-              <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
-                AI
-              </span>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                <h1 className="text-base sm:text-lg font-black text-white tracking-tight whitespace-nowrap">NURIOH</h1>
+                <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
+                  AI
+                </span>
+              </div>
+
+              {/* 🟢 실시간 레이더 가동 중 라이브 뱃지 (초록불 깜빡임 + 전종목 개수 + 버전) */}
+              <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-[11px] font-medium shadow-inner shrink-0">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span className="text-emerald-300 font-bold whitespace-nowrap">레이더 가동 중</span>
+                <span className="text-emerald-400/80 font-mono text-[10px] whitespace-nowrap">({marketCount || 134}개 전종목)</span>
+                <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold border border-emerald-500/30">
+                  v2.6.4
+                </span>
+              </div>
             </div>
           </div>
 

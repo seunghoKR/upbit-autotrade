@@ -967,6 +967,8 @@ export default function App() {
     return 'bg-[#090d16] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900/40 via-[#090d16] to-[#04060b]';
   };
 
+  const marketCount = (upbitClientEngine && upbitClientEngine.activeMarkets?.length) || 134;
+
   return (
     <div className={`min-h-screen ${getThemeBgClass()} text-slate-100 selection:bg-emerald-500 selection:text-black flex flex-col font-sans pb-12 transition-colors duration-500`}>
       {/* 글로벌 네비게이션 헤더 */}
@@ -983,12 +985,11 @@ export default function App() {
         onOpenManual={() => setIsManualOpen(true)}
         onLogout={handleLogout}
         onRefresh={loadData}
+        marketCount={marketCount}
       />
 
       {/* 메인 콘텐츠 영역 (상단 헤더와 좌우 라인 100% 일치) */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-6">
-        {/* 계좌 잔고 요약 카드 */}
-
         {/* 계좌 잔고 요약 카드 */}
         <BalanceCard 
           accounts={accounts} 
@@ -996,6 +997,7 @@ export default function App() {
           serverIp={serverIp} 
           accountError={accountError}
           onOpenApiModal={() => setIsApiModalOpen(true)}
+          marketCount={marketCount}
         />
 
         {/* 🎛️ 1~9번 독립 멀티 슬롯 분산 트레이딩 매니저 */}
