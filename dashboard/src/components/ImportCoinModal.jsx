@@ -25,7 +25,7 @@ export default function ImportCoinModal({
 
   if (!isOpen || !slot) return null;
 
-  // 🛡️ 업비트 실계좌 보유 코인 필터링 (원화 제외, 수량 0 초과 코인만)
+  // 🛡️ 업비트 실계좌 보유 코인 필터링 (원화 제외, 100원 이상 실제 거래 가능한 코인만)
   const heldCoins = (accounts || [])
     .filter(acc => {
       const curr = (acc.currency || '').toUpperCase();
@@ -42,7 +42,7 @@ export default function ImportCoinModal({
       const liveTick = livePriceMap[market];
       const currentPrice = liveTick ? parseFloat(liveTick.trade_price || 0) : (avgBuyPrice > 0 ? avgBuyPrice : 0);
       
-      const evalPrice = currentPrice > 0 ? currentPrice : (avgBuyPrice > 0 ? avgBuyPrice : 1);
+      const evalPrice = currentPrice > 0 ? currentPrice : (avgBuyPrice > 0 ? avgBuyPrice : 0);
       const evalAmount = balance * evalPrice;
       
       const profitPct = (avgBuyPrice > 0 && currentPrice > 0) 
@@ -59,6 +59,7 @@ export default function ImportCoinModal({
         profitPct
       };
     })
+    .filter(coin => coin.evalAmount >= 100 && coin.currentPrice > 0) // 100원 미만 먼지 잔고 및 미상장 에어드랍 코인 원천 제외
     .sort((a, b) => b.evalAmount - a.evalAmount); // 평가금액 높은 순 정렬
 
   const handleSelectCoin = async (coin) => {

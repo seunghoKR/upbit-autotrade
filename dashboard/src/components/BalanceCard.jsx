@@ -31,25 +31,31 @@ export default function BalanceCard({
   let totalCoinBuyAmount = 0;
   let totalCoinEvalValue = 0;
 
-  const processedCoins = activeCoinAccounts.map(coin => {
-    const market = `KRW-${coin.currency}`;
-    const currentPrice = livePriceMap[market]?.trade_price || parseFloat(coin.avg_buy_price || 0);
-    const balance = parseFloat(coin.balance || 0) + parseFloat(coin.locked || 0);
-    const avgBuyPrice = parseFloat(coin.avg_buy_price || 0);
-    const evalAmount = balance * currentPrice;
-    const buyAmount = balance * avgBuyPrice;
-    const profitRate = buyAmount > 0 ? ((evalAmount - buyAmount) / buyAmount) * 100 : 0;
+  const processedCoins = activeCoinAccounts
+    .map(coin => {
+      const market = `KRW-${coin.currency}`;
+      const liveTick = livePriceMap[market];
+      const avgBuyPrice = parseFloat(coin.avg_buy_price || 0);
+      const currentPrice = liveTick ? parseFloat(liveTick.trade_price || 0) : (avgBuyPrice > 0 ? avgBuyPrice : 0);
+      const balance = parseFloat(coin.balance || 0) + parseFloat(coin.locked || 0);
+      const evalAmount = balance * currentPrice;
+      const buyAmount = balance * avgBuyPrice;
+      const profitRate = buyAmount > 0 ? ((evalAmount - buyAmount) / buyAmount) * 100 : 0;
 
-    totalCoinBuyAmount += buyAmount;
-    totalCoinEvalValue += evalAmount;
+      return {
+        ...coin,
+        balance,
+        currentPrice,
+        evalAmount,
+        buyAmount,
+        profitRate
+      };
+    })
+    .filter(coin => coin.evalAmount >= 100 && coin.currentPrice > 0); // 100원 미만 먼지 잔고 및 미상장 에어드랍 코인 제외
 
-    return {
-      ...coin,
-      balance,
-      currentPrice,
-      evalAmount,
-      profitRate
-    };
+  processedCoins.forEach(coin => {
+    totalCoinBuyAmount += coin.buyAmount;
+    totalCoinEvalValue += coin.evalAmount;
   });
 
   const totalAssets = activeKrwBalance + totalCoinEvalValue;
@@ -77,7 +83,7 @@ export default function BalanceCard({
               <span className="text-slate-600 hidden sm:inline">•</span>
               <div className="flex items-center gap-1.5 text-emerald-300 font-medium truncate shrink-0">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span className="truncate">업비트 실계좌 <strong>{accounts.length}개 항목</strong> 실시간 동기화됨</span>
+                <span className="truncate">업비트 실계좌 <strong>{processedCoins.length}개 보유</strong> 실시간 동기화됨</span>
               </div>
             </>
           )}
