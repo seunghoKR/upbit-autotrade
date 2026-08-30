@@ -389,13 +389,13 @@ export default function App() {
   useEffect(() => {
     // ⚡ [0.01초 초광속 초기화] 컴포넌트 마운트 즉시 주요 마켓 실시간 현재가 즉시 REST 선조회
     const instantMarkets = [
-      'KRW-SAND', 'KRW-DOGE', 'KRW-QTUM', 'KRW-BTC', 'KRW-ETH', 'KRW-XRP',
+      'KRW-SAND', 'KRW-GRVT', 'KRW-DOGE', 'KRW-QTUM', 'KRW-BTC', 'KRW-ETH', 'KRW-XRP',
       'KRW-SOL', 'KRW-ADA', 'KRW-AVAX', 'KRW-DOT', 'KRW-NEAR', 'KRW-STX', 'KRW-SUI'
     ];
     fetch(`https://api.upbit.com/v1/ticker?markets=${instantMarkets.join(',')}`)
-      .then(res => res.json())
+      .then(res => res.ok ? res.json() : [])
       .then(tickers => {
-        if (Array.isArray(tickers)) {
+        if (Array.isArray(tickers) && tickers.length > 0) {
           const batch = {};
           tickers.forEach(t => {
             if (t.market && t.trade_price) {
@@ -411,6 +411,35 @@ export default function App() {
         }
       })
       .catch(() => {});
+
+    // ⚡ 2초마다 슬롯에 배정된 코인들의 REST 현재가를 백그라운드에서 안전하게 최신화
+    const syncTimer = setInterval(() => {
+      const activeCoins = Array.from(new Set(
+        (slotsRef.current || [])
+          .map(s => s.targetMarket)
+          .filter(m => m && m.startsWith('KRW-'))
+      ));
+      if (activeCoins.length === 0) return;
+      fetch(`https://api.upbit.com/v1/ticker?markets=${activeCoins.join(',')}`)
+        .then(r => r.ok ? r.json() : [])
+        .then(tickers => {
+          if (Array.isArray(tickers) && tickers.length > 0) {
+            const batch = {};
+            tickers.forEach(t => {
+              if (t.market && t.trade_price) {
+                batch[t.market] = {
+                  code: t.market,
+                  trade_price: t.trade_price,
+                  change_rate: t.change_rate,
+                  signed_change_rate: t.signed_change_rate
+                };
+              }
+            });
+            setLivePriceMap(prev => ({ ...prev, ...batch }));
+          }
+        })
+        .catch(() => {});
+    }, 2000);
 
     loadData();
 

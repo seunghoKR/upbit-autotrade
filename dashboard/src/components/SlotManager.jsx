@@ -80,45 +80,6 @@ export default function SlotManager({
 
   const [selectedImportSlot, setSelectedImportSlot] = useState(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [localPriceMap, setLocalPriceMap] = useState({});
-
-  // ⚡ 슬롯에 배정된 코인들의 실시간 가격을 1.5초 주기로 즉시 다이렉트 REST 조회 (웹소켓 거래 체결 대기 지연 0초화!)
-  useEffect(() => {
-    const activeMarkets = Array.from(new Set(
-      displaySlots
-        .map(s => s.targetMarket)
-        .filter(m => m && m.startsWith('KRW-'))
-    ));
-
-    if (activeMarkets.length === 0) return;
-
-    const syncPrices = () => {
-      fetch(`https://api.upbit.com/v1/ticker?markets=${activeMarkets.join(',')}`)
-        .then(r => r.ok ? r.json() : [])
-        .then(tickers => {
-          if (Array.isArray(tickers) && tickers.length > 0) {
-            const batch = {};
-            tickers.forEach(t => {
-              if (t.market && t.trade_price) {
-                batch[t.market] = {
-                  code: t.market,
-                  trade_price: t.trade_price,
-                  change: t.change,
-                  change_rate: t.change_rate,
-                  signed_change_rate: t.signed_change_rate
-                };
-              }
-            });
-            setLocalPriceMap(prev => ({ ...prev, ...batch }));
-          }
-        })
-        .catch(() => {});
-    };
-
-    syncPrices(); // 슬롯 배정 즉시 0.05초 만에 1회 실행!
-    const timer = setInterval(syncPrices, 1500); // 1.5초마다 갱신
-    return () => clearInterval(timer);
-  }, [displaySlots.map(s => `${s.slotId}:${s.targetMarket}:${s.positionStatus}`).join('|')]);
 
   const handleOpenImport = (e, slot) => {
     e.stopPropagation();
@@ -270,8 +231,7 @@ export default function SlotManager({
             (pendingSurgeCountdown && pendingSurgeCountdown.slotId === slot.slotId ? pendingSurgeCountdown : null);
           const isSurgeCounting = Boolean(slotCountdown);
 
-          const combinedLiveMap = { ...localPriceMap, ...livePriceMap };
-          const marketData = combinedLiveMap[slot.targetMarket];
+          const marketData = livePriceMap[slot.targetMarket];
           const hasLivePrice = Boolean(marketData?.trade_price);
           const currentPrice = hasLivePrice ? marketData.trade_price : (slot.entryPrice || 0);
           const profitPct = (slot.entryPrice && hasLivePrice) 
