@@ -16,6 +16,7 @@ export default function ImportCoinModal({
   isOpen,
   onClose,
   slot,
+  slots = [],
   accounts = [],
   livePriceMap = {},
   onImportCoin,
@@ -25,11 +26,21 @@ export default function ImportCoinModal({
 
   if (!isOpen || !slot) return null;
 
-  // 🛡️ 업비트 실계좌 보유 코인 필터링 (원화 제외, 100원 이상 실제 거래 가능한 코인만)
+  // 🚫 이미 어떤 슬롯에서든 관리/보유 중인 코인 마켓 목록 추출
+  const occupiedMarkets = new Set(
+    (slots || [])
+      .filter(s => s.positionStatus === 'IN_POSITION' && s.targetMarket)
+      .map(s => s.targetMarket.toUpperCase())
+  );
+
+  // 🛡️ 업비트 실계좌 보유 코인 필터링 (원화 제외, 100원 이상 실제 거래 가능, 이미 슬롯에 배정된 코인 제외)
   const heldCoins = (accounts || [])
     .filter(acc => {
       const curr = (acc.currency || '').toUpperCase();
       if (!curr || curr === 'KRW') return false;
+      const market = `KRW-${curr}`;
+      // 🚫 이미 다른 슬롯에 등록되어 있는 코인은 가져오기 목록에서 제외!
+      if (occupiedMarkets.has(market)) return false;
       const bal = parseFloat(acc.balance || 0) + parseFloat(acc.locked || 0);
       return bal > 0.0000001;
     })
@@ -147,8 +158,16 @@ export default function ImportCoinModal({
                 <Wallet className="w-6 h-6" />
               </div>
               <div>
-                <p className="font-bold text-sm text-slate-300">업비트 계좌에 보유 중인 코인이 없습니다.</p>
-                <p className="text-xs text-slate-500 mt-1">업비트에서 코인을 매수하거나 API 키 연결 상태를 확인해주세요.</p>
+                <p className="font-bold text-sm text-slate-300">
+                  {occupiedMarkets.size > 0 
+                    ? '가져올 수 있는 추가 보유 코인이 없습니다.' 
+                    : '업비트 계좌에 보유 중인 코인이 없습니다.'}
+                </p>
+                <p className="text-xs text-slate-500 mt-1">
+                  {occupiedMarkets.size > 0 
+                    ? '이미 보유 중인 코인이 다른 슬롯에 모두 배정되어 있습니다.' 
+                    : '업비트에서 코인을 매수하거나 API 키 연결 상태를 확인해주세요.'}
+                </p>
               </div>
             </div>
           ) : (

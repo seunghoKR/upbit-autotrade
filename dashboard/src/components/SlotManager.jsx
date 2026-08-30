@@ -959,6 +959,7 @@ export default function SlotManager({
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         slot={selectedImportSlot}
+        slots={slots}
         accounts={accounts}
         livePriceMap={livePriceMap}
         onImportCoin={onImportCoin}
