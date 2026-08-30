@@ -693,6 +693,33 @@ try {
         exit;
     }
 
+    // 2.5. GET markets : 업비트 전체 원화(KRW) 마켓 목록 실시간 조회
+    if ($path === 'markets' && $method === 'GET') {
+        $ch = curl_init("https://api.upbit.com/v1/market/all?isDetails=false");
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        $res = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $krwMarkets = [];
+        if ($httpCode === 200 && $res) {
+            $data = json_decode($res, true) ?: [];
+            foreach ($data as $m) {
+                if (isset($m['market']) && str_starts_with($m['market'], 'KRW-')) {
+                    $krwMarkets[] = $m['market'];
+                }
+            }
+        }
+        echo json_encode([
+            'success' => true,
+            'count' => count($krwMarkets),
+            'markets' => !empty($krwMarkets) ? $krwMarkets : []
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
     // 3. GET status : 슬롯 & 잔고 & 제외 코인 목록
     if ($path === 'status' && $method === 'GET') {
         $userId = (int)($_GET['userId'] ?? 1);
