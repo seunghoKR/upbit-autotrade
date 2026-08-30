@@ -309,7 +309,7 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
                               {isOperator ? (
                                 <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/40 px-1.5 py-0.5 rounded-md font-extrabold whitespace-nowrap flex items-center gap-1">
                                   <Shield className="w-2.5 h-2.5 text-purple-400" />
-                                  <span>운영자 (9슬롯)</span>
+                                  <span>운영자</span>
                                 </span>
                               ) : isVip ? (
                                 <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded-md font-bold whitespace-nowrap flex items-center gap-1">
@@ -480,7 +480,7 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
                                       approvalStatus: 'APPROVED',
                                       addDays: 9999
                                     },
-                                    `회원 #${user.id} (${user.name || user.nickname})님이 [운영자 (9슬롯, 마스터 권한)]으로 임명되었습니다.`
+                                    `회원 #${user.id} (${user.name || user.nickname})님이 [운영자]로 임명되었습니다.`
                                   );
                                 } else if (val === 'USER') {
                                   handleUpdateUser(
@@ -509,7 +509,7 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
                               <option value="PRO" className="bg-slate-900 text-indigo-300">🔵 PRO 플랜 (3슬롯)</option>
                               <option value="VIP" className="bg-slate-900 text-amber-300">🟡 VIP 플랜 (9슬롯)</option>
                               {isDeveloper && (
-                                <option value="OPERATOR" className="bg-slate-900 text-purple-300">👑 운영자 (9슬롯)</option>
+                                <option value="OPERATOR" className="bg-slate-900 text-purple-300">👑 운영자</option>
                               )}
                               {isDeveloper && isOperator && (
                                 <option value="USER" className="bg-slate-900 text-slate-400">⚪ 일반회원으로 전환</option>

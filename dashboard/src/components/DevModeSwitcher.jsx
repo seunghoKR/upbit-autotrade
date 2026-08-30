@@ -39,7 +39,7 @@ export default function DevModeSwitcher({
       tier: 'VIP',
       role: 'OPERATOR',
       name: '📊 운영자',
-      label: '사이트 운영자 (9슬롯)',
+      label: '사이트 운영자',
       maxSlots: 9,
       badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/50 hover:bg-emerald-500/30'
     },
