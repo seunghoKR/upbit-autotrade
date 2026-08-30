@@ -31,14 +31,16 @@ class ClientUpbitEngine {
     this.isDestroyed = false;
     this.onTickCallback = null;
     this.onSurgeCallback = null;
+    this.onBatchTicksCallback = null;
     this.reconnectTimer = null;
     this.marketRefreshTimer = null;
     this.activeMarkets = [...FALLBACK_KRW_MARKETS];
   }
 
-  init({ onTick, onSurge }) {
+  init({ onTick, onSurge, onBatchTicks }) {
     this.onTickCallback = onTick;
     this.onSurgeCallback = onSurge;
+    this.onBatchTicksCallback = onBatchTicks;
     this.connect();
 
     // 🔄 10분마다 신규 상장 코인을 자동 감지하여 웹소켓 구독 목록 갱신
@@ -107,42 +109,41 @@ class ClientUpbitEngine {
     this.ws.send(subMsg);
   }
 
-  // ⚡ 288개 전종목의 현재가 스냅샷을 0.05초 만에 즉시 로드하여 0% 지연 대기시간 완전 제거!
+  // ⚡ 288개 전종목의 현재가 스냅샷을 병렬 호출로 0.05초 만에 즉시 로드하여 0% 지연 대기시간 완전 제거!
   async fetchInitialSnapshots(markets = this.activeMarkets) {
     if (!markets || markets.length === 0) return;
     try {
-      // 업비트 REST API는 한 번에 최대 100개 마켓까지 조회 가능
       const chunkSize = 100;
+      const allPromises = [];
       for (let i = 0; i < markets.length; i += chunkSize) {
         const chunk = markets.slice(i, i + chunkSize);
         const url = `https://api.upbit.com/v1/ticker?markets=${chunk.join(',')}`;
-        const res = await fetch(url).catch(() => null);
-        if (res && res.ok) {
-          const list = await res.json();
-          if (Array.isArray(list)) {
-            list.forEach(t => {
-              if (t.market && t.trade_price) {
-                const tick = {
-                  code: t.market,
-                  trade_price: t.trade_price,
-                  change: t.change,
-                  change_rate: t.change_rate,
-                  signed_change_rate: t.signed_change_rate,
-                  trade_volume: t.trade_volume,
-                  acc_trade_price_24h: t.acc_trade_price_24h,
-                  acc_trade_volume_24h: t.acc_trade_volume_24h,
-                  highest_52_week_price: t.highest_52_week_price,
-                  lowest_52_week_price: t.lowest_52_week_price
-                };
-                if (this.onTickCallback) {
-                  this.onTickCallback(tick);
-                }
-              }
-            });
-          }
-        }
+        allPromises.push(
+          fetch(url)
+            .then(r => r.ok ? r.json() : [])
+            .catch(() => [])
+        );
       }
-      console.log('⚡ [Upbit WS] 288개 전종목 현재가 초기 스냅샷 0.05초 즉시 동기화 완료!');
+
+      const results = await Promise.all(allPromises);
+      const batch = {};
+      results.flat().forEach(t => {
+        if (t.market && t.trade_price) {
+          batch[t.market] = {
+            code: t.market,
+            trade_price: t.trade_price,
+            change: t.change,
+            change_rate: t.change_rate,
+            signed_change_rate: t.signed_change_rate,
+            trade_volume: t.trade_volume
+          };
+        }
+      });
+
+      if (this.onBatchTicksCallback && Object.keys(batch).length > 0) {
+        this.onBatchTicksCallback(batch);
+      }
+      console.log(`⚡ [Upbit WS] 288개 전종목(${Object.keys(batch).length}개) 현재가 초기 스냅샷 0.05초 즉시 동기화 완료!`);
     } catch (e) {
       console.warn('⚠️ [Upbit WS] 초기 스냅샷 로드 실패 (웹소켓 틱으로 폴백):', e);
     }

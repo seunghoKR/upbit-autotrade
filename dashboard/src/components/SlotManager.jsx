@@ -315,14 +315,6 @@ export default function SlotManager({
                   }`}>
                     {isSelfStrategy ? '셀프전략' : '추천전략'}
                   </span>
-
-                  {/* 🪙 보유 중인 코인 이름 헤더 뱃지 */}
-                  {hasPosition && (
-                    <span className="text-[11px] px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black font-mono shadow-sm flex items-center gap-1 shrink-0 animate-pulse">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                      <span>{(slot.targetMarket || '').replace('KRW-', '')}</span>
-                    </span>
-                  )}
                 </div>
 
                 {/* 우측 액션 메뉴: | [Power] ON | [통계 아이콘] | [수정 아이콘] | */}

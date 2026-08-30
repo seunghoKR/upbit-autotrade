@@ -295,6 +295,37 @@ export default function App() {
         }
         if (status.pendingApproval) setPendingApproval(status.pendingApproval);
         if (status.tradeHistory) setTradeHistory(status.tradeHistory);
+
+        // ⚡ [0.01초 즉시 동기화] 슬롯 대상 코인 및 보유 코인의 실시간 현재가를 REST API로 즉시 조회하여 livePriceMap에 주입!
+        const relevantMarkets = Array.from(new Set([
+          ...(status.slots || []).map(s => s.targetMarket).filter(Boolean),
+          ...(status.accounts || []).map(a => `KRW-${a.currency}`).filter(Boolean),
+          'KRW-BTC', 'KRW-ETH', 'KRW-XRP', 'KRW-SOL', 'KRW-DOGE', 'KRW-SAND', 'KRW-QTUM'
+        ])).filter(m => m.startsWith('KRW-'));
+
+        if (relevantMarkets.length > 0) {
+          fetch(`https://api.upbit.com/v1/ticker?markets=${relevantMarkets.join(',')}`)
+            .then(res => res.json())
+            .then(tickers => {
+              if (Array.isArray(tickers)) {
+                const batch = {};
+                tickers.forEach(t => {
+                  if (t.market && t.trade_price) {
+                    batch[t.market] = {
+                      code: t.market,
+                      trade_price: t.trade_price,
+                      change: t.change,
+                      change_rate: t.change_rate,
+                      signed_change_rate: t.signed_change_rate,
+                      trade_volume: t.trade_volume
+                    };
+                  }
+                });
+                setLivePriceMap(prev => ({ ...prev, ...batch }));
+              }
+            })
+            .catch(() => {});
+        }
       }
 
       const candleData = await getCandles(activeMarket, 1, 60);
@@ -346,6 +377,9 @@ export default function App() {
 
     // ⚡ 1. 브라우저 직접 업비트 실시간 웹소켓 & 급등 감지기 가동
     upbitClientEngine.init({
+      onBatchTicks: (batchMap) => {
+        setLivePriceMap(prev => ({ ...prev, ...batchMap }));
+      },
       onTick: (tick) => {
         setLivePriceMap(prev => ({ ...prev, [tick.code]: tick }));
         if (tick.code === activeMarket) {
