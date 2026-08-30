@@ -1,6 +1,7 @@
 const axios = require('axios');
 const config = require('../config');
 const upbitClient = require('../upbit/upbitClient');
+const userManager = require('../auth/userManager');
 
 class TelegramBotManager {
   constructor() {
@@ -14,40 +15,10 @@ class TelegramBotManager {
   init(strategyEngine) {
     this.strategyEngine = strategyEngine;
 
-    // 📢 3단계 실시간 텔레그램 알림 시스템:
-    // 1단계: 🚨 급등 발견 알림 (3초 후 매수 예고)
-    // 2단계: ✅ 3초 후 매수 체결 알림
-    // 3단계: 🎉 익절/손절 조건 만족 시 매도 체결 및 정산 알림
+    // 📢 실시간 텔레그램 알림 시스템:
+    // 거래 알림은 오직 [매도(익절/손절)] 체결 완료 시 해당 본인에게만 1:1로 발송됩니다.
     this.strategyEngine.onSignal(async (event) => {
-      if (event.type === 'SURGE_DISCOVERED') {
-        const surge = event.surgeInfo || {};
-        const text = `
-<b>🚨 [누리오 트레이더] 급등 코인 포착 알림</b>
-
-🎰 <b>배정 슬롯:</b> <b>${event.slotId}번 슬롯</b>
-📌 <b>암호화폐:</b> <code>${event.market}</code>
-⚡ <b>포착 사유:</b> ${surge.reason || '급등 조건 도달'}
-💵 <b>현재가:</b> ${Number(surge.currentPrice || 0).toLocaleString()} KRW
-⏳ <b>진행:</b> <b>3초 후 시장가 자동 매수가 집행됩니다!</b>
-
-🚀 <i>누리오 AI 트레이더 급등 레이더</i>
-`;
-        await this.sendMessage(text);
-      } else if (event.type === 'TRADE_EXECUTED' && event.signal?.type === 'BUY') {
-        const sig = event.signal;
-        const text = `
-<b>✅ [누리오 트레이더] 매수 체결 완료</b>
-
-🎰 <b>배정 슬롯:</b> <b>${sig.slotId || 1}번 슬롯 (${sig.slotName || '자동매매'})</b>
-📌 <b>암호화폐:</b> <code>${sig.market}</code>
-💵 <b>체결 단가:</b> ${Number(sig.price || 0).toLocaleString()} KRW
-💰 <b>매수 총액:</b> ${Number(sig.amount || 0).toLocaleString()} KRW
-🎯 <b>감시 모드:</b> <b>실시간 트레일링 스탑 익절 가동 시작 🟢</b>
-
-🚀 <i>누리오 트레이더(NURIOH TRADER)</i>
-`;
-        await this.sendMessage(text);
-      } else if (event.type === 'TRADE_EXECUTED' && event.signal?.type === 'SELL') {
+      if (event.type === 'TRADE_EXECUTED' && event.signal?.type === 'SELL') {
         await this.sendSellSettlementAlert(event.signal, event.orderResult);
       }
     });
@@ -77,7 +48,7 @@ class TelegramBotManager {
   }
 
   /**
-   * 💰 슬롯별 매도 완료 및 수익/손실 정산 전용 알림 (운영자/관리자 전송)
+   * 💰 슬롯별 매도 완료 및 수익/손실 정산 전용 알림 (해당 거래 본인에게만 1:1 전송)
    */
   async sendSellSettlementAlert(signal, orderResult) {
     const profitPct = Number(signal.profitPct || 0);
@@ -101,8 +72,14 @@ class TelegramBotManager {
 🚀 <i>누리오 트레이더(NURIOH TRADER) 실시간 정산 카드</i>
 `;
 
-    // 기본 관리자 및 등록된 운영자들에게 정산 카드 발송
-    await this.sendMessage(text);
+    // 🎯 모든 거래 알림은 본인에게만 전송 (해당 유저의 telegramChatId 조회)
+    const userId = signal.userId || 1;
+    const user = userManager.getUserProfile(userId);
+    const targetChatId = signal.telegramChatId || user?.telegramChatId;
+
+    if (targetChatId) {
+      await this.sendMessage(text, null, targetChatId);
+    }
   }
 
   /**

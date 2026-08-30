@@ -7,9 +7,9 @@ const FTP_USER = 'nuriohtrade';
 const FTP_PASS = 'seungho0409#';
 const REMOTE_ROOT = '/public_html';
 
-const LOCAL_BASE = __dirname;
-const DIST_DIR = path.join(LOCAL_BASE, 'dashboard', 'dist');
-const PHP_DIR = path.join(LOCAL_BASE, 'php');
+const LOCAL_BASE = process.cwd();
+const DIST_DIR = path.resolve(LOCAL_BASE, 'dashboard', 'dist');
+const PHP_DIR = path.resolve(LOCAL_BASE, 'php');
 
 function uploadFileWithCurl(localPath, remoteRelativePath) {
   const remoteUrl = `ftp://${encodeURIComponent(FTP_USER)}:${encodeURIComponent(FTP_PASS)}@${FTP_HOST}${REMOTE_ROOT}/${remoteRelativePath.replace(/\\/g, '/')}`;

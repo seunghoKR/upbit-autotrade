@@ -561,7 +561,7 @@ export default function MyPageModal({
               </div>
 
               <p className="text-xs text-slate-300 leading-relaxed">
-                텔레그램 봇을 통해 각 슬롯의 <strong>실시간 급등 매수 및 매도(익절/손절) 체결 정산 알림</strong>을 스마트폰으로 즉시 받아보실 수 있습니다. 📱
+                텔레그램 봇을 통해 각 슬롯의 <strong>실시간 매도(익절/손절) 체결 정산 알림</strong>을 스마트폰으로 즉시 받아보실 수 있습니다. 📱
               </p>
 
               <div>

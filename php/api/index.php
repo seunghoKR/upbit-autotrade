@@ -973,7 +973,7 @@ try {
         $testMsg = "🔔 <b>[NURIOH 트레이더 텔레그램 알림 테스트]</b>\n\n" .
                    "안녕하세요, <b>{$userName}</b>님!\n" .
                    "운영자가 회원님의 텔레그램 알림 통신을 성공적으로 테스트하였습니다.\n" .
-                   "현재 <b>실시간 급등 매수 및 매도(익절/손절) 신호</b>가 정상 발송 대기 중입니다! 🚀\n\n" .
+                   "현재 <b>실시간 매도(익절/손절) 체결 정산 신호</b>가 정상 발송 대기 중입니다! 🚀\n\n" .
                    "⏱ 테스트 시각: {$timeStr}";
 
         $res = sendTelegramDirectMessage($testMsg, $chatId);
@@ -1370,26 +1370,6 @@ try {
             $slotId
         ]);
 
-        // 텔레그램 매수 체결 알림 (해당 슬롯 소유자 본인에게만 1:1 발송!)
-        $uStmt = $pdo->prepare("SELECT telegram_chat_id FROM nurioh_users WHERE id = ?");
-        $uStmt->execute([$userId]);
-        $uRow = $uStmt->fetch();
-        $userChatId = $uRow['telegram_chat_id'] ?? null;
-
-        $timeStr = date('Y-m-d H:i:s');
-        $buyAlertMsg = "<b>✅ [누리오 트레이더] 매수 체결 완료</b>\n\n" .
-                       "🎰 <b>배정 슬롯:</b> <b>{$slotId}번 슬롯</b>\n" .
-                       "📌 <b>매수 코인:</b> <code>{$market}</code>\n" .
-                       "💵 <b>매수 금액:</b> " . number_format((int)$tradeAmount) . " KRW\n" .
-                       "📊 <b>진입 단가:</b> " . number_format($calcPrice) . " KRW\n" .
-                       "⏱ <b>체결 시각:</b> {$timeStr}\n\n" .
-                       "🎯 <i>실시간 트레일링 스탑 익절 감시가 시작되었습니다.</i>";
-        if ($userChatId) {
-            sendTelegramDirectMessage($buyAlertMsg, $userChatId);
-        } else {
-            sendTelegramAdminAlert($buyAlertMsg);
-        }
-
         echo json_encode([
             'success' => true,
             'message' => "{$slotId}번 슬롯 {$market} " . number_format((int)$tradeAmount) . "원 시장가 매수 체결 완료!",
@@ -1439,27 +1419,6 @@ try {
             $userId,
             $slotId
         ]);
-
-        // 텔레그램 알림 발송
-        $uStmt = $pdo->prepare("SELECT telegram_chat_id FROM nurioh_users WHERE id = ?");
-        $uStmt->execute([$userId]);
-        $uRow = $uStmt->fetch();
-        $userChatId = $uRow['telegram_chat_id'] ?? null;
-
-        $timeStr = date('Y-m-d H:i:s');
-        $importMsg = "<b>📥 [누리오 트레이더] 업비트 보유 코인 슬롯 연동 완료</b>\n\n" .
-                     "🎰 <b>배정 슬롯:</b> <b>{$slotId}번 슬롯</b>\n" .
-                     "📌 <b>연동 코인:</b> <code>{$market}</code>\n" .
-                     "💰 <b>보유 수량:</b> " . number_format($entryVolume, 4) . "\n" .
-                     "📊 <b>진입 단가:</b> " . number_format($entryPrice) . " KRW\n" .
-                     "💵 <b>평가 금액:</b> " . number_format((int)$entryAmount) . " KRW\n" .
-                     "⏱ <b>연동 시각:</b> {$timeStr}\n\n" .
-                     "🎯 <i>해당 슬롯의 트레일링 스탑 익절 및 손절 감시가 시작되었습니다.</i>";
-        if ($userChatId) {
-            sendTelegramDirectMessage($importMsg, $userChatId);
-        } else {
-            sendTelegramAdminAlert($importMsg);
-        }
 
         echo json_encode([
             'success' => true,
@@ -1612,11 +1571,9 @@ try {
         $uStmt = $pdo->prepare("SELECT telegram_chat_id FROM nurioh_users WHERE id = ?");
         $uStmt->execute([$userId]);
         $uRow = $uStmt->fetch();
-        $userChatId = $uRow['telegram_chat_id'] ?? null;
+        $userChatId = !empty($uRow['telegram_chat_id']) ? trim((string)$uRow['telegram_chat_id']) : null;
         if ($userChatId) {
             sendTelegramDirectMessage($alertMsg, $userChatId);
-        } else {
-            sendTelegramAdminAlert($alertMsg);
         }
 
         echo json_encode([
@@ -1777,7 +1734,7 @@ try {
         $stmt->execute([$chatId ?: null, $userId]);
 
         if ($chatId) {
-            sendTelegramDirectMessage("🎉 <b>[NURIOH 트레이더 텔레그램 연동 완료]</b>\n\n회원님의 계정과 텔레그램 알림이 성공적으로 연결되었습니다!\n현재 시험운영 모드로 <b>실시간 급등 매수 및 매도(익절/손절) 신호</b>가 모두 전송됩니다. 🚀", $chatId);
+            sendTelegramDirectMessage("🎉 <b>[NURIOH 트레이더 텔레그램 연동 완료]</b>\n\n회원님의 계정과 텔레그램 알림이 성공적으로 연결되었습니다!\n실시간 <b>매도(익절/손절) 체결 정산 신호</b>가 회원님에게 1:1로 발송됩니다. 🚀", $chatId);
         }
 
         echo json_encode([
@@ -1971,23 +1928,6 @@ try {
             highest_profit_pct = 0 
             WHERE user_id = ? AND slot_id = ?");
         $stmt->execute([$market, $price, $volume, $price, $userId, $slotId]);
-
-        // 📢 텔레그램 매수 알림 발송 (해당 유저에게만 발송!)
-        $uStmt = $pdo->prepare("SELECT telegram_chat_id FROM nurioh_users WHERE id = ?");
-        $uStmt->execute([$userId]);
-        $uRow = $uStmt->fetch();
-        $userChatId = $uRow['telegram_chat_id'] ?? null;
-
-        $timeStr = date('Y-m-d H:i:s');
-        $surgeAlertMsg = "<b>⚡ [실시간 급등 감지 매수 체결]</b>\n\n" .
-                         "🎰 <b>배정 슬롯:</b> <b>{$slotId}번 슬롯</b>\n" .
-                         "📌 <b>매수 코인:</b> <code>{$market}</code>\n" .
-                         "💵 <b>매수 금액:</b> " . number_format((int)$tradeAmount) . " KRW\n" .
-                         "📊 <b>진입 단가:</b> " . number_format($price) . " KRW\n" .
-                         "⏱ <b>체결 시각:</b> {$timeStr}\n";
-        if ($userChatId) {
-            sendTelegramDirectMessage($surgeAlertMsg, $userChatId);
-        }
 
         echo json_encode([
             'success' => true,
