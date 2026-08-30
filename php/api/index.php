@@ -756,30 +756,10 @@ try {
             $slots = $slotStmt->fetchAll() ?: [];
         }
 
-        // 🛡️ 실계좌 업비트 보유 코인(DKA, BORA 등) 맵 구성
-        $heldCoins = [];
-        if (!empty($accounts) && is_array($accounts)) {
-            foreach ($accounts as $acc) {
-                $curr = strtoupper($acc['currency'] ?? '');
-                if ($curr === 'KRW' || empty($curr)) continue;
-                $bal = (float)($acc['balance'] ?? 0) + (float)($acc['locked'] ?? 0);
-                $avgPrice = (float)($acc['avg_buy_price'] ?? 0);
-                $evalAmount = $bal * $avgPrice;
-                // 실제 유의미한 보유 코인(평가금액 5,000원 이상)만 맵에 보관
-                if ($bal > 0 && $evalAmount >= 5000) {
-                    $mktKey = "KRW-{$curr}";
-                    $heldCoins[$mktKey] = [
-                        'market' => $mktKey,
-                        'currency' => $curr,
-                        'balance' => $bal,
-                        'avgBuyPrice' => $avgPrice,
-                        'evalAmount' => $evalAmount
-                    ];
-                }
-            }
-        }
+        // 🛡️ 과거 상폐 코인(EMC2, DAWN 등)이나 지갑 잔재로 오염된 슬롯 포지션 전면 정화
+        $pdo->query("UPDATE nurioh_slots SET position_status = 'IDLE', entry_price = NULL, entry_volume = NULL, entry_amount_krw = NULL, highest_price = NULL, highest_profit_pct = 0 WHERE target_market IN ('KRW-EMC2', 'KRW-DAWN', 'KRW-KNC', 'KRW-DOGE', 'KRW-XRP', 'KRW-BTT', 'KRW-SAND', 'KRW-QTUM') OR entered_at IS NULL");
 
-        $formattedSlots = array_map(function($s) use ($pdo, $accounts, $heldCoins) {
+        $formattedSlots = array_map(function($s) use ($pdo) {
             $realizedProfit = (float)($s['total_realized_profit_krw'] ?? 0);
             if ($realizedProfit > 50000000 || $realizedProfit < -50000000) {
                 // 비정상적인 천문학적 더미/오류 데이터 0원으로 자동 정화
@@ -787,27 +767,20 @@ try {
                 $realizedProfit = 0;
             }
 
-            // 🛡️ 1) 수량이 0이거나 평가금액이 5,000원 미만인 먼지/더미 잔고는 깨끗한 빈 슬롯(IDLE)으로 초기화
             $vol = (float)($s['entry_volume'] ?? 0);
             $entryP = (float)($s['entry_price'] ?? 0);
             $amount = (float)($s['entry_amount_krw'] ?? ($vol * $entryP));
-            $slotMkt = strtoupper($s['target_market'] ?? '');
 
-            if ($s['position_status'] === 'IN_POSITION') {
-                $isDustOrZero = ($vol <= 0.00001 || $amount < 4000 || $entryP <= 0);
-                $isSoldOutOnUpbit = (!empty($accounts) && is_array($accounts) && count($accounts) > 0 && !isset($heldCoins[$slotMkt]));
-                $isStaleDogeOrDisabled = ($slotMkt === 'KRW-DOGE' || (int)$s['is_enabled'] === 0);
-
-                if ($isDustOrZero || $isSoldOutOnUpbit || $isStaleDogeOrDisabled) {
-                    $pdo->prepare("UPDATE nurioh_slots SET position_status = 'IDLE', entry_price = NULL, entry_volume = NULL, entry_amount_krw = NULL, highest_price = NULL, highest_profit_pct = 0 WHERE id = ?")
-                        ->execute([$s['id']]);
-                    $s['position_status'] = 'IDLE';
-                    $s['entry_price'] = null;
-                    $s['entry_volume'] = null;
-                    $s['entry_amount_krw'] = null;
-                    $s['highest_price'] = null;
-                    $s['highest_profit_pct'] = 0;
-                }
+            // 🛡️ 수량이 없거나 비정상 단가 포지션은 즉시 깨끗한 빈 슬롯(IDLE)으로 초기화
+            if ($s['position_status'] === 'IN_POSITION' && ($vol <= 0.00001 || $amount < 4000 || $entryP <= 0)) {
+                $pdo->prepare("UPDATE nurioh_slots SET position_status = 'IDLE', entry_price = NULL, entry_volume = NULL, entry_amount_krw = NULL, highest_price = NULL, highest_profit_pct = 0 WHERE id = ?")
+                    ->execute([$s['id']]);
+                $s['position_status'] = 'IDLE';
+                $s['entry_price'] = null;
+                $s['entry_volume'] = null;
+                $s['entry_amount_krw'] = null;
+                $s['highest_price'] = null;
+                $s['highest_profit_pct'] = 0;
             }
 
             return [
