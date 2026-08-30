@@ -844,34 +844,37 @@ export default function App() {
     const targetMkt = slot?.targetMarket || 'KRW-BTC';
     const currentPrice = livePriceMap[targetMkt]?.trade_price || slot?.entryPrice || 0;
     const userId = currentUser?.id || 1;
-    
-    // 낙관적 즉시 IDLE 전환
-    setSlots(prevSlots => prevSlots.map(s => {
-      if (s.slotId === slotId) {
-        return {
-          ...s,
-          positionStatus: 'IDLE',
-          entryPrice: null,
-          entryVolume: null,
-          highestPrice: null,
-          highestProfitPct: 0
-        };
+    const volume = parseFloat(slot?.entryVolume || 0);
+    const evalAmount = (volume > 0 && currentPrice > 0) ? (volume * currentPrice) : (slot?.entryAmountKrw || 0);
+
+    // 🛡️ 5,000원 미만 사전 검증 및 안전 분기
+    if (evalAmount > 0 && evalAmount < 5000) {
+      const confirmUnlink = window.confirm(
+        `⚠️ [업비트 최소 주문 규정 안내]\n\n현재 ${targetMkt}의 총 평가금액은 약 ${Math.round(evalAmount).toLocaleString()}원으로, 업비트 최소 매도 가능 금액(5,000원) 미만입니다.\n\n업비트에서는 5,000원 미만 매도가 불가능하므로, 거래소 주문 없이 슬롯 연동만 해제(비우기)하시겠습니까?`
+      );
+      if (!confirmUnlink) return;
+
+      try {
+        const res = await sellSlotPosition(slotId, { userId, currentPrice, unlinkOnly: true });
+        alert(`✅ ${res?.message || '슬롯 연동이 정상적으로 해제되었습니다.'}`);
+      } catch (err) {
+        alert('연동 해제 중 오류가 발생했습니다: ' + (err.response?.data?.error || err.message));
       }
-      return s;
-    }));
+      await loadData();
+      return;
+    }
 
     try {
       const res = await sellSlotPosition(slotId, { userId, currentPrice });
       if (res?.order?.uuid) {
         alert(`⚡ [업비트 실주문 접수 완료]\n${res.message}\n\n• 거래소 주문번호: ${res.order.uuid}\n• 매도 수량: ${res.order.volume}`);
-      } else if (res?.upbitError) {
-        alert(`⚠️ [업비트 주문 전송 결과]\n${res.upbitError}\n\n(${res.message})`);
       } else {
         alert(`✅ ${res?.message || '슬롯이 매도 청산되었습니다.'}`);
       }
     } catch (err) {
       console.error('Sell slot error:', err);
-      alert('매도 처리 중 오류가 발생했습니다: ' + (err.response?.data?.error || err.message));
+      const errMsg = err.response?.data?.error || err.message;
+      alert(`⚠️ [매도 실패 - 슬롯 정보 보존]\n${errMsg}\n\n슬롯 코인 정보가 안전하게 그대로 유지됩니다.`);
     }
     await loadData();
   };

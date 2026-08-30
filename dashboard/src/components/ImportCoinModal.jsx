@@ -70,7 +70,7 @@ export default function ImportCoinModal({
         profitPct
       };
     })
-    .filter(coin => coin.evalAmount >= 100 && coin.currentPrice > 0) // 100원 미만 먼지 잔고 및 미상장 에어드랍 코인 원천 제외
+    .filter(coin => coin.evalAmount >= 5000 && coin.currentPrice > 0) // ⚡ 업비트 최소 거래 규정(5,000원 이상) 충족 코인만 노출
     .sort((a, b) => b.evalAmount - a.evalAmount); // 평가금액 높은 순 정렬
 
   const handleSelectCoin = async (coin) => {
@@ -112,12 +112,14 @@ export default function ImportCoinModal({
               <Download className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-black text-white flex items-center gap-2">
-                <span>{slot.slotId}번 슬롯으로 업비트 코인 가져오기</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-black text-white">
+                  {slot.slotName || `${slot.slotId}번 슬롯`}으로 업비트 코인 가져오기
+                </h3>
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                   {slot.strategyType === 'SELF' ? '셀프전략' : '추천전략'}
                 </span>
-              </h3>
+              </div>
               <p className="text-xs text-slate-400 mt-0.5">
                 업비트 계좌에 보유 중인 코인을 선택하여 슬롯에 등록하면, 실시간 트레일링 익절/손절이 가동됩니다.
               </p>
@@ -125,7 +127,7 @@ export default function ImportCoinModal({
           </div>
           <button 
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
           >
             <X className="w-5 h-5" />
           </button>
@@ -148,6 +150,12 @@ export default function ImportCoinModal({
               손절선: -{(slot.strategyType === 'SELF' ? slot.stopLossPct : slot.stopLossPct) || 2.0}%
             </span>
           </div>
+        </div>
+
+        {/* ℹ️ 업비트 최소 거래 규정 안내 */}
+        <div className="px-5 py-2 bg-slate-900/90 border-b border-slate-800/60 text-[11px] text-slate-400 flex items-center gap-1.5">
+          <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+          <span>업비트 최소 주문 규정상 <strong>평가금액 5,000원 이상</strong>인 코인만 슬롯에 등록 가능합니다.</span>
         </div>
 
         {/* 보유 코인 목록 */}

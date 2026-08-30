@@ -1492,8 +1492,9 @@ try {
         $coinCurrency = str_replace('KRW-', '', $mkt);
         $orderRes = null;
         $orderErr = null;
+        $unlinkOnly = !empty($input['unlinkOnly']);
 
-        if ($keyInfo && $keyInfo['access_key_enc'] && $keyInfo['secret_key_enc']) {
+        if (!$unlinkOnly && $keyInfo && $keyInfo['access_key_enc'] && $keyInfo['secret_key_enc']) {
             $accessKey = base64_decode($keyInfo['access_key_enc']);
             $secretKey = base64_decode($keyInfo['secret_key_enc']);
 
@@ -1519,10 +1520,21 @@ try {
                     'ord_type' => 'market'
                 ];
                 $orderRes = executeUpbitOrder($accessKey, $secretKey, $orderParams, $orderErr);
+
+                // ❌ 실제 매도 주문 실패(최소금액 5,000원 미만 등) 시 슬롯을 절대 비우지 않고 에러 반환!
+                if (!empty($orderErr) || empty($orderRes['uuid'])) {
+                    http_response_code(400);
+                    echo json_encode([
+                        'success' => false,
+                        'error' => "업비트 매도 주문 실패: " . ($orderErr ?: ($orderRes['error']['message'] ?? '주문이 거부되었습니다.')),
+                        'details' => $orderRes
+                    ], JSON_UNESCAPED_UNICODE);
+                    exit;
+                }
             } else {
                 $orderErr = "업비트 계좌에 [{$coinCurrency}] 보유 잔고가 0이어서 거래소 주문은 생략되었습니다. ({$accErr})";
             }
-        } else {
+        } else if (!$unlinkOnly && (!$keyInfo || !$keyInfo['access_key_enc'])) {
             $orderErr = "등록된 업비트 API 키가 없거나 비활성화 상태입니다.";
         }
 
