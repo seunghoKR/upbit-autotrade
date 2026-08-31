@@ -361,7 +361,7 @@ export default function OperatorDashboardModal({
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                추천전략 단일 제어 및 감시/매매 제외 코인(블랙리스트)을 총괄 관리합니다.
+                추천전략 및 감시/매매 제외 코인(블랙리스트)을 총괄 관리합니다.
               </p>
             </div>
           </div>
@@ -378,7 +378,7 @@ export default function OperatorDashboardModal({
                 }`}
               >
                 <Sliders className="w-3.5 h-3.5 text-indigo-300" />
-                <span>🎯 전략 관리 (추천 1개)</span>
+                <span>🎯 추천전략 관리</span>
               </button>
 
               <button
@@ -422,37 +422,11 @@ export default function OperatorDashboardModal({
         <div className="py-5 space-y-5 overflow-y-auto pr-1 flex-1 text-xs text-slate-300">
           
           {/* ========================================================================= */}
-          {/* TAB 1: 🎯 단일 추천 전략 알고리즘 매니저 (추천전략 1개 전용) */}
+          {/* TAB 1: 🎯 추천전략 알고리즘 매니저 */}
           {/* ========================================================================= */}
           {activeTab === 'STRATEGY' && (
             <div className="space-y-5">
-              {/* 상단 브리핑 배너 */}
-              <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-950/60 via-slate-900 to-slate-900 border border-indigo-500/30 flex items-start justify-between gap-4">
-                <div className="flex items-start gap-3">
-                  <div className="p-2.5 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shrink-0">
-                    <Sliders className="w-5 h-5 text-indigo-400" />
-                  </div>
-                  <div>
-                    <h4 className="font-extrabold text-white text-sm flex items-center gap-2">
-                      <span>👑 마스터 추천전략 통합 제어 (단일 전략 관리)</span>
-                      <span className="text-[10px] px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
-                        실시간 전 봇 동기화
-                      </span>
-                    </h4>
-                    <p className="text-xs text-slate-300 leading-relaxed mt-1">
-                      모든 회원의 슬롯은 <strong>[운영자 추천전략 1개]</strong> 또는 <strong>[회원 직접 설정 셀프전략 1개]</strong>로 운영됩니다.<br />
-                      여기서 추천전략 파라미터를 수정하시면, <strong>'추천전략'으로 설정된 모든 슬롯에 실시간으로 즉시 일괄 적용</strong>됩니다! ✨
-                    </p>
-                  </div>
-                </div>
-
-                <div className="hidden sm:flex flex-col items-end shrink-0">
-                  <span className="text-[10px] text-slate-400">슬롯 운영 체계</span>
-                  <span className="text-xs font-bold text-amber-300 mt-0.5">추천 1개 + 셀프 1개 모드</span>
-                </div>
-              </div>
-
-              {/* 단일 추천전략 상세 파라미터 폼 (급등 포착 조건 단일 관리) */}
+              {/* 추천전략 상세 파라미터 폼 (급등 포착 조건 & 4대 리스크 방어 쉴드) */}
               <form onSubmit={handleSaveRecommendedStrategy} className="bg-slate-950/80 p-5 sm:p-7 rounded-2xl border-2 border-indigo-500/40 space-y-6 shadow-xl max-w-2xl mx-auto">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                   <div className="flex items-center gap-2">
