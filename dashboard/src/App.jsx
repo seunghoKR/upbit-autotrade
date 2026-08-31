@@ -24,6 +24,7 @@ import DeveloperDashboardModal from './components/DeveloperDashboardModal';
 import SettingsModal from './components/SettingsModal';
 import MyPageModal from './components/MyPageModal';
 import ManualModal from './components/ManualModal';
+import { soundService } from './services/soundService';
 
 import {
   getBotStatus,
@@ -188,6 +189,16 @@ export default function App() {
   // 현재 선택된 슬롯 및 대상 마켓
   const selectedSlot = visibleSlots.find(s => s.slotId === selectedSlotId) || visibleSlots[0] || effectiveSlots[0];
   const activeMarket = selectedSlot?.targetMarket || settings.DEFAULT_MARKET || 'KRW-BTC';
+
+  // 📱 PWA 전용 앱 설치 이벤트 전역 캡처 (마이페이지 및 설치 팝업 연동)
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      window.deferredPwaPrompt = e;
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
 
   // 🛡️ 실시간 유효 로그인 ID 검증 헬퍼 (스토리지에 인증 정보가 없을 때 절대 ID를 반환하지 않음)
   const getValidAuthUserId = () => {
@@ -500,6 +511,11 @@ export default function App() {
           })
             .then(async (res) => {
               console.log('✅ [Auto Sell Success]', res);
+              if (isTrailingProfitHit || currentProfitPct >= 0) {
+                soundService.playProfitAlert();
+              } else {
+                soundService.playLossAlert();
+              }
               await loadData();
             })
             .catch(err => {
@@ -669,6 +685,7 @@ export default function App() {
 
                 if (buyRes && buyRes.success !== false && !buyRes.error) {
                   console.log(`✅ [Auto Buy Success Slot ${assignedSlotId}]`, buyRes);
+                  soundService.playBuyAlert();
                   setSelectedSlotId(assignedSlotId);
 
                   // 2. 실제 체결 성공 시에만 슬롯 상태를 IN_POSITION으로 업데이트
@@ -909,6 +926,13 @@ export default function App() {
 
     try {
       const res = await sellSlotPosition(slotId, { userId, currentPrice });
+      const profitPct = res?.profitPct ?? (((currentPrice - (slot?.entryPrice || currentPrice)) / (slot?.entryPrice || 1)) * 100);
+      if (profitPct >= 0) {
+        soundService.playProfitAlert();
+      } else {
+        soundService.playLossAlert();
+      }
+
       if (res?.order?.uuid) {
         alert(`⚡ [업비트 실주문 접수 완료]\n${res.message}\n\n• 거래소 주문번호: ${res.order.uuid}\n• 매도 수량: ${res.order.volume}`);
       } else {
@@ -1020,6 +1044,7 @@ export default function App() {
         (chosenMarket === 'KRW-SOL' ? 245000 : (chosenMarket === 'KRW-SUI' ? 4250 : (chosenMarket === 'KRW-STX' ? 2890 : 850)));
 
       setSelectedSlotId(slotId);
+      soundService.playBuyAlert();
 
       // 프론트엔드 슬롯 상태 즉시 IN_POSITION으로 업데이트
       setSlots(prevSlots => prevSlots.map(s => {

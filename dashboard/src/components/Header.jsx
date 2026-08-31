@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, 
   Power, 
@@ -7,10 +7,13 @@ import {
   BarChart3, 
   BookOpen, 
   Users, 
-  User,
-  LogOut,
-  Sliders 
+  User, 
+  LogOut, 
+  Sliders,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
+import { soundService } from '../services/soundService';
 
 export default function Header({ 
   user,
@@ -32,6 +35,26 @@ export default function Header({
   const isPrivileged = (role === 'OPERATOR' || role === 'ADMIN' || role === 'DEVELOPER');
   const isAdmin = (role === 'ADMIN' || role === 'DEVELOPER');
   const isPending = user?.approvalStatus === 'PENDING' && !isAdmin;
+
+  // 🔊 사운드 알림 활성화 상태 관리
+  const [soundEnabled, setSoundEnabled] = useState(soundService.isEnabled());
+
+  useEffect(() => {
+    const handleSoundToggle = (e) => {
+      setSoundEnabled(e.detail.enabled);
+    };
+    window.addEventListener('nurioh_sound_toggle', handleSoundToggle);
+    return () => window.removeEventListener('nurioh_sound_toggle', handleSoundToggle);
+  }, []);
+
+  const toggleSound = () => {
+    const nextState = !soundEnabled;
+    soundService.setEnabled(nextState);
+    setSoundEnabled(nextState);
+    if (nextState) {
+      soundService.playTone(880, 'sine', 0.1, 0, 0.1); // 켬 확인음
+    }
+  };
 
   // 닉네임 표시명 계산
   const displayName = (!user?.nickname || user?.nickname === '??') 
@@ -181,6 +204,29 @@ export default function Header({
           >
             <BookOpen className="w-3.5 h-3.5 text-slate-400" />
             <span className="hidden md:inline">매뉴얼</span>
+          </button>
+
+          {/* 🔊 사운드 알림 토글 버튼 */}
+          <button
+            onClick={toggleSound}
+            className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border text-xs font-bold transition cursor-pointer flex items-center gap-1 shrink-0 ${
+              soundEnabled
+                ? 'bg-amber-950/40 hover:bg-amber-900/60 border-amber-500/40 text-amber-300'
+                : 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-500 hover:text-slate-300'
+            }`}
+            title={soundEnabled ? '실시간 소리 알림 켜짐 (클릭하여 끄기)' : '실시간 소리 알림 꺼짐 (클릭하여 켜기)'}
+          >
+            {soundEnabled ? (
+              <>
+                <Volume2 className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden lg:inline text-[11px]">소리 ON</span>
+              </>
+            ) : (
+              <>
+                <VolumeX className="w-3.5 h-3.5 text-slate-500" />
+                <span className="hidden lg:inline text-[11px]">무음</span>
+              </>
+            )}
           </button>
 
           {/* 새로고침 */}

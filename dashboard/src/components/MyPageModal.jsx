@@ -19,8 +19,16 @@ import {
   Clock,
   Gift,
   ArrowRight,
-  BellRing
+  BellRing,
+  Volume2,
+  VolumeX,
+  Play,
+  Download,
+  Smartphone,
+  Monitor,
+  Volume1
 } from 'lucide-react';
+import { soundService } from '../services/soundService';
 import { 
   registerApiKey, 
   linkTelegram, 
@@ -94,6 +102,60 @@ export default function MyPageModal({
   });
   const [isSavingNotifySettings, setIsSavingNotifySettings] = useState(false);
   const [notifySettingsMsg, setNotifySettingsMsg] = useState('');
+
+  // 🔊 실시간 소리 알림 설정 상태
+  const [soundEnabled, setSoundEnabled] = useState(soundService.isEnabled());
+  const [soundTestSuccess, setSoundTestSuccess] = useState('');
+
+  // 📱 PWA 전용 앱 설치 상태
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [pwaPrompt, setPwaPrompt] = useState(window.deferredPwaPrompt || null);
+
+  useEffect(() => {
+    // 이미 Standalone 모드인지 확인
+    const standaloneCheck = window.matchMedia('(display-mode: standalone)').matches || 
+                            window.navigator.standalone === true ||
+                            document.referrer.includes('android-app://');
+    setIsStandalone(Boolean(standaloneCheck));
+
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      window.deferredPwaPrompt = e;
+      setPwaPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  const handleToggleSound = () => {
+    const nextState = !soundEnabled;
+    soundService.setEnabled(nextState);
+    setSoundEnabled(nextState);
+    if (nextState) {
+      soundService.playTone(880, 'sine', 0.1, 0, 0.1);
+    }
+  };
+
+  const handleTestSound = (type, label) => {
+    soundService.testSound(type);
+    setSoundTestSuccess(`🎵 [${label}] 효과음이 재생되었습니다!`);
+    setTimeout(() => setSoundTestSuccess(''), 2500);
+  };
+
+  const handleInstallApp = async () => {
+    const promptEvent = pwaPrompt || window.deferredPwaPrompt;
+    if (promptEvent) {
+      promptEvent.prompt();
+      const { outcome } = await promptEvent.userChoice;
+      if (outcome === 'accepted') {
+        window.deferredPwaPrompt = null;
+        setPwaPrompt(null);
+      }
+    } else {
+      alert('📱 PC/모바일 브라우저 주소창 우측의 [앱 설치] 아이콘 또는\n스마트폰 하단 [공유] > "홈 화면에 추가"를 선택하시면 즉시 전용 앱으로 설치됩니다! ✨');
+    }
+  };
 
   useEffect(() => {
     if (isOpen && user) {
@@ -368,11 +430,11 @@ export default function MyPageModal({
 
         {/* 2. 탭 네비게이션 (모바일/PC 1줄 5분할 정돈) */}
         {isApproved ? (
-          <div className="grid grid-cols-4 gap-1.5 sm:gap-2 border-b border-slate-800 pb-3">
+          <div className="grid grid-cols-5 gap-1 sm:gap-1.5 border-b border-slate-800 pb-3">
             {/* 1) 👤 내 정보 */}
             <button
               onClick={() => setActiveTab('PROFILE')}
-              className={`py-2 px-1 sm:px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap truncate text-xs sm:text-sm font-bold ${
+              className={`py-2 px-1 sm:px-1.5 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap truncate text-[11px] sm:text-xs font-bold ${
                 activeTab === 'PROFILE'
                   ? 'bg-indigo-600 text-white font-black shadow-md shadow-indigo-600/30'
                   : 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
@@ -382,10 +444,23 @@ export default function MyPageModal({
               <span>내 정보</span>
             </button>
 
-            {/* 2) 🔑 API 키 */}
+            {/* 2) 📲 앱 & 소리알림 (신설) */}
+            <button
+              onClick={() => setActiveTab('APP_SOUND')}
+              className={`py-2 px-1 sm:px-1.5 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap truncate text-[11px] sm:text-xs font-bold ${
+                activeTab === 'APP_SOUND'
+                  ? 'bg-emerald-500 text-slate-950 font-black shadow-md shadow-emerald-500/30'
+                  : 'bg-slate-950 text-emerald-400 hover:text-white hover:bg-slate-800 border border-slate-800'
+              }`}
+            >
+              <Download className="w-3.5 h-3.5 shrink-0" />
+              <span>앱 & 소리</span>
+            </button>
+
+            {/* 3) 🔑 API 키 */}
             <button
               onClick={() => setActiveTab('API_SECURITY')}
-              className={`py-2 px-1 sm:px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap truncate text-xs sm:text-sm font-bold ${
+              className={`py-2 px-1 sm:px-1.5 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap truncate text-[11px] sm:text-xs font-bold ${
                 activeTab === 'API_SECURITY'
                   ? 'bg-yellow-400 text-slate-950 font-black shadow-md shadow-yellow-400/30'
                   : 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
@@ -395,10 +470,10 @@ export default function MyPageModal({
               <span>API 키</span>
             </button>
 
-            {/* 3) ✈️ 텔레그램 */}
+            {/* 4) ✈️ 텔레그램 */}
             <button
               onClick={() => setActiveTab('TELEGRAM')}
-              className={`py-2 px-1 sm:px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap truncate text-xs sm:text-sm font-bold ${
+              className={`py-2 px-1 sm:px-1.5 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap truncate text-[11px] sm:text-xs font-bold ${
                 activeTab === 'TELEGRAM'
                   ? 'bg-indigo-600 text-white font-black shadow-md shadow-indigo-600/30'
                   : 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
@@ -408,17 +483,17 @@ export default function MyPageModal({
               <span>텔레그램</span>
             </button>
 
-            {/* 4) 👑 플랜 */}
+            {/* 5) 👑 플랜 */}
             <button
               onClick={() => setActiveTab('PRICING')}
-              className={`py-2 px-1 sm:px-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap truncate text-xs sm:text-sm font-bold ${
+              className={`py-2 px-1 sm:px-1.5 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap truncate text-[11px] sm:text-xs font-bold ${
                 activeTab === 'PRICING'
                   ? 'bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/30'
                   : 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
               }`}
             >
               <Crown className="w-3.5 h-3.5 shrink-0" />
-              <span>멤버십 플랜</span>
+              <span>플랜</span>
             </button>
           </div>
         ) : (
@@ -537,6 +612,202 @@ export default function MyPageModal({
               <span>{isSubmittingProfile ? '처리 중...' : (isApproved ? '회원 정보 수정 저장' : '✨ 3일 무료 사용 승인 신청하기')}</span>
             </button>
           </form>
+        )}
+
+        {/* ========================================================= */}
+        {/* TAB: 📲 앱 설치 & 🔊 실시간 소리 알림 (승인 회원 전용) */}
+        {/* ========================================================= */}
+        {activeTab === 'APP_SOUND' && isApproved && (
+          <div className="space-y-4 animate-in fade-in text-sm text-slate-200">
+            {/* 1. 📱 PC & 모바일 전용 앱(PWA) 원클릭 설치 안내 카드 */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-slate-950/70 border border-emerald-500/40 space-y-3.5 shadow-lg shadow-emerald-500/10">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-base border border-emerald-500/30">
+                    📲
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-white text-sm">PC & 모바일 전용 앱(PWA) 설치 안내</h4>
+                    <p className="text-[11px] text-slate-400">앱스토어 다운로드 없이 바탕화면 & 홈 화면에 바로 설치</p>
+                  </div>
+                </div>
+                {isStandalone ? (
+                  <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400" /> 전용 앱 실행 중
+                  </span>
+                ) : (
+                  <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 font-bold border border-yellow-500/40">
+                    브라우저 모드
+                  </span>
+                )}
+              </div>
+
+              <p className="text-xs text-slate-300 leading-relaxed">
+                NURIOH 트레이더는 <strong>PWA(웹앱)</strong>를 지원하여, 별도 설치 파일(.exe/.apk) 없이 클릭 한 번으로 <strong>PC 바탕화면</strong>이나 <strong>스마트폰 홈 화면</strong>에 단독 프로그램으로 설치할 수 있습니다. ✨
+              </p>
+
+              {/* 혜택 3종 그리드 */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 py-1">
+                <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/80 text-xs space-y-0.5">
+                  <div className="font-bold text-emerald-300 flex items-center gap-1">
+                    <Smartphone className="w-3.5 h-3.5" /> 원클릭 바로가기
+                  </div>
+                  <p className="text-[10px] text-slate-400">바탕화면/홈 화면에 전용 NURIOH 아이콘 생성</p>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/80 text-xs space-y-0.5">
+                  <div className="font-bold text-emerald-300 flex items-center gap-1">
+                    <Monitor className="w-3.5 h-3.5" /> 풀스크린 대시보드
+                  </div>
+                  <p className="text-[10px] text-slate-400">주소창 없이 넓고 깔끔한 단독 앱 창으로 실행</p>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/80 text-xs space-y-0.5">
+                  <div className="font-bold text-emerald-300 flex items-center gap-1">
+                    <Volume2 className="w-3.5 h-3.5" /> 백그라운드 알림
+                  </div>
+                  <p className="text-[10px] text-slate-400">창을 내려두어도 실시간 급등/익절 사운드 수신</p>
+                </div>
+              </div>
+
+              {/* 원클릭 설치 버튼 */}
+              <button
+                type="button"
+                onClick={handleInstallApp}
+                className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-emerald-500/25 active:scale-98"
+              >
+                <Download className="w-4 h-4 stroke-[2.5]" />
+                <span>{isStandalone ? '전용 앱 재설치 / 바로가기 확인' : '📲 지금 바로 PC / 모바일에 전용 앱 설치하기'}</span>
+              </button>
+
+              {/* 브라우저별 수동 설치 팁 */}
+              <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800/60 text-[11px] text-slate-400 space-y-1">
+                <p className="font-bold text-slate-300">💡 브라우저별 간편 설치 방법:</p>
+                <p>• <strong>PC (Chrome / Edge / Whale):</strong> 주소창 맨 오른쪽의 <code>[모니터/앱 설치]</code> 아이콘 클릭</p>
+                <p>• <strong>아이폰 (Safari):</strong> 하단 가운데 <code>[공유(↑)]</code> 버튼 ➔ <code>[홈 화면에 추가]</code> 선택</p>
+                <p>• <strong>안드로이드 (Chrome):</strong> 상단 우측 <code>[메뉴(⋮)]</code> ➔ <code>[앱 설치]</code> 또는 <code>[홈 화면에 추가]</code></p>
+              </div>
+            </div>
+
+            {/* 2. 🔊 실시간 트레이딩 사운드(소리) 효과음 알림 카드 */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-slate-950/70 border border-indigo-500/40 space-y-3.5 shadow-lg shadow-indigo-500/10">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center text-base border border-amber-500/30">
+                    🔊
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-white text-sm">실시간 사운드(소리) 효과음 알림</h4>
+                    <p className="text-[11px] text-slate-400">급등 포착, 매수 체결, 익절/손절 시 0.001초 즉각 사운드 재생</p>
+                  </div>
+                </div>
+
+                {/* 소리 마스터 토글 스위치 */}
+                <button
+                  type="button"
+                  onClick={handleToggleSound}
+                  className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                    soundEnabled
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm'
+                      : 'bg-slate-900 text-slate-500 border-slate-800'
+                  }`}
+                  title={soundEnabled ? '클릭하여 무음으로 전환' : '클릭하여 소리 알림 켜기'}
+                >
+                  {soundEnabled ? (
+                    <>
+                      <Volume2 className="w-3.5 h-3.5 text-amber-400" />
+                      <span>소리 켜짐 (ON)</span>
+                    </>
+                  ) : (
+                    <>
+                      <VolumeX className="w-3.5 h-3.5 text-slate-500" />
+                      <span>무음 (OFF)</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {soundTestSuccess && (
+                <div className="p-2.5 rounded-xl bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>{soundTestSuccess}</span>
+                </div>
+              )}
+
+              {/* 4종 사운드 미리듣기 버튼 그리드 */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {/* 1) 급등 포착 */}
+                <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800/80 flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <div className="text-xs font-bold text-slate-200 flex items-center gap-1">
+                      <span>🚨 급등 포착 경보</span>
+                    </div>
+                    <p className="text-[10px] text-slate-400">긴박하고 명쾌한 2단 레이더음</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleTestSound('SURGE', '급등 포착 경보')}
+                    className="px-2.5 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
+                  >
+                    <Play className="w-3 h-3 fill-amber-400 text-amber-400" />
+                    <span>미리듣기</span>
+                  </button>
+                </div>
+
+                {/* 2) 매수 체결 */}
+                <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800/80 flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <div className="text-xs font-bold text-slate-200 flex items-center gap-1">
+                      <span>⚡ 매수 체결음</span>
+                    </div>
+                    <p className="text-[10px] text-slate-400">도-미-솔 3단 상승 차임</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleTestSound('BUY', '매수 체결음')}
+                    className="px-2.5 py-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
+                  >
+                    <Play className="w-3 h-3 fill-indigo-400 text-indigo-400" />
+                    <span>미리듣기</span>
+                  </button>
+                </div>
+
+                {/* 3) 익절 매도 */}
+                <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800/80 flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <div className="text-xs font-bold text-slate-200 flex items-center gap-1">
+                      <span>🎉 익절 매도 승리음</span>
+                    </div>
+                    <p className="text-[10px] text-slate-400">화려한 도-미-솔-도 카칭! 💰</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleTestSound('PROFIT', '익절 매도 승리음')}
+                    className="px-2.5 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
+                  >
+                    <Play className="w-3 h-3 fill-emerald-400 text-emerald-400" />
+                    <span>미리듣기</span>
+                  </button>
+                </div>
+
+                {/* 4) 손절 매도 */}
+                <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800/80 flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <div className="text-xs font-bold text-slate-200 flex items-center gap-1">
+                      <span>🛡️ 손절 방어 경보음</span>
+                    </div>
+                    <p className="text-[10px] text-slate-400">차분한 2단 저음 방어음</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleTestSound('LOSS', '손절 방어 경보음')}
+                    className="px-2.5 py-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
+                  >
+                    <Play className="w-3 h-3 fill-blue-400 text-blue-400" />
+                    <span>미리듣기</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* ========================================================= */}
