@@ -323,8 +323,9 @@ try {
 }
 
 try {
+    // 🛠️ DB 테이블 컬럼 마이그레이션 (telegram_notify_settings 포함)
+    try { $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN telegram_notify_settings TEXT DEFAULT NULL AFTER telegram_chat_id"); } catch (Exception $e) {}
 
-    // 🛠️ DB 테이블 컬럼 마이그레이션 (run_migration=1 요청 시에만 실행하여 성능 극대화)
     if (!empty($_GET['run_migration'])) {
         try { $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN name VARCHAR(100) DEFAULT NULL AFTER kakao_id"); } catch (Exception $e) {}
         try { $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN phone VARCHAR(50) DEFAULT NULL AFTER email"); } catch (Exception $e) {}
@@ -465,6 +466,15 @@ try {
         $hasApiKey = (bool)($keyInfo['is_valid'] ?? false) || ($isDeveloper || $user['role'] === 'DEVELOPER');
 
         $autoTrading = !empty($user['auto_trading']) ? json_decode($user['auto_trading'], true) : null;
+        $telegramNotifySettings = !empty($user['telegram_notify_settings']) 
+            ? json_decode($user['telegram_notify_settings'], true) 
+            : [
+                'notifyProfit' => true,
+                'notifyStoploss' => true,
+                'notifyBuy' => false,
+                'notifyPanic' => true,
+                'notifyMembership' => true
+            ];
 
         $userProfile = [
             'id' => (int)$user['id'],
@@ -475,6 +485,7 @@ try {
             'email' => $user['email'],
             'birthyear' => $user['birthyear'] ?: '1990',
             'telegramId' => $user['telegram_chat_id'] ?: '',
+            'telegramNotifySettings' => $telegramNotifySettings,
             'role' => $isDeveloper ? 'DEVELOPER' : $user['role'],
             'tier' => $isDeveloper ? 'VIP' : $user['tier'],
             'approvalStatus' => $isDeveloper ? 'APPROVED' : ($user['approval_status'] ?? 'PENDING'),
@@ -551,6 +562,15 @@ try {
         $updatedUser = $stmt->fetch();
 
         $autoTrading = !empty($updatedUser['auto_trading']) ? json_decode($updatedUser['auto_trading'], true) : null;
+        $telegramNotifySettings = !empty($updatedUser['telegram_notify_settings']) 
+            ? json_decode($updatedUser['telegram_notify_settings'], true) 
+            : [
+                'notifyProfit' => true,
+                'notifyStoploss' => true,
+                'notifyBuy' => false,
+                'notifyPanic' => true,
+                'notifyMembership' => true
+            ];
 
         echo json_encode([
             'success' => true,
@@ -564,6 +584,7 @@ try {
                 'email' => $updatedUser['email'],
                 'birthyear' => $updatedUser['birthyear'] ?: '1990',
                 'telegramId' => $updatedUser['telegram_chat_id'] ?: '',
+                'telegramNotifySettings' => $telegramNotifySettings,
                 'role' => $updatedUser['role'],
                 'tier' => $updatedUser['tier'],
                 'approvalStatus' => $updatedUser['approval_status'] ?? 'APPROVED',
@@ -646,6 +667,15 @@ try {
         $hasApiKey = (bool)($keyInfo['is_valid'] ?? false) || $isDeveloper;
 
         $autoTrading = !empty($user['auto_trading']) ? json_decode($user['auto_trading'], true) : null;
+        $telegramNotifySettings = !empty($user['telegram_notify_settings']) 
+            ? json_decode($user['telegram_notify_settings'], true) 
+            : [
+                'notifyProfit' => true,
+                'notifyStoploss' => true,
+                'notifyBuy' => false,
+                'notifyPanic' => true,
+                'notifyMembership' => true
+            ];
 
         echo json_encode([
             'success' => true,
@@ -658,6 +688,7 @@ try {
                 'email' => $user['email'],
                 'birthyear' => $user['birthyear'] ?: '1990',
                 'telegramId' => $user['telegram_chat_id'] ?: '',
+                'telegramNotifySettings' => $telegramNotifySettings,
                 'role' => $isDeveloper ? 'DEVELOPER' : $user['role'],
                 'tier' => $isDeveloper ? 'VIP' : $user['tier'],
                 'approvalStatus' => $isDeveloper ? 'APPROVED' : ($user['approval_status'] ?? 'PENDING'),
@@ -1105,7 +1136,9 @@ try {
             . "🚀 <i>누리오 AI 트레이더가 24시간 실시간 감시를 이어갑니다.</i>";
 
         sendTelegramAdminAlert($alertMsg);
-        if ($userChatId) {
+        $notifySettings = !empty($targetUser['telegram_notify_settings']) ? json_decode($targetUser['telegram_notify_settings'], true) : [];
+        $canNotifyMembership = !isset($notifySettings['notifyMembership']) || !empty($notifySettings['notifyMembership']);
+        if ($userChatId && $canNotifyMembership) {
             sendTelegramDirectMessage($alertMsg, $userChatId);
         }
 
@@ -1370,6 +1403,32 @@ try {
             $slotId
         ]);
 
+        // 📢 매수 체결 텔레그램 알림 발송 (사용자가 notifyBuy를 켠 경우에만 발송!)
+        $uStmt = $pdo->prepare("SELECT name, nickname, telegram_chat_id, telegram_notify_settings FROM nurioh_users WHERE id = ?");
+        $uStmt->execute([$userId]);
+        $uRow = $uStmt->fetch();
+        $userName = !empty($uRow['name']) ? $uRow['name'] : (!empty($uRow['nickname']) ? $uRow['nickname'] : "회원 #{$userId}");
+        $userChatId = !empty($uRow['telegram_chat_id']) ? trim((string)$uRow['telegram_chat_id']) : null;
+        $notifySettings = !empty($uRow['telegram_notify_settings']) ? json_decode($uRow['telegram_notify_settings'], true) : [];
+        $canNotifyBuy = !empty($notifySettings['notifyBuy']);
+
+        if ($userChatId && $canNotifyBuy) {
+            $orderDesc = $orderRes ? "업비트 시장가 체결 (주문: " . substr($orderRes['uuid'] ?? '', 0, 13) . "...)" : "모의 체결 완료";
+            $buyMsg = "⚡ <b>[NURIOH 트레이더 - 신규 매수 체결]</b>\n\n" .
+                      "👤 <b>계정:</b> <b>{$userName}</b> (ID: {$userId})\n" .
+                      "🎰 <b>슬롯:</b> <b>{$slotId}번 슬롯</b>\n" .
+                      "📌 <b>종목:</b> <code>{$market}</code>\n" .
+                      "━━━━━━━━━━━━━━━━━━\n" .
+                      "💰 <b>체결 단가:</b> " . number_format($calcPrice, ($calcPrice < 100 ? 2 : 0)) . " 원\n" .
+                      "💵 <b>매수 금액:</b> " . number_format((int)$tradeAmount) . " KRW\n" .
+                      "📊 <b>체결 수량:</b> " . rtrim(rtrim(sprintf('%.8f', $calcVolume), '0'), '.') . "\n" .
+                      "━━━━━━━━━━━━━━━━━━\n" .
+                      "⚡ <b>주문 결과:</b> {$orderDesc}\n" .
+                      "🎯 <b>감시 모드:</b> 실시간 트레일링 익절 & 손절 추적 가동\n" .
+                      "🕒 <b>체결 시각:</b> " . date('Y-m-d H:i:s') . "\n";
+            sendTelegramDirectMessage($buyMsg, $userChatId);
+        }
+
         echo json_encode([
             'success' => true,
             'message' => "{$slotId}번 슬롯 {$market} " . number_format((int)$tradeAmount) . "원 시장가 매수 체결 완료!",
@@ -1551,11 +1610,16 @@ try {
             $holdingDurationStr = $mins > 0 ? "{$mins}분 {$secs}초" : "{$secs}초";
         }
 
-        $uStmt = $pdo->prepare("SELECT name, nickname, telegram_chat_id FROM nurioh_users WHERE id = ?");
+        $uStmt = $pdo->prepare("SELECT name, nickname, telegram_chat_id, telegram_notify_settings FROM nurioh_users WHERE id = ?");
         $uStmt->execute([$userId]);
         $uRow = $uStmt->fetch();
         $userName = !empty($uRow['name']) ? $uRow['name'] : (!empty($uRow['nickname']) ? $uRow['nickname'] : "회원 #{$userId}");
         $userChatId = !empty($uRow['telegram_chat_id']) ? trim((string)$uRow['telegram_chat_id']) : null;
+        $notifySettings = !empty($uRow['telegram_notify_settings']) ? json_decode($uRow['telegram_notify_settings'], true) : [];
+
+        $canSendSellAlert = $isProfit 
+            ? (!isset($notifySettings['notifyProfit']) || !empty($notifySettings['notifyProfit']))
+            : (!isset($notifySettings['notifyStoploss']) || !empty($notifySettings['notifyStoploss']));
 
         $alertMsg = "{$emoji}\n\n" .
                     "👤 <b>계정:</b> <b>{$userName}</b> (ID: {$userId})\n" .
@@ -1573,7 +1637,7 @@ try {
                     "⚡ <b>주문 결과:</b> {$upbitOrderInfo}\n" .
                     "🕒 <b>체결 시각:</b> {$timeStr}\n";
 
-        if ($userChatId) {
+        if ($userChatId && $canSendSellAlert) {
             sendTelegramDirectMessage($alertMsg, $userChatId);
         }
 
@@ -1726,22 +1790,47 @@ try {
         exit;
     }
 
-    // 9-2. POST auth/telegram : 텔레그램 연동 및 실시간 매수/매도 알림 설정
+    // 9-2. POST auth/telegram : 텔레그램 연동 및 실시간 맞춤 알림 설정
     if ($path === 'auth/telegram' && $method === 'POST') {
         $userId = (int)($input['userId'] ?? 1);
         $chatId = trim((string)($input['chatId'] ?? $input['telegramId'] ?? ''));
+        $notifySettings = isset($input['notifySettings']) ? (is_array($input['notifySettings']) ? json_encode($input['notifySettings'], JSON_UNESCAPED_UNICODE) : (string)$input['notifySettings']) : null;
 
-        $stmt = $pdo->prepare("UPDATE nurioh_users SET telegram_chat_id = ? WHERE id = ?");
-        $stmt->execute([$chatId ?: null, $userId]);
+        if ($notifySettings !== null) {
+            $stmt = $pdo->prepare("UPDATE nurioh_users SET telegram_chat_id = ?, telegram_notify_settings = ? WHERE id = ?");
+            $stmt->execute([$chatId ?: null, $notifySettings, $userId]);
+        } else {
+            $stmt = $pdo->prepare("UPDATE nurioh_users SET telegram_chat_id = ? WHERE id = ?");
+            $stmt->execute([$chatId ?: null, $userId]);
+        }
 
         if ($chatId) {
-            sendTelegramDirectMessage("🎉 <b>[NURIOH 트레이더 텔레그램 연동 완료]</b>\n\n회원님의 계정과 텔레그램 알림이 성공적으로 연결되었습니다!\n실시간 <b>매도(익절/손절) 체결 정산 신호</b>가 회원님에게 1:1로 발송됩니다. 🚀", $chatId);
+            sendTelegramDirectMessage("🎉 <b>[NURIOH 트레이더 텔레그램 연동 완료]</b>\n\n회원님의 계정과 텔레그램 알림이 성공적으로 연결되었습니다!\n선택하신 맞춤 알림(익절/손절/매수/긴급) 신호가 회원님에게 1:1로 발송됩니다. 🚀", $chatId);
         }
 
         echo json_encode([
             'success' => true,
-            'message' => '텔레그램 연동이 완료되었습니다! 확인 메시지가 텔레그램으로 전송되었습니다.',
-            'telegramId' => $chatId
+            'message' => '텔레그램 연동 및 알림 설정이 완료되었습니다! 확인 메시지가 텔레그램으로 전송되었습니다.',
+            'telegramId' => $chatId,
+            'notifySettings' => $notifySettings ? json_decode($notifySettings, true) : null
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // 9-3. POST auth/telegram-settings : 텔레그램 맞춤 알림 수신 옵션만 변경
+    if ($path === 'auth/telegram-settings' && $method === 'POST') {
+        $userId = (int)($input['userId'] ?? 1);
+        $notifySettings = isset($input['notifySettings']) ? (is_array($input['notifySettings']) ? json_encode($input['notifySettings'], JSON_UNESCAPED_UNICODE) : (string)$input['notifySettings']) : null;
+
+        if ($notifySettings !== null) {
+            $stmt = $pdo->prepare("UPDATE nurioh_users SET telegram_notify_settings = ? WHERE id = ?");
+            $stmt->execute([$notifySettings, $userId]);
+        }
+
+        echo json_encode([
+            'success' => true,
+            'message' => '텔레그램 맞춤 알림 설정이 성공적으로 저장되었습니다! 🔔',
+            'notifySettings' => $notifySettings ? json_decode($notifySettings, true) : null
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }
@@ -1857,16 +1946,19 @@ try {
             ->execute([$userId]);
 
         // 📢 텔레그램 긴급 매도 알림 발송 (해당 회원 본인에게만 발송!)
-        $uStmt = $pdo->prepare("SELECT telegram_chat_id FROM nurioh_users WHERE id = ?");
+        $uStmt = $pdo->prepare("SELECT name, nickname, telegram_chat_id, telegram_notify_settings FROM nurioh_users WHERE id = ?");
         $uStmt->execute([$userId]);
         $uRow = $uStmt->fetch();
+        $userName = !empty($uRow['name']) ? $uRow['name'] : (!empty($uRow['nickname']) ? $uRow['nickname'] : "회원 #{$userId}");
         $userChatId = $uRow['telegram_chat_id'] ?? null;
+        $notifySettings = !empty($uRow['telegram_notify_settings']) ? json_decode($uRow['telegram_notify_settings'], true) : [];
+        $canNotifyPanic = !isset($notifySettings['notifyPanic']) || !empty($notifySettings['notifyPanic']);
 
         $orderSummary = count($sellOrders) > 0 
             ? "총 " . count($sellOrders) . "개 코인 시장가 매도 접수 완료"
             : (count($orderErrors) > 0 ? "매도 실패 (" . implode(', ', $orderErrors) . ")" : "보유 코인 없음 (슬롯 초기화)");
-        if ($userChatId) {
-            sendTelegramDirectMessage("🚨 <b>[전 슬롯 긴급 매도 (Panic Sell) 집행]</b>\n\n• 회원 ID: {$userId}\n• 상태: {$orderSummary}\n• 시각: " . date('Y-m-d H:i:s'), $userChatId);
+        if ($userChatId && $canNotifyPanic) {
+            sendTelegramDirectMessage("🚨 <b>[전 슬롯 긴급 매도 (Panic Sell) 집행]</b>\n\n👤 <b>계정:</b> <b>{$userName}</b> (ID: {$userId})\n• 상태: {$orderSummary}\n• 시각: " . date('Y-m-d H:i:s'), $userChatId);
         }
 
         echo json_encode([

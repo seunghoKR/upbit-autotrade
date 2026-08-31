@@ -18,7 +18,8 @@ import {
   ChevronRight,
   Clock,
   Gift,
-  ArrowRight
+  ArrowRight,
+  BellRing
 } from 'lucide-react';
 import { 
   registerApiKey, 
@@ -26,7 +27,8 @@ import {
   requestUserProfileUpdate,
   sendTelegramTestMessage,
   getTelegramConfig,
-  updateTelegramBotToken
+  updateTelegramBotToken,
+  updateTelegramNotifySettings
 } from '../services/api';
 
 // 📞 전화번호 자동 하이픈 포맷터 (숫자만 입력 시 010-1234-5678 자동 포맷)
@@ -75,13 +77,23 @@ export default function MyPageModal({
   const [profileSuccessMsg, setProfileSuccessMsg] = useState('');
   const [profileErrorMsg, setProfileErrorMsg] = useState('');
 
-  // ✈️ 텔레그램 상태
+  // ✈️ 텔레그램 상태 및 맞춤 알림 수신 설정
   const [isTestingTelegram, setIsTestingTelegram] = useState(false);
   const [telegramTestMsg, setTelegramTestMsg] = useState('');
   const [botConfig, setBotConfig] = useState(null);
   const [botTokenInput, setBotTokenInput] = useState('');
   const [isSavingBotToken, setIsSavingBotToken] = useState(false);
   const [botTokenMsg, setBotTokenMsg] = useState('');
+
+  const [notifySettings, setNotifySettings] = useState({
+    notifyProfit: true,
+    notifyStoploss: true,
+    notifyBuy: false,
+    notifyPanic: true,
+    notifyMembership: true
+  });
+  const [isSavingNotifySettings, setIsSavingNotifySettings] = useState(false);
+  const [notifySettingsMsg, setNotifySettingsMsg] = useState('');
 
   useEffect(() => {
     if (isOpen && user) {
@@ -93,11 +105,21 @@ export default function MyPageModal({
       setProfileSuccessMsg('');
       setProfileErrorMsg('');
 
+      const defaultNotify = {
+        notifyProfit: true,
+        notifyStoploss: true,
+        notifyBuy: false,
+        notifyPanic: true,
+        notifyMembership: true
+      };
+      setNotifySettings(user.telegramNotifySettings ? { ...defaultNotify, ...user.telegramNotifySettings } : defaultNotify);
+      setNotifySettingsMsg('');
+
       if (!isApproved) {
         setActiveTab('APPLY');
       }
     }
-  }, [isOpen, user?.id, user?.name, user?.phone, user?.nickname, user?.email, user?.telegramId]);
+  }, [isOpen, user?.id, user?.name, user?.phone, user?.nickname, user?.email, user?.telegramId, user?.telegramNotifySettings]);
 
   const loadBotConfig = async () => {
     try {
@@ -195,11 +217,39 @@ export default function MyPageModal({
     if (!telegramId.trim()) return;
 
     try {
-      await linkTelegram(user?.id || 1, telegramId.trim());
-      alert('스마트폰 텔레그램 ID가 성공적으로 연동되었습니다!');
+      await linkTelegram(user?.id || 1, telegramId.trim(), notifySettings);
+      alert('스마트폰 텔레그램 ID 및 맞춤 알림 설정이 성공적으로 저장되었습니다!');
       if (onReloadUser) onReloadUser();
     } catch (err) {
       alert('텔레그램 연동 실패: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  // 🔔 텔레그램 맞춤 알림 토글 & 즉시 저장 핸들러
+  const toggleNotifySetting = (key) => {
+    setNotifySettings(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  const handleSaveNotifySettings = async () => {
+    setIsSavingNotifySettings(true);
+    setNotifySettingsMsg('');
+    try {
+      const res = await updateTelegramNotifySettings(user?.id || 1, notifySettings);
+      setNotifySettingsMsg('✅ ' + (res?.message || '맞춤 알림 설정이 성공적으로 저장되었습니다!'));
+      if (onUpdateUser) {
+        onUpdateUser({
+          ...user,
+          telegramNotifySettings: notifySettings
+        });
+      }
+      if (onReloadUser) onReloadUser();
+    } catch (err) {
+      setNotifySettingsMsg('❌ 저장 실패: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setIsSavingNotifySettings(false);
     }
   };
 
@@ -614,7 +664,156 @@ export default function MyPageModal({
               </div>
             </form>
 
-            {/* 2. 👑 최고 개발자 전용: 텔레그램 봇 토큰(BotFather Token) 관리 (일반 운영자 비노출) */}
+            {/* 2. 🔔 맞춤 텔레그램 알림 수신 설정 (5종류 선택 토글) */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <BellRing className="w-5 h-5 text-yellow-400" />
+                  <div>
+                    <h4 className="font-bold text-white text-sm">🔔 맞춤 텔레그램 알림 수신 설정</h4>
+                    <p className="text-[11px] text-slate-400">원하는 알림 종류만 선택하여 스마트폰으로 받아보세요.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSaveNotifySettings}
+                  disabled={isSavingNotifySettings}
+                  className="px-3.5 py-1.5 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-bold text-xs transition flex items-center gap-1 cursor-pointer shadow disabled:opacity-50"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{isSavingNotifySettings ? '저장 중...' : '설정 저장'}</span>
+                </button>
+              </div>
+
+              <div className="space-y-2.5">
+                {/* 1. 익절 매도 정산 알림 */}
+                <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800/80 flex items-center justify-between hover:border-slate-700 transition">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-base">
+                      🎉
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-slate-100">익절 매도 정산 알림</span>
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-bold">권장</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400">목표 수익 도달 후 트레일링 익절 완료 시 실현 손익 카드 발송</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleNotifySetting('notifyProfit')}
+                    className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${notifySettings.notifyProfit ? 'bg-emerald-500 justify-end' : 'bg-slate-700 justify-start'}`}
+                  >
+                    <span className="bg-white w-4 h-4 rounded-full shadow-md transform transition-transform" />
+                  </button>
+                </div>
+
+                {/* 2. 손절 방어 매도 알림 */}
+                <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800/80 flex items-center justify-between hover:border-slate-700 transition">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-base">
+                      🛡️
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-slate-100">손절 방어 매도 알림</span>
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-300 font-bold">권장</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400">손절 기준선 도달 시 손실 제한 안전 방어 매도 알림 발송</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleNotifySetting('notifyStoploss')}
+                    className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${notifySettings.notifyStoploss ? 'bg-emerald-500 justify-end' : 'bg-slate-700 justify-start'}`}
+                  >
+                    <span className="bg-white w-4 h-4 rounded-full shadow-md transform transition-transform" />
+                  </button>
+                </div>
+
+                {/* 3. 급등 포착 & 신규 매수 체결 알림 */}
+                <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800/80 flex items-center justify-between hover:border-slate-700 transition">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-base">
+                      ⚡
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-slate-100">급등 포착 & 신규 매수 체결 알림</span>
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold">선택</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400">새 코인이 급등 조건으로 슬롯에 자동 매수 체결되었을 때 알림</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleNotifySetting('notifyBuy')}
+                    className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${notifySettings.notifyBuy ? 'bg-emerald-500 justify-end' : 'bg-slate-700 justify-start'}`}
+                  >
+                    <span className="bg-white w-4 h-4 rounded-full shadow-md transform transition-transform" />
+                  </button>
+                </div>
+
+                {/* 4. 전 슬롯 긴급 매도 알림 */}
+                <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800/80 flex items-center justify-between hover:border-slate-700 transition">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-base">
+                      🚨
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-slate-100">전 슬롯 긴급 매도 (Panic Sell) 알림</span>
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 font-bold">권장</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400">비상 상황 시 보유 중인 모든 코인 일괄 시장가 매도 집행 알림</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleNotifySetting('notifyPanic')}
+                    className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${notifySettings.notifyPanic ? 'bg-emerald-500 justify-end' : 'bg-slate-700 justify-start'}`}
+                  >
+                    <span className="bg-white w-4 h-4 rounded-full shadow-md transform transition-transform" />
+                  </button>
+                </div>
+
+                {/* 5. 멤버십 및 입금 승인 알림 */}
+                <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800/80 flex items-center justify-between hover:border-slate-700 transition">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-base">
+                      💳
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-slate-100">멤버십 입금 승인 및 연장 알림</span>
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 font-bold">권장</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400">회비 입금 확인, 1개월 이용 연장 승인 및 만료 예정 안내</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleNotifySetting('notifyMembership')}
+                    className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${notifySettings.notifyMembership ? 'bg-emerald-500 justify-end' : 'bg-slate-700 justify-start'}`}
+                  >
+                    <span className="bg-white w-4 h-4 rounded-full shadow-md transform transition-transform" />
+                  </button>
+                </div>
+              </div>
+
+              {notifySettingsMsg && (
+                <div className={`p-2.5 rounded-xl text-xs font-medium border ${
+                  notifySettingsMsg.startsWith('✅')
+                    ? 'bg-emerald-950/40 text-emerald-300 border-emerald-500/30'
+                    : 'bg-rose-950/40 text-rose-300 border-rose-500/30'
+                }`}>
+                  {notifySettingsMsg}
+                </div>
+              )}
+            </div>
+
+            {/* 3. 👑 최고 개발자 전용: 텔레그램 봇 토큰(BotFather Token) 관리 (일반 운영자 비노출) */}
             {(user?.role === 'ADMIN' || user?.role === 'DEVELOPER') && (
               <form onSubmit={handleSaveBotToken} className="p-4 sm:p-5 rounded-2xl bg-slate-950/70 border border-amber-500/40 space-y-3.5 shadow-lg">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">

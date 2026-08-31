@@ -21,8 +21,13 @@ export const registerApiKey = async (userId, accessKey, secretKey) => {
   return res.data;
 };
 
-export const linkTelegram = async (userId, chatId) => {
-  const res = await axios.post(`${API_BASE}/auth/telegram`, { userId, chatId });
+export const linkTelegram = async (userId, chatId, notifySettings = null) => {
+  const res = await axios.post(`${API_BASE}/auth/telegram`, { userId, chatId, notifySettings });
+  return res.data;
+};
+
+export const updateTelegramNotifySettings = async (userId, notifySettings) => {
+  const res = await axios.post(`${API_BASE}/auth/telegram-settings`, { userId, notifySettings });
   return res.data;
 };
 
