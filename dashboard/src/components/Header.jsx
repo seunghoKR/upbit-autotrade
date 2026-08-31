@@ -93,7 +93,7 @@ export default function Header({
                 <span className="text-emerald-300 font-bold whitespace-nowrap">레이더 가동 중</span>
                 <span className="text-emerald-400/80 font-mono text-[10px] whitespace-nowrap">({marketCount || 134}개 전종목)</span>
                 <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold border border-emerald-500/30">
-                  v2.6.4
+                  v2.7.0
                 </span>
               </div>
             </div>
