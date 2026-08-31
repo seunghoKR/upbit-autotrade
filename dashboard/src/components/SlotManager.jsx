@@ -71,6 +71,7 @@ export default function SlotManager({
     surgeWindowSeconds: 5,
     surgeRatePct: 1.5,
     surgeMinVolumeKrw: 10000000,
+    surgeBaseMode: 'VWAP',
     trailingTargetProfitPct: 3.0,
     trailingCallbackPct: 1.0,
     stopLossPct: 2.0
@@ -116,6 +117,7 @@ export default function SlotManager({
       surgeWindowSeconds: slot.surgeWindowSeconds !== undefined ? slot.surgeWindowSeconds : 5,
       surgeRatePct: slot.surgeRatePct !== undefined ? slot.surgeRatePct : 1.5,
       surgeMinVolumeKrw: slot.surgeMinVolumeKrw !== undefined ? slot.surgeMinVolumeKrw : 10000000,
+      surgeBaseMode: slot.surgeBaseMode || 'VWAP',
       targetProfitPct: targetProfit,
       trailingTargetProfitPct: targetProfit,
       trailingCallbackPct: callback,
@@ -140,6 +142,7 @@ export default function SlotManager({
         surgeWindowSeconds: editForm.surgeWindowSeconds,
         surgeRatePct: editForm.surgeRatePct,
         surgeMinVolumeKrw: editForm.surgeMinVolumeKrw,
+        surgeBaseMode: editForm.surgeBaseMode || 'VWAP',
         targetProfitPct: targetProfit,
         trailingTargetProfitPct: targetProfit,
         trailingCallbackPct: editForm.trailingCallbackPct,
@@ -516,10 +519,10 @@ export default function SlotManager({
                     )}
                   </div>
 
-                  {/* 🛠️ 셀프전략 전용 상세 옵션 (1. 매수 조건 & 2. 매도 조건 분리) */}
+                  {/* 🛠️ 셀프전략 전용 상세 옵션 (1. 매수 조건 -> 2. 돌파 기준가 모드 -> 3. 매도 조건 3단 구조) */}
                   {editForm.strategyType === 'SELF' ? (
                     <div className="space-y-2.5">
-                      {/* ⚡ 1. 자동 매수 조건 (급등 포착 기준) */}
+                      {/* ⚡ 1. 자동 매수 조건 (급등 포착) */}
                       <div className="p-2.5 rounded-xl bg-amber-950/20 border border-amber-500/30 space-y-2">
                         <div className="text-xs text-amber-300 flex items-center justify-between font-bold">
                           <span className="flex items-center gap-1.5">
@@ -549,7 +552,7 @@ export default function SlotManager({
                             />
                           </div>
                           <div className="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800 text-center">
-                            <label className="text-[11px] text-slate-300 block mb-1 font-medium whitespace-nowrap text-center" title="감시 시간 내 최저가 대비 상승해야 하는 목표 비율">
+                            <label className="text-[11px] text-slate-300 block mb-1 font-medium whitespace-nowrap text-center" title="감시 시간 내 기준가 대비 상승해야 하는 목표 비율">
                               상승률(+%)
                             </label>
                             <input
@@ -586,12 +589,71 @@ export default function SlotManager({
                         </div>
                       </div>
 
-                      {/* 🎯 2. 자동 매도 조건 (트레일링 익절 & 손절) */}
+                      {/* 📈 2. 돌파 기준가 모드 (1틱 튐 노이즈 방어) */}
+                      <div className="p-2.5 rounded-xl bg-indigo-950/20 border border-indigo-500/30 space-y-2">
+                        <div className="text-xs text-indigo-300 flex items-center justify-between font-bold">
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
+                            📈 2. 돌파 기준가 모드 (1틱 튐 노이즈 방어)
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-200 font-normal">
+                            측정 기준 선택
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setEditForm(prev => ({ ...prev, surgeBaseMode: 'VWAP' }))}
+                            className={`p-2 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                              (editForm.surgeBaseMode || 'VWAP') === 'VWAP'
+                                ? 'bg-indigo-600/30 border-indigo-400 text-white shadow-md ring-1 ring-indigo-400/50'
+                                : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-xs flex items-center gap-1">
+                                <span>📊 단기 평균가 (VWAP)</span>
+                              </span>
+                              {(editForm.surgeBaseMode || 'VWAP') === 'VWAP' && (
+                                <Check className="w-3.5 h-3.5 text-indigo-300" />
+                              )}
+                            </div>
+                            <p className="text-[10px] text-slate-400 mt-1 leading-tight">
+                              10초간 거래량 가중평균 대비 상승 <span className="text-amber-300 font-bold">(추천 ✨)</span>
+                            </p>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setEditForm(prev => ({ ...prev, surgeBaseMode: 'MIN' }))}
+                            className={`p-2 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                              editForm.surgeBaseMode === 'MIN'
+                                ? 'bg-indigo-600/30 border-indigo-400 text-white shadow-md ring-1 ring-indigo-400/50'
+                                : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-xs flex items-center gap-1">
+                                <span>📉 롤링 최저가 (Min)</span>
+                              </span>
+                              {editForm.surgeBaseMode === 'MIN' && (
+                                <Check className="w-3.5 h-3.5 text-indigo-300" />
+                              )}
+                            </div>
+                            <p className="text-[10px] text-slate-400 mt-1 leading-tight">
+                              10초 내 최저가 대비 상승 (초단타 모드)
+                            </p>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 🎯 3. 자동 매도 조건 (트레일링 익절 & 손절) */}
                       <div className="p-2.5 rounded-xl bg-slate-950/90 border border-slate-700/80 space-y-2">
                         <div className="text-xs text-slate-200 flex items-center justify-between font-bold">
                           <span className="flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
-                            🎯 2. 자동 매도 조건 (익절 &amp; 손절)
+                            🎯 3. 자동 매도 조건 (익절 &amp; 손절)
                           </span>
                           <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 font-normal">
                             조건 도달 시 즉시 매도

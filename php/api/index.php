@@ -345,6 +345,7 @@ try {
         try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN entry_amount_krw DECIMAL(15,2) DEFAULT NULL"); } catch (Exception $e) {}
         try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN entered_at DATETIME DEFAULT NULL"); } catch (Exception $e) {}
         try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN highest_profit_pct DECIMAL(8,4) DEFAULT 0.0000"); } catch (Exception $e) {}
+        try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN surge_base_mode VARCHAR(10) DEFAULT 'VWAP'"); } catch (Exception $e) {}
     }
 
     try {
@@ -833,6 +834,7 @@ try {
                 'surgeWindowSeconds' => (int)($s['surge_window_seconds'] ?? 5),
                 'surgeRatePct' => (float)($s['surge_rate_pct'] ?? 1.5),
                 'surgeMinVolumeKrw' => (float)($s['surge_min_volume_krw'] ?? 10000000),
+                'surgeBaseMode' => $s['surge_base_mode'] ?: 'VWAP',
                 'targetProfitPct' => (float)($s['target_profit_pct'] ?? 3.0),
                 'trailingCallbackPct' => (float)($s['trailing_callback_pct'] ?? 1.0),
                 'stopLossPct' => (float)($s['stop_loss_pct'] ?? 2.0),
@@ -1262,6 +1264,7 @@ try {
         $surgeWindowSeconds = max(1, abs((int)($input['surgeWindowSeconds'] ?? 5)));
         $surgeRatePct = abs((float)($input['surgeRatePct'] ?? 1.5));
         $surgeMinVolumeKrw = abs((float)($input['surgeMinVolumeKrw'] ?? 10000000));
+        $surgeBaseMode = in_array(strtoupper($input['surgeBaseMode'] ?? 'VWAP'), ['VWAP', 'MIN'], true) ? strtoupper($input['surgeBaseMode']) : 'VWAP';
         $targetProfitPct = abs((float)($input['targetProfitPct'] ?? 3.0));
         $trailingCallbackPct = abs((float)($input['trailingCallbackPct'] ?? 1.0));
         $stopLossPct = abs((float)($input['stopLossPct'] ?? 2.0));
@@ -1282,6 +1285,7 @@ try {
             surge_window_seconds = ?,
             surge_rate_pct = ?,
             surge_min_volume_krw = ?,
+            surge_base_mode = ?,
             target_profit_pct = ?,
             trailing_callback_pct = ?,
             stop_loss_pct = ?
@@ -1294,6 +1298,7 @@ try {
             $surgeWindowSeconds,
             $surgeRatePct,
             $surgeMinVolumeKrw,
+            $surgeBaseMode,
             $targetProfitPct,
             $trailingCallbackPct,
             $stopLossPct,
