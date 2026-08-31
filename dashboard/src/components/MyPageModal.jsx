@@ -755,30 +755,7 @@ export default function MyPageModal({
                   </button>
                 </div>
 
-                {/* 4. 전 슬롯 긴급 매도 알림 */}
-                <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800/80 flex items-center justify-between hover:border-slate-700 transition">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-base">
-                      🚨
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold text-slate-100">전 슬롯 긴급 매도 (Panic Sell) 알림</span>
-                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 font-bold">권장</span>
-                      </div>
-                      <p className="text-[11px] text-slate-400">비상 상황 시 보유 중인 모든 코인 일괄 시장가 매도 집행 알림</p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => toggleNotifySetting('notifyPanic')}
-                    className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${notifySettings.notifyPanic ? 'bg-emerald-500 justify-end' : 'bg-slate-700 justify-start'}`}
-                  >
-                    <span className="bg-white w-4 h-4 rounded-full shadow-md transform transition-transform" />
-                  </button>
-                </div>
-
-                {/* 5. 멤버십 및 입금 승인 알림 */}
+                {/* 4. 멤버십 및 입금 승인 알림 */}
                 <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800/80 flex items-center justify-between hover:border-slate-700 transition">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-base">
