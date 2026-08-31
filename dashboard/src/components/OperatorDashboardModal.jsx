@@ -24,7 +24,9 @@ import {
   Settings2,
   Ban,
   Search,
-  ChevronRight
+  ChevronRight,
+  Shield,
+  ShieldCheck
 } from 'lucide-react';
 import { getAdminUsers, updateUserTier, updateSettings, updateExcludedMarkets, syncUpbitWarningMarkets } from '../services/api';
 
@@ -163,13 +165,19 @@ export default function OperatorDashboardModal({
   const [upbitWarningCoins, setUpbitWarningCoins] = useState([]);
   const dropdownRef = useRef(null);
 
-  // 👑 운영자 단일 추천 전략 (1개의 마스터 추천전략)
+  // 👑 운영자 단일 추천 전략 & 4대 리스크 방어 쉴드
   const [recommendedStrategy, setRecommendedStrategy] = useState({
     name: '🎯 마스터 황금 추천 전략 (Official Golden Standard)',
-    description: '5초 단기 급등 시 신속 진입하여 +3% 익절 추적 및 -2% 칼손절 방어',
+    description: '5초 단기 급등 시 4중 안전 쉴드를 거쳐 진짜 돌파만 안전 진입',
     SURGE_CHECK_SECONDS: currentSettings?.SURGE_CHECK_SECONDS || 5,
     SURGE_RATE_THRESHOLD: currentSettings?.SURGE_RATE_THRESHOLD || 1.5,
     SURGE_MIN_VOLUME_KRW: currentSettings?.SURGE_MIN_VOLUME_KRW || 10000000,
+    SURGE_SUSTAIN_SECONDS: currentSettings?.SURGE_SUSTAIN_SECONDS !== undefined ? currentSettings.SURGE_SUSTAIN_SECONDS : 1.5,
+    SURGE_BASE_MODE: currentSettings?.SURGE_BASE_MODE || 'VWAP',
+    STOPLOSS_COOLDOWN_MINUTES: currentSettings?.STOPLOSS_COOLDOWN_MINUTES !== undefined ? currentSettings.STOPLOSS_COOLDOWN_MINUTES : 15,
+    TIME_BLOCK_ENABLED: currentSettings?.TIME_BLOCK_ENABLED !== undefined ? currentSettings.TIME_BLOCK_ENABLED : true,
+    TIME_BLOCK_START: currentSettings?.TIME_BLOCK_START || '08:50',
+    TIME_BLOCK_END: currentSettings?.TIME_BLOCK_END || '09:30',
     TRAILING_TARGET_PROFIT_PCT: currentSettings?.TRAILING_TARGET_PROFIT_PCT || 3.0,
     TRAILING_CALLBACK_PCT: currentSettings?.TRAILING_CALLBACK_PCT || 1.0,
     STOP_LOSS_PCT: currentSettings?.STOP_LOSS_PCT || 2.0,
@@ -201,6 +209,12 @@ export default function OperatorDashboardModal({
           SURGE_CHECK_SECONDS: currentSettings.SURGE_CHECK_SECONDS || prev.SURGE_CHECK_SECONDS,
           SURGE_RATE_THRESHOLD: currentSettings.SURGE_RATE_THRESHOLD || prev.SURGE_RATE_THRESHOLD,
           SURGE_MIN_VOLUME_KRW: currentSettings.SURGE_MIN_VOLUME_KRW || prev.SURGE_MIN_VOLUME_KRW,
+          SURGE_SUSTAIN_SECONDS: currentSettings.SURGE_SUSTAIN_SECONDS !== undefined ? currentSettings.SURGE_SUSTAIN_SECONDS : prev.SURGE_SUSTAIN_SECONDS,
+          SURGE_BASE_MODE: currentSettings.SURGE_BASE_MODE || prev.SURGE_BASE_MODE,
+          STOPLOSS_COOLDOWN_MINUTES: currentSettings.STOPLOSS_COOLDOWN_MINUTES !== undefined ? currentSettings.STOPLOSS_COOLDOWN_MINUTES : prev.STOPLOSS_COOLDOWN_MINUTES,
+          TIME_BLOCK_ENABLED: currentSettings.TIME_BLOCK_ENABLED !== undefined ? currentSettings.TIME_BLOCK_ENABLED : prev.TIME_BLOCK_ENABLED,
+          TIME_BLOCK_START: currentSettings.TIME_BLOCK_START || prev.TIME_BLOCK_START,
+          TIME_BLOCK_END: currentSettings.TIME_BLOCK_END || prev.TIME_BLOCK_END,
           TRAILING_TARGET_PROFIT_PCT: currentSettings.TRAILING_TARGET_PROFIT_PCT || prev.TRAILING_TARGET_PROFIT_PCT,
           TRAILING_CALLBACK_PCT: currentSettings.TRAILING_CALLBACK_PCT || prev.TRAILING_CALLBACK_PCT,
           STOP_LOSS_PCT: currentSettings.STOP_LOSS_PCT || prev.STOP_LOSS_PCT
@@ -232,6 +246,12 @@ export default function OperatorDashboardModal({
         SURGE_CHECK_SECONDS: Number(recommendedStrategy.SURGE_CHECK_SECONDS),
         SURGE_RATE_THRESHOLD: Number(recommendedStrategy.SURGE_RATE_THRESHOLD),
         SURGE_MIN_VOLUME_KRW: Number(recommendedStrategy.SURGE_MIN_VOLUME_KRW),
+        SURGE_SUSTAIN_SECONDS: Number(recommendedStrategy.SURGE_SUSTAIN_SECONDS),
+        SURGE_BASE_MODE: String(recommendedStrategy.SURGE_BASE_MODE),
+        STOPLOSS_COOLDOWN_MINUTES: Number(recommendedStrategy.STOPLOSS_COOLDOWN_MINUTES),
+        TIME_BLOCK_ENABLED: Boolean(recommendedStrategy.TIME_BLOCK_ENABLED),
+        TIME_BLOCK_START: String(recommendedStrategy.TIME_BLOCK_START),
+        TIME_BLOCK_END: String(recommendedStrategy.TIME_BLOCK_END),
         TRAILING_TARGET_PROFIT_PCT: Number(recommendedStrategy.TRAILING_TARGET_PROFIT_PCT),
         TRAILING_CALLBACK_PCT: Number(recommendedStrategy.TRAILING_CALLBACK_PCT),
         STOP_LOSS_PCT: Number(recommendedStrategy.STOP_LOSS_PCT),
@@ -246,7 +266,7 @@ export default function OperatorDashboardModal({
         await updateSettings(newSettings);
       }
 
-      setSaveSuccessMsg(`🎯 [마스터 추천전략] 파라미터가 전체 봇 엔진 및 모든 추천 슬롯에 성공적으로 일괄 반영되었습니다! 🚀`);
+      setSaveSuccessMsg(`🎯 [마스터 추천전략 & 4대 리스크 방어 쉴드] 파라미터가 전체 봇 엔진 및 모든 추천 슬롯에 성공적으로 일괄 반영되었습니다! 🚀`);
       setTimeout(() => setSaveSuccessMsg(''), 4500);
     } catch (err) {
       alert('추천전략 저장 실패: ' + err.message);
@@ -505,14 +525,248 @@ export default function OperatorDashboardModal({
                   </div>
                 </div>
 
+                {/* 🛡️ 4대 리스크 방어 쉴드 (가짜 펌핑 & 1초 윗꼬리 설거지 완벽 차단) */}
+                <div className="p-5 rounded-xl bg-gradient-to-br from-indigo-950/40 via-slate-900 to-slate-900 border-2 border-indigo-500/50 space-y-5 shadow-lg">
+                  <div className="font-bold text-indigo-300 flex items-center justify-between border-b border-indigo-500/30 pb-2.5">
+                    <span className="flex items-center gap-2 text-sm text-white">
+                      <ShieldCheck className="w-5 h-5 text-cyan-400" />
+                      <span>🛡️ 4중 리스크 방어 쉴드 (세력 설거지/노이즈 완벽 차단)</span>
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold">
+                      실전 필수 안전장치
+                    </span>
+                  </div>
+
+                  {/* 1. ⏱️ 지지 유지 시간 (Sustain Time) */}
+                  <div className="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-slate-200 text-xs font-bold flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>1. 급등 지지 확인 시간 (Sustain Time)</span>
+                      </label>
+                      <span className="text-[11px] font-mono font-bold text-cyan-300">
+                        {Number(recommendedStrategy.SURGE_SUSTAIN_SECONDS).toFixed(1)}초간 지지
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="range"
+                        min="0"
+                        max="5.0"
+                        step="0.5"
+                        value={recommendedStrategy.SURGE_SUSTAIN_SECONDS}
+                        onChange={(e) => setRecommendedStrategy({ ...recommendedStrategy, SURGE_SUSTAIN_SECONDS: Number(e.target.value) })}
+                        className="w-full accent-cyan-400 cursor-pointer"
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        max="5.0"
+                        step="0.5"
+                        value={recommendedStrategy.SURGE_SUSTAIN_SECONDS}
+                        onChange={(e) => setRecommendedStrategy({ ...recommendedStrategy, SURGE_SUSTAIN_SECONDS: Number(e.target.value) })}
+                        className="w-20 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-right font-mono text-xs font-bold text-cyan-300"
+                      />
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                      💡 돌파 후 지정된 시간 동안 가격이 무너지지 않고 버틸 때만 매수하여 <strong>1~2초짜리 윗꼬리 설거지를 100% 회피</strong>합니다. (0초 = 즉시 매수)
+                    </p>
+                  </div>
+
+                  {/* 2. 📊 돌파 기준가 모드 (VWAP vs Min Price) */}
+                  <div className="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800 space-y-2">
+                    <label className="text-slate-200 text-xs font-bold flex items-center gap-1.5">
+                      <Activity className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>2. 돌파 기준가 모드 (1틱 튐 노이즈 방어)</span>
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setRecommendedStrategy({ ...recommendedStrategy, SURGE_BASE_MODE: 'VWAP' })}
+                        className={`p-2.5 rounded-xl border text-xs font-bold text-left transition cursor-pointer ${
+                          recommendedStrategy.SURGE_BASE_MODE === 'VWAP'
+                            ? 'bg-indigo-600/30 border-indigo-500 text-indigo-200 ring-1 ring-indigo-500'
+                            : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span>📊 단기 평균가 (VWAP)</span>
+                          {recommendedStrategy.SURGE_BASE_MODE === 'VWAP' && <Check className="w-3.5 h-3.5 text-indigo-400" />}
+                        </div>
+                        <p className="text-[10px] text-slate-400 font-normal mt-1">
+                          10초간 거래량 가중평균 대비 상승 (추천 ✨)
+                        </p>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setRecommendedStrategy({ ...recommendedStrategy, SURGE_BASE_MODE: 'MIN_PRICE' })}
+                        className={`p-2.5 rounded-xl border text-xs font-bold text-left transition cursor-pointer ${
+                          recommendedStrategy.SURGE_BASE_MODE === 'MIN_PRICE'
+                            ? 'bg-indigo-600/30 border-indigo-500 text-indigo-200 ring-1 ring-indigo-500'
+                            : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span>📉 롤링 최저가 (Min)</span>
+                          {recommendedStrategy.SURGE_BASE_MODE === 'MIN_PRICE' && <Check className="w-3.5 h-3.5 text-indigo-400" />}
+                        </div>
+                        <p className="text-[10px] text-slate-400 font-normal mt-1">
+                          10초 내 최저가 대비 상승 (초단타 모드)
+                        </p>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 3. 🧊 손절 종목 쿨다운 (Stop-Loss Cool-down) */}
+                  <div className="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-slate-200 text-xs font-bold flex items-center gap-1.5">
+                        <Flame className="w-3.5 h-3.5 text-rose-400" />
+                        <span>3. 손절 종목 재진입 쿨다운 (연쇄 손절 방지)</span>
+                      </label>
+                      <span className="text-[11px] font-mono font-bold text-rose-300">
+                        {Number(recommendedStrategy.STOPLOSS_COOLDOWN_MINUTES)}분간 차단
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="range"
+                        min="0"
+                        max="60"
+                        step="5"
+                        value={recommendedStrategy.STOPLOSS_COOLDOWN_MINUTES}
+                        onChange={(e) => setRecommendedStrategy({ ...recommendedStrategy, STOPLOSS_COOLDOWN_MINUTES: Number(e.target.value) })}
+                        className="w-full accent-rose-400 cursor-pointer"
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        max="60"
+                        step="5"
+                        value={recommendedStrategy.STOPLOSS_COOLDOWN_MINUTES}
+                        onChange={(e) => setRecommendedStrategy({ ...recommendedStrategy, STOPLOSS_COOLDOWN_MINUTES: Number(e.target.value) })}
+                        className="w-20 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-right font-mono text-xs font-bold text-rose-300"
+                      />
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                      💡 손절(-2%)이 발생한 종목은 시스템이 자동으로 N분간 매수 레이더에서 배제하여 <strong>떨어지는 칼날 재매수를 방지</strong>합니다.
+                    </p>
+                  </div>
+
+                  {/* 4. ⏰ 특정 시간대 매수 일시정지 (Time Block Filter) */}
+                  <div className="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-slate-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer">
+                        <Clock className="w-3.5 h-3.5 text-amber-400" />
+                        <span>4. 오전 경주마/위험 시간대 매수 일시정지</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setRecommendedStrategy({ ...recommendedStrategy, TIME_BLOCK_ENABLED: !recommendedStrategy.TIME_BLOCK_ENABLED })}
+                        className={`px-3 py-1 rounded-full text-[11px] font-bold transition cursor-pointer ${
+                          recommendedStrategy.TIME_BLOCK_ENABLED
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                            : 'bg-slate-800 text-slate-500 border border-slate-700'
+                        }`}
+                      >
+                        {recommendedStrategy.TIME_BLOCK_ENABLED ? '✅ 타임블록 가동 중' : '비활성'}
+                      </button>
+                    </div>
+
+                    {recommendedStrategy.TIME_BLOCK_ENABLED && (
+                      <div className="flex items-center gap-2 pt-1">
+                        <span className="text-[11px] text-slate-400">정지 구간:</span>
+                        <input
+                          type="time"
+                          value={recommendedStrategy.TIME_BLOCK_START}
+                          onChange={(e) => setRecommendedStrategy({ ...recommendedStrategy, TIME_BLOCK_START: e.target.value })}
+                          className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs font-mono font-bold text-amber-300"
+                        />
+                        <span className="text-slate-400 font-bold">~</span>
+                        <input
+                          type="time"
+                          value={recommendedStrategy.TIME_BLOCK_END}
+                          onChange={(e) => setRecommendedStrategy({ ...recommendedStrategy, TIME_BLOCK_END: e.target.value })}
+                          className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs font-mono font-bold text-amber-300"
+                        />
+                        <span className="text-[11px] text-amber-300/80 font-bold">(매일 자동 적용)</span>
+                      </div>
+                    )}
+                    <p className="text-[11px] text-slate-400">
+                      💡 08:50 ~ 09:30 등 가짜 펌핑이 심한 시간대에는 <strong>신규 매수만 자동 정지</strong>하며, <strong>보유 중인 코인의 익절/손절 매도는 100% 정상 작동</strong>합니다.
+                    </p>
+                  </div>
+                </div>
+
+                {/* 트레일링 익절 & 손절 기준 (Trailing Stop) */}
+                <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 space-y-4">
+                  <div className="font-bold text-emerald-400 flex items-center justify-between border-b border-slate-800 pb-2.5">
+                    <span className="flex items-center gap-2 text-sm">
+                      <TrendingUp className="w-4 h-4" />
+                      트레일링 익절 &amp; 손절 기준 (Trailing Stop)
+                    </span>
+                    <span className="text-[11px] text-slate-400 font-normal">
+                      체결 즉시 감시 가동
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-slate-200 block mb-1 text-xs font-bold">목표 익절 시작선 (%)</label>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0.5"
+                          value={recommendedStrategy.TRAILING_TARGET_PROFIT_PCT}
+                          onChange={(e) => setRecommendedStrategy({ ...recommendedStrategy, TRAILING_TARGET_PROFIT_PCT: Number(e.target.value) })}
+                          className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-emerald-300 font-mono text-sm font-bold focus:outline-none focus:border-emerald-400"
+                        />
+                        <span className="text-slate-400 text-xs font-bold">%</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-slate-200 block mb-1 text-xs font-bold">고점 콜백 하락 (%)</label>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0.2"
+                          value={recommendedStrategy.TRAILING_CALLBACK_PCT}
+                          onChange={(e) => setRecommendedStrategy({ ...recommendedStrategy, TRAILING_CALLBACK_PCT: Number(e.target.value) })}
+                          className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-amber-300 font-mono text-sm font-bold focus:outline-none focus:border-amber-400"
+                        />
+                        <span className="text-slate-400 text-xs font-bold">%</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-slate-200 block mb-1 text-xs font-bold">손절 기준선 (%)</label>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0.5"
+                          value={recommendedStrategy.STOP_LOSS_PCT}
+                          onChange={(e) => setRecommendedStrategy({ ...recommendedStrategy, STOP_LOSS_PCT: Number(e.target.value) })}
+                          className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-rose-300 font-mono text-sm font-bold focus:outline-none focus:border-rose-400"
+                        />
+                        <span className="text-slate-400 text-xs font-bold">-%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* 하단 저장 버튼 */}
                 <div className="flex items-center justify-end pt-2">
                   <button
                     type="submit"
-                    className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-sm transition flex items-center justify-center gap-2 shadow-xl shadow-indigo-600/40 cursor-pointer"
+                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-sm transition flex items-center justify-center gap-2 shadow-xl shadow-indigo-600/40 cursor-pointer"
                   >
                     <Save className="w-5 h-5" />
-                    <span>💾 마스터 추천전략 저장 및 전체 봇 일괄 적용하기</span>
+                    <span>💾 마스터 추천전략 &amp; 4중 리스크 쉴드 일괄 저장하기</span>
                   </button>
                 </div>
               </form>

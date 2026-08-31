@@ -323,8 +323,14 @@ try {
 }
 
 try {
-    // 🛠️ DB 테이블 컬럼 마이그레이션 (telegram_notify_settings 포함)
+    // 🛠️ DB 테이블 컬럼 마이그레이션 (telegram_notify_settings & 4대 리스크 방어 쉴드 포함)
     try { $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN telegram_notify_settings TEXT DEFAULT NULL AFTER telegram_chat_id"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_settings ADD COLUMN surge_sustain_seconds DECIMAL(3,1) DEFAULT 1.5 AFTER surge_check_seconds"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_settings ADD COLUMN surge_base_mode VARCHAR(16) DEFAULT 'VWAP' AFTER surge_sustain_seconds"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_settings ADD COLUMN stoploss_cooldown_minutes INT DEFAULT 15 AFTER stop_loss_pct"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_settings ADD COLUMN time_block_enabled TINYINT(1) DEFAULT 1 AFTER stoploss_cooldown_minutes"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_settings ADD COLUMN time_block_start VARCHAR(8) DEFAULT '08:50' AFTER time_block_enabled"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_settings ADD COLUMN time_block_end VARCHAR(8) DEFAULT '09:30' AFTER time_block_start"); } catch (Exception $e) {}
 
     if (!empty($_GET['run_migration'])) {
         try { $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN name VARCHAR(100) DEFAULT NULL AFTER kakao_id"); } catch (Exception $e) {}
@@ -857,6 +863,12 @@ try {
                 'SURGE_CHECK_SECONDS' => (int)($settings['surge_check_seconds'] ?? 5),
                 'SURGE_RATE_THRESHOLD' => (float)($settings['surge_rate_threshold'] ?? 1.5),
                 'SURGE_MIN_VOLUME_KRW' => (int)($settings['surge_min_volume_krw'] ?? 10000000),
+                'SURGE_SUSTAIN_SECONDS' => (float)($settings['surge_sustain_seconds'] ?? 1.5),
+                'SURGE_BASE_MODE' => (string)($settings['surge_base_mode'] ?? 'VWAP'),
+                'STOPLOSS_COOLDOWN_MINUTES' => (int)($settings['stoploss_cooldown_minutes'] ?? 15),
+                'TIME_BLOCK_ENABLED' => (bool)($settings['time_block_enabled'] ?? true),
+                'TIME_BLOCK_START' => (string)($settings['time_block_start'] ?? '08:50'),
+                'TIME_BLOCK_END' => (string)($settings['time_block_end'] ?? '09:30'),
                 'TRAILING_TARGET_PROFIT_PCT' => (float)($settings['trailing_target_profit_pct'] ?? 3.0),
                 'TRAILING_CALLBACK_PCT' => (float)($settings['trailing_callback_pct'] ?? 1.0),
                 'STOP_LOSS_PCT' => (float)($settings['stop_loss_pct'] ?? 2.0),
@@ -1876,25 +1888,41 @@ try {
         $surgeSec = (int)($input['SURGE_CHECK_SECONDS'] ?? $input['surge_check_seconds'] ?? 5);
         $surgeRate = (float)($input['SURGE_RATE_THRESHOLD'] ?? $input['surge_rate_threshold'] ?? 1.5);
         $surgeVol = (int)($input['SURGE_MIN_VOLUME_KRW'] ?? $input['surge_min_volume_krw'] ?? 10000000);
+        $surgeSustain = (float)($input['SURGE_SUSTAIN_SECONDS'] ?? $input['surge_sustain_seconds'] ?? 1.5);
+        $surgeBaseMode = (string)($input['SURGE_BASE_MODE'] ?? $input['surge_base_mode'] ?? 'VWAP');
+        $stoplossCooldown = (int)($input['STOPLOSS_COOLDOWN_MINUTES'] ?? $input['stoploss_cooldown_minutes'] ?? 15);
+        $timeBlockEnabled = !empty($input['TIME_BLOCK_ENABLED']) || !empty($input['time_block_enabled']) ? 1 : 0;
+        $timeBlockStart = (string)($input['TIME_BLOCK_START'] ?? $input['time_block_start'] ?? '08:50');
+        $timeBlockEnd = (string)($input['TIME_BLOCK_END'] ?? $input['time_block_end'] ?? '09:30');
         $trailingProfit = (float)($input['TRAILING_TARGET_PROFIT_PCT'] ?? $input['trailing_target_profit_pct'] ?? 3.0);
         $trailingCallback = (float)($input['TRAILING_CALLBACK_PCT'] ?? $input['trailing_callback_pct'] ?? 1.0);
         $stopLoss = (float)($input['STOP_LOSS_PCT'] ?? $input['stop_loss_pct'] ?? 2.0);
 
         $stmt = $pdo->prepare("INSERT INTO nurioh_settings 
-            (id, surge_check_seconds, surge_rate_threshold, surge_min_volume_krw, trailing_target_profit_pct, trailing_callback_pct, stop_loss_pct)
-            VALUES (1, ?, ?, ?, ?, ?, ?)
+            (id, surge_check_seconds, surge_rate_threshold, surge_min_volume_krw, surge_sustain_seconds, surge_base_mode, stoploss_cooldown_minutes, time_block_enabled, time_block_start, time_block_end, trailing_target_profit_pct, trailing_callback_pct, stop_loss_pct)
+            VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE 
             surge_check_seconds = VALUES(surge_check_seconds),
             surge_rate_threshold = VALUES(surge_rate_threshold),
             surge_min_volume_krw = VALUES(surge_min_volume_krw),
+            surge_sustain_seconds = VALUES(surge_sustain_seconds),
+            surge_base_mode = VALUES(surge_base_mode),
+            stoploss_cooldown_minutes = VALUES(stoploss_cooldown_minutes),
+            time_block_enabled = VALUES(time_block_enabled),
+            time_block_start = VALUES(time_block_start),
+            time_block_end = VALUES(time_block_end),
             trailing_target_profit_pct = VALUES(trailing_target_profit_pct),
             trailing_callback_pct = VALUES(trailing_callback_pct),
             stop_loss_pct = VALUES(stop_loss_pct)");
-        $stmt->execute([$surgeSec, $surgeRate, $surgeVol, $trailingProfit, $trailingCallback, $stopLoss]);
+        $stmt->execute([
+            $surgeSec, $surgeRate, $surgeVol, $surgeSustain, $surgeBaseMode, 
+            $stoplossCooldown, $timeBlockEnabled, $timeBlockStart, $timeBlockEnd, 
+            $trailingProfit, $trailingCallback, $stopLoss
+        ]);
 
         echo json_encode([
             'success' => true,
-            'message' => '매매 조건 설정이 안전하게 저장되었습니다.'
+            'message' => '마스터 추천전략 및 4중 리스크 방어 쉴드 설정이 안전하게 저장되었습니다.'
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }
