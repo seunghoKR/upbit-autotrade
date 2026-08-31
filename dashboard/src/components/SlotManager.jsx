@@ -265,7 +265,7 @@ export default function SlotManager({
             <div
               key={slot.slotId}
               id={`slot-card-${slot.slotId}`}
-              onClick={() => onSelectSlot && onSelectSlot(slot.slotId)}
+              onClick={() => handleSlotNavClick(slot.slotId)}
               className={`rounded-2xl p-4 sm:p-5 border transition-all duration-300 scroll-mt-24 cursor-pointer relative overflow-hidden flex flex-col justify-between min-h-[255px] select-none ${
                 displaySlots.length === 1 ? 'max-w-xl w-full ' : ''
               }${
