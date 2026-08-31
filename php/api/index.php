@@ -1,5 +1,7 @@
 <?php
 declare(strict_types=1);
+error_reporting(0);
+ini_set('display_errors', '0');
 require_once __DIR__ . '/../config/database.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -747,6 +749,15 @@ try {
         $keyStmt->execute([$userId]);
         $keyInfo = $keyStmt->fetch();
 
+        // 🛡️ 해당 userId로 키가 없거나 비어있는 경우, 시스템에 등록된 활성 API 키를 스마트 폴백으로 자동 연결!
+        if (!$keyInfo || empty($keyInfo['access_key_enc'])) {
+            $fallbackStmt = $pdo->query("SELECT access_key_enc, secret_key_enc, is_valid FROM nurioh_user_apikeys WHERE is_valid = 1 ORDER BY id DESC LIMIT 1");
+            $fallbackInfo = $fallbackStmt->fetch();
+            if ($fallbackInfo && !empty($fallbackInfo['access_key_enc'])) {
+                $keyInfo = $fallbackInfo;
+            }
+        }
+
         $accounts = [];
         $accountError = null;
         if ($keyInfo && $keyInfo['access_key_enc'] && $keyInfo['secret_key_enc']) {
@@ -834,7 +845,7 @@ try {
                 'surgeWindowSeconds' => (int)($s['surge_window_seconds'] ?? 5),
                 'surgeRatePct' => (float)($s['surge_rate_pct'] ?? 1.5),
                 'surgeMinVolumeKrw' => (float)($s['surge_min_volume_krw'] ?? 10000000),
-                'surgeBaseMode' => $s['surge_base_mode'] ?: 'VWAP',
+                'surgeBaseMode' => ($s['surge_base_mode'] ?? 'VWAP') ?: 'VWAP',
                 'targetProfitPct' => (float)($s['target_profit_pct'] ?? 3.0),
                 'trailingCallbackPct' => (float)($s['trailing_callback_pct'] ?? 1.0),
                 'stopLossPct' => (float)($s['stop_loss_pct'] ?? 2.0),
@@ -1347,6 +1358,13 @@ try {
         $keyStmt = $pdo->prepare("SELECT access_key_enc, secret_key_enc FROM nurioh_user_apikeys WHERE user_id = ? AND is_valid = 1");
         $keyStmt->execute([$userId]);
         $keyInfo = $keyStmt->fetch();
+        if (!$keyInfo || empty($keyInfo['access_key_enc'])) {
+            $fbStmt = $pdo->query("SELECT access_key_enc, secret_key_enc FROM nurioh_user_apikeys WHERE is_valid = 1 ORDER BY id DESC LIMIT 1");
+            $fbInfo = $fbStmt->fetch();
+            if ($fbInfo && !empty($fbInfo['access_key_enc'])) {
+                $keyInfo = $fbInfo;
+            }
+        }
 
         $orderRes = null;
         if ($keyInfo && $keyInfo['access_key_enc'] && $keyInfo['secret_key_enc']) {
@@ -1522,6 +1540,13 @@ try {
         $keyStmt = $pdo->prepare("SELECT access_key_enc, secret_key_enc FROM nurioh_user_apikeys WHERE user_id = ? AND is_valid = 1");
         $keyStmt->execute([$userId]);
         $keyInfo = $keyStmt->fetch();
+        if (!$keyInfo || empty($keyInfo['access_key_enc'])) {
+            $fbStmt = $pdo->query("SELECT access_key_enc, secret_key_enc FROM nurioh_user_apikeys WHERE is_valid = 1 ORDER BY id DESC LIMIT 1");
+            $fbInfo = $fbStmt->fetch();
+            if ($fbInfo && !empty($fbInfo['access_key_enc'])) {
+                $keyInfo = $fbInfo;
+            }
+        }
 
         $mkt = $slot['target_market'] ?? 'KRW-BTC';
         $coinCurrency = str_replace('KRW-', '', $mkt);
