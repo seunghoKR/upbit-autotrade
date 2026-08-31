@@ -88,6 +88,19 @@ export default function SlotManager({
     setIsImportModalOpen(true);
   };
 
+  // 🎯 1~9번 슬롯 탭 클릭 시 해당 슬롯 카드로 화면 부드럽게 스크롤 이동
+  const handleSlotNavClick = (slotId) => {
+    if (onSelectSlot) {
+      onSelectSlot(slotId);
+    }
+    setTimeout(() => {
+      const cardElement = document.getElementById(`slot-card-${slotId}`);
+      if (cardElement) {
+        cardElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 50);
+  };
+
   const handleStartEdit = (e, slot) => {
     e.stopPropagation();
     setEditingSlotId(slot.slotId);
@@ -191,16 +204,17 @@ export default function SlotManager({
               return (
                 <button
                   key={slot.slotId}
-                  onClick={() => onSelectSlot && onSelectSlot(slot.slotId)}
-                  className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold shrink-0 transition-colors border cursor-pointer whitespace-nowrap ${
+                  onClick={() => handleSlotNavClick(slot.slotId)}
+                  className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold shrink-0 transition-all border cursor-pointer whitespace-nowrap active:scale-95 ${
                     isSelected
-                      ? 'bg-emerald-500 text-black border-emerald-400 font-extrabold shadow-sm'
+                      ? 'bg-emerald-500 text-black border-emerald-400 font-black shadow-md shadow-emerald-500/30 scale-105'
                       : !slot.isEnabled
                         ? 'bg-slate-950/60 text-slate-500 border-slate-800 hover:text-slate-400'
                         : hasPosition
                         ? 'bg-slate-800/90 text-emerald-300 border-emerald-500/30 hover:bg-slate-800'
                         : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white hover:bg-slate-800'
                   }`}
+                  title={`${slot.slotId}번 슬롯으로 화면 이동`}
                 >
                   <span>{slot.slotId}번</span>
                   <span className="font-normal truncate max-w-[48px] sm:max-w-[60px]">
@@ -250,20 +264,21 @@ export default function SlotManager({
           return (
             <div
               key={slot.slotId}
+              id={`slot-card-${slot.slotId}`}
               onClick={() => onSelectSlot && onSelectSlot(slot.slotId)}
-              className={`rounded-2xl p-4 sm:p-5 border transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between min-h-[255px] select-none ${
+              className={`rounded-2xl p-4 sm:p-5 border transition-all duration-300 scroll-mt-24 cursor-pointer relative overflow-hidden flex flex-col justify-between min-h-[255px] select-none ${
                 displaySlots.length === 1 ? 'max-w-xl w-full ' : ''
               }${
                 !slot.isEnabled
-                  ? 'bg-slate-950/90 border-slate-800/80 opacity-60 grayscale-[25%]'
+                  ? (isSelected ? 'bg-slate-950 border-slate-700 ring-2 ring-slate-500 shadow-xl' : 'bg-slate-950/90 border-slate-800/80 opacity-60 grayscale-[25%]')
                   : isSurgeCounting
                   ? 'bg-amber-950/40 border-amber-400 ring-2 ring-amber-400 shadow-2xl shadow-amber-500/30 animate-pulse'
                   : isSelfStrategy
                   ? (isSelected
-                      ? 'bg-gradient-to-br from-purple-950/50 via-slate-900/95 to-slate-950 border-purple-400 shadow-xl shadow-purple-500/25 ring-1 ring-purple-400/50'
+                      ? 'bg-gradient-to-br from-purple-950/60 via-slate-900/95 to-slate-950 border-purple-400 shadow-2xl shadow-purple-500/30 ring-2 ring-purple-400 scale-[1.01]'
                       : 'bg-gradient-to-br from-purple-950/30 via-slate-900/90 to-slate-950 border-purple-500/60 hover:border-purple-400 hover:shadow-lg hover:shadow-purple-500/15')
                   : (isSelected
-                      ? 'bg-gradient-to-br from-emerald-950/50 via-slate-900/95 to-slate-950 border-emerald-400 shadow-xl shadow-emerald-500/25 ring-1 ring-emerald-400/50'
+                      ? 'bg-gradient-to-br from-emerald-950/60 via-slate-900/95 to-slate-950 border-emerald-400 shadow-2xl shadow-emerald-500/30 ring-2 ring-emerald-400 scale-[1.01]'
                       : 'bg-gradient-to-br from-emerald-950/25 via-slate-900/90 to-slate-950 border-emerald-500/50 hover:border-emerald-400 hover:shadow-lg hover:shadow-emerald-500/15')
               }`}
             >
