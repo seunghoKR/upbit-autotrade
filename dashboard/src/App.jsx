@@ -4,7 +4,7 @@ import BalanceCard from './components/BalanceCard';
 import ChartView from './components/ChartView';
 import SlotManager from './components/SlotManager';
 import PanicSellModal from './components/PanicSellModal';
-import TradeLogs from './components/TradeLogs';
+import BrandShowcaseBanner from './components/BrandShowcaseBanner';
 import TwoFactorModal from './components/TwoFactorModal';
 import GuideModal from './components/GuideModal';
 import PwaInstallPrompt from './components/PwaInstallPrompt';
@@ -1311,13 +1311,8 @@ export default function App() {
           currentUser={currentUser}
         />
 
-        {/* 실시간 체결 로그 & 텔레그램 알림 이력 */}
-        <TradeLogs
-          pendingApproval={pendingApproval}
-          tradeHistory={tradeHistory}
-          onApprove={handleApprove}
-          onReject={handleReject}
-        />
+        {/* 🌟 NURIOH TRADER 브랜드 소개 및 핵심 기능 자랑 쇼케이스 배너 */}
+        <BrandShowcaseBanner marketCount={marketCount} />
       </main>
 
       {/* 🛠️ 개발자용 등급별 원클릭 모드 전환 스위처 & 개발자 대시보드 진입점 */}
