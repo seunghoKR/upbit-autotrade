@@ -354,10 +354,10 @@ export default function OperatorDashboardModal({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-xl font-extrabold text-slate-100 tracking-tight">
-                  사이트 운영자(관리자) 비즈니스 &amp; 전략 콘솔
+                  사이트 운영자 비즈니스 &amp; 전략 콘솔
                 </h3>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold">
-                  Operator Master
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
+                  사이트 운영자
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">

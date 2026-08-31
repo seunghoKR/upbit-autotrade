@@ -108,7 +108,7 @@ export default function DeveloperDashboardModal({ isOpen, onClose, serverIp = '4
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                서버 인프라, 네트워크 지연 모니터링 및 <strong>사이트 운영자(관리자) 권한 임명/해제</strong>를 총괄 제어합니다.
+                서버 인프라, 네트워크 지연 모니터링 및 <strong>사이트 운영자 권한 임명/해제</strong>를 총괄 제어합니다.
               </p>
             </div>
           </div>
@@ -193,14 +193,14 @@ export default function DeveloperDashboardModal({ isOpen, onClose, serverIp = '4
             </div>
           </div>
 
-          {/* 2. 👑 개발자 권한: 사이트 운영자(관리자) 지정 및 관리 패널 */}
+          {/* 2. 👑 개발자 권한: 사이트 운영자 지정 및 관리 패널 */}
           <div className="bg-slate-950/70 p-5 rounded-2xl border border-slate-800 space-y-3.5 shadow-lg">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2">
                 <Crown className="w-5 h-5 text-amber-400" />
                 <div>
                   <h4 className="font-bold text-slate-100 text-sm">
-                    사이트 운영자(관리자) 권한 지정 및 임명 관리
+                    사이트 운영자 권한 지정 및 임명 관리
                   </h4>
                   <p className="text-[11px] text-slate-400">
                     개발자가 지정한 회원은 <strong>[👑 운영자 비즈니스 대시보드]</strong>에 접근하여 입금 승인 및 회원을 관리할 수 있습니다.
@@ -230,7 +230,7 @@ export default function DeveloperDashboardModal({ isOpen, onClose, serverIp = '4
                     <th className="py-3 px-3">현재 역할(Role)</th>
                     <th className="py-3 px-3">멤버십 등급</th>
                     <th className="py-3 px-3">슬롯 권한</th>
-                    <th className="py-3 px-4 text-right">운영자(관리자) 지정 액션</th>
+                    <th className="py-3 px-4 text-right">운영자 지정 액션</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
@@ -297,7 +297,7 @@ export default function DeveloperDashboardModal({ isOpen, onClose, serverIp = '4
                             <button
                               onClick={() => handleToggleRole(user.id, user.role, user.name || user.nickname)}
                               className="px-3.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition flex items-center gap-1.5 ml-auto shadow-md cursor-pointer"
-                              title="이 회원을 사이트 운영자(관리자)로 임명합니다"
+                              title="이 회원을 사이트 운영자로 임명합니다"
                             >
                               <Crown className="w-3.5 h-3.5 text-amber-400" />
                               <span>👑 운영자로 지정</span>

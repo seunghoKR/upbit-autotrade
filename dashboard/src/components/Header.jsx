@@ -134,7 +134,7 @@ export default function Header({
                       ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
                       : 'bg-yellow-500/10 text-yellow-300 border-yellow-500/30'
                   }`}>
-                    {user.role === 'DEVELOPER' ? '👑 개발자' : (user.role === 'OPERATOR' ? '📊 운영자' : (user.role === 'ADMIN' ? '👑 마스터' : (isPending ? '대기' : user.tier)))}
+                    {user.role === 'DEVELOPER' ? '👑 개발자' : (user.role === 'OPERATOR' || user.role === 'ADMIN' ? '📊 운영자' : (isPending ? '대기' : user.tier))}
                   </span>
                   {hasApiKey ? (
                     <span className="hidden md:flex text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-semibold items-center gap-0.5 shrink-0 whitespace-nowrap">
