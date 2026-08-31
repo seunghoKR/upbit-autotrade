@@ -266,6 +266,7 @@ export default function App() {
         if (status.accountError) setAccountError(status.accountError);
         else setAccountError(null);
         if (status.slots && Array.isArray(status.slots) && status.slots.length > 0) {
+          const now = Date.now();
           const normalizedSlots = status.slots.map(s => {
             const rawEntryPrice = parseFloat(s.entryPrice || s.position?.entryPrice || 0);
             const rawEntryVolume = parseFloat(s.entryVolume || s.position?.entryVolume || 0);
@@ -293,18 +294,27 @@ export default function App() {
               delete slotTrackersRef.current[s.slotId];
             }
 
+            // 🛡️ 최근 15초 이내에 사용자가 수정한 슬롯(ON/OFF 등)은 로컬 낙관적 상태를 최우선 보존하여 폴링 롤백 방지!
+            const lastUpdated = lastSlotUpdatesRef.current[s.slotId] || 0;
+            const currentLocalSlot = (slotsRef.current || []).find(ls => ls.slotId === s.slotId);
+            const isRecentlyUpdated = (now - lastUpdated) < 15000;
+            const isEnabled = (isRecentlyUpdated && currentLocalSlot && currentLocalSlot.isEnabled !== undefined) 
+              ? Boolean(currentLocalSlot.isEnabled) 
+              : Boolean(s.isEnabled);
+
             return {
               ...s,
               id: s.id || s.slotId,
               slotId: s.slotId,
               slotName: s.slotName || s.name || `${s.slotId}번 슬롯`,
+              isEnabled: isEnabled,
               positionStatus: hasPosition ? 'IN_POSITION' : 'IDLE',
               entryPrice: entryPrice,
               entryVolume: hasPosition ? (rawEntryVolume > 0 ? rawEntryVolume : (entryPrice > 0 ? rawAmount / entryPrice : null)) : null,
               entryAmountKrw: hasPosition ? (rawAmount > 0 ? rawAmount : (entryPrice && rawEntryVolume ? entryPrice * rawEntryVolume : null)) : null,
               highestPrice: highestPrice,
               highestProfitPct: highestProfitPct,
-              targetMarket: s.targetMarket || 'KRW-BTC',
+              targetMarket: (isRecentlyUpdated && currentLocalSlot?.targetMarket) ? currentLocalSlot.targetMarket : (s.targetMarket || 'KRW-BTC'),
               targetProfitPct: parseFloat(s.targetProfitPct !== undefined ? s.targetProfitPct : (s.target_profit_pct !== undefined ? s.target_profit_pct : (s.trailingTargetProfitPct !== undefined ? s.trailingTargetProfitPct : 3.0))),
               trailingTargetProfitPct: parseFloat(s.trailingTargetProfitPct !== undefined ? s.trailingTargetProfitPct : (s.trailing_target_profit_pct !== undefined ? s.trailing_target_profit_pct : (s.targetProfitPct !== undefined ? s.targetProfitPct : 3.0))),
               trailingCallbackPct: parseFloat(s.trailingCallbackPct !== undefined ? s.trailingCallbackPct : (s.trailing_callback_pct !== undefined ? s.trailing_callback_pct : 1.0)),
@@ -376,6 +386,7 @@ export default function App() {
   const isExecutingSellRef = useRef({});
   const stopLossCooldownsRef = useRef({}); // 🧊 { 'KRW-XRP': unblockTimestamp } (손절 종목 재진입 방지)
   const pendingSustainRef = useRef({}); // ⏱️ { 'KRW-XRP': { firstTriggerTime, baseBreakPrice, slotId, ... } } (1초 윗꼬리 설거지 방지)
+  const lastSlotUpdatesRef = useRef({}); // 🛡️ { [slotId]: timestamp } (최근 슬롯 수정 후 5초 폴링 롤백 방어)
 
   const settingsRef = useRef(settings);
 
@@ -976,6 +987,9 @@ export default function App() {
 
   // 슬롯 설정 수정 (즉각적인 Optimistic UI 반영)
   const handleUpdateSlot = async (slotId, slotData) => {
+    // 🛡️ 수정 시점 타임스탬프 기록 (최근 15초간 백그라운드 폴링 롤백 방어)
+    lastSlotUpdatesRef.current[slotId] = Date.now();
+
     // ⚡ 1. 프론트엔드 상태를 0.001초 만에 즉시 업데이트하여 버튼 및 UI가 딜레이 없이 즉각 전환!
     setSlots(prevSlots => prevSlots.map(s => {
       if (s.slotId === slotId) {
@@ -986,11 +1000,19 @@ export default function App() {
 
     // ⚡ 2. 백그라운드에서 백엔드 DB 저장 동기화
     try {
-      const userId = currentUser?.id || 1;
-      await updateSlotConfig(slotId, { ...slotData, userId });
+      const validUserId = getValidAuthUserId();
+      const userId = currentUser?.id || validUserId || 1;
+      const res = await updateSlotConfig(slotId, { ...slotData, userId });
+      if (res && res.success && res.isEnabled !== undefined) {
+        setSlots(prevSlots => prevSlots.map(s => {
+          if (s.slotId === slotId) {
+            return { ...s, isEnabled: res.isEnabled };
+          }
+          return s;
+        }));
+      }
     } catch (err) {
       console.error('Slot update error:', err);
-      await loadData();
     }
   };
 

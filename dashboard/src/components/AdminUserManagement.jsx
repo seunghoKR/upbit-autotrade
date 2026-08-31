@@ -25,22 +25,28 @@ import {
 } from 'lucide-react';
 import { getAdminUsers, updateAdminUser, sendTelegramTestMessage, confirmUserDeposit } from '../services/api';
 
+// ⚡ 초고속 체감 로딩을 위한 모듈 레벨 메모리 캐시
+let cachedAdminUsers = [];
+
 export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState(cachedAdminUsers);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('ALL'); // ALL | OPERATOR | VIP | PRO | FREE | PENDING
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(cachedAdminUsers.length === 0);
   const [actionSuccess, setActionSuccess] = useState('');
   const [testingTelegramUserId, setTestingTelegramUserId] = useState(null);
 
   const isDeveloper = currentUser?.role === 'DEVELOPER' || currentUser?.role === 'ADMIN';
 
-  const loadUsers = async () => {
-    setIsLoading(true);
+  const loadUsers = async (silent = false) => {
+    if (!silent && (!users || users.length === 0)) {
+      setIsLoading(true);
+    }
     try {
       const res = await getAdminUsers(currentUser?.role || 'DEVELOPER');
-      if (res && res.users) {
+      if (res && Array.isArray(res.users)) {
         setUsers(res.users);
+        cachedAdminUsers = res.users;
       }
     } catch (err) {
       console.error('Failed to load admin users:', err);
@@ -51,7 +57,7 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
 
   useEffect(() => {
     if (isOpen) {
-      loadUsers();
+      loadUsers(false);
     }
   }, [isOpen]);
 
@@ -447,74 +453,89 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
                             <span>{testingTelegramUserId === user.id ? '발송 중...' : '알림 테스트'}</span>
                           </button>
 
-                          {/* 🔽 플랜 변경 펼침 메뉴 (Dropdown Select) */}
+                          {/* 🔽 플랜/역할 관리 메뉴 */}
                           <div className="relative inline-block">
-                            <select
-                              value={isOperator ? 'OPERATOR' : user.tier || 'FREE_TRIAL'}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                if (val === 'FREE_TRIAL') {
-                                  handleUpdateUser(
-                                    user.id, 
-                                    { tier: 'FREE_TRIAL', role: 'USER', approvalStatus: 'APPROVED', addDays: 30 }, 
-                                    `회원 #${user.id} (${user.name || user.nickname})님이 [무료 플랜 (1슬롯)]으로 변경되었습니다.`
-                                  );
-                                } else if (val === 'PRO') {
-                                  handleUpdateUser(
-                                    user.id, 
-                                    { tier: 'PRO', role: 'USER', approvalStatus: 'APPROVED', addDays: 30 }, 
-                                    `회원 #${user.id} (${user.name || user.nickname})님이 [PRO 플랜 (3슬롯, +30일)]으로 변경되었습니다.`
-                                  );
-                                } else if (val === 'VIP') {
-                                  handleUpdateUser(
-                                    user.id, 
-                                    { tier: 'VIP', role: 'USER', approvalStatus: 'APPROVED', addDays: 30 }, 
-                                    `회원 #${user.id} (${user.name || user.nickname})님이 [VIP 플랜 (9슬롯, +30일)]으로 변경되었습니다.`
-                                  );
-                                } else if (val === 'OPERATOR') {
-                                  handleUpdateUser(
-                                    user.id, 
-                                    { 
-                                      role: 'OPERATOR', 
-                                      tier: 'VIP', 
-                                      approvalStatus: 'APPROVED',
-                                      addDays: 9999
-                                    },
-                                    `회원 #${user.id} (${user.name || user.nickname})님이 [운영자]로 임명되었습니다.`
-                                  );
-                                } else if (val === 'USER') {
-                                  handleUpdateUser(
-                                    user.id, 
-                                    { 
-                                      role: 'USER', 
-                                      tier: 'PRO', 
-                                      approvalStatus: 'APPROVED',
-                                      addDays: 30
-                                    },
-                                    `회원 #${user.id} (${user.name || user.nickname})님의 운영자 권한이 해제되어 [일반회원]으로 변경되었습니다.`
-                                  );
-                                }
-                              }}
-                              className={`rounded-xl px-2.5 py-1.5 text-xs font-bold border focus:outline-none cursor-pointer transition shadow-sm bg-slate-900 ${
-                                isOperator 
-                                  ? 'border-purple-500/60 text-purple-300 bg-purple-950/60'
-                                  : isVip 
-                                  ? 'border-amber-500/60 text-amber-300 bg-amber-950/60'
-                                  : isPro 
-                                  ? 'border-indigo-500/60 text-indigo-300 bg-indigo-950/60'
-                                  : 'border-slate-700 text-slate-300 bg-slate-900'
-                              }`}
-                            >
-                              <option value="FREE_TRIAL" className="bg-slate-900 text-slate-200">🟢 무료 (1슬롯)</option>
-                              <option value="PRO" className="bg-slate-900 text-indigo-300">🔵 PRO 플랜 (3슬롯)</option>
-                              <option value="VIP" className="bg-slate-900 text-amber-300">🟡 VIP 플랜 (9슬롯)</option>
-                              {isDeveloper && (
-                                <option value="OPERATOR" className="bg-slate-900 text-purple-300">👑 운영자</option>
-                              )}
-                              {isDeveloper && isOperator && (
-                                <option value="USER" className="bg-slate-900 text-slate-400">⚪ 일반회원으로 전환</option>
-                              )}
-                            </select>
+                            {isOperator && !isDeveloper ? (
+                              /* 🔒 운영자 모드에서는 운영자 등급 변경 불가 (고정 뱃지 표시) */
+                              <div 
+                                className="px-3 py-1.5 rounded-xl bg-purple-950/70 border border-purple-500/50 text-purple-300 font-extrabold text-xs flex items-center gap-1.5 shadow-sm"
+                                title="운영자 등급은 개발자만 관리할 수 있습니다"
+                              >
+                                <Crown className="w-3.5 h-3.5 text-purple-400" />
+                                <span>👑 운영자</span>
+                              </div>
+                            ) : (
+                              /* 🔽 플랜 변경 펼침 메뉴 (Dropdown Select) */
+                              <select
+                                value={isOperator ? 'OPERATOR' : user.tier || 'FREE_TRIAL'}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val === 'FREE_TRIAL') {
+                                    handleUpdateUser(
+                                      user.id, 
+                                      { tier: 'FREE_TRIAL', role: 'USER', approvalStatus: 'APPROVED', addDays: 30 }, 
+                                      `회원 #${user.id} (${user.name || user.nickname})님이 [무료 플랜 (1슬롯)]으로 변경되었습니다.`
+                                    );
+                                  } else if (val === 'PRO') {
+                                    handleUpdateUser(
+                                      user.id, 
+                                      { tier: 'PRO', role: 'USER', approvalStatus: 'APPROVED', addDays: 30 }, 
+                                      `회원 #${user.id} (${user.name || user.nickname})님이 [PRO 플랜 (3슬롯, +30일)]으로 변경되었습니다.`
+                                    );
+                                  } else if (val === 'VIP') {
+                                    handleUpdateUser(
+                                      user.id, 
+                                      { tier: 'VIP', role: 'USER', approvalStatus: 'APPROVED', addDays: 30 }, 
+                                      `회원 #${user.id} (${user.name || user.nickname})님이 [VIP 플랜 (9슬롯, +30일)]으로 변경되었습니다.`
+                                    );
+                                  } else if (val === 'OPERATOR') {
+                                    handleUpdateUser(
+                                      user.id, 
+                                      { 
+                                        role: 'OPERATOR', 
+                                        tier: 'VIP', 
+                                        approvalStatus: 'APPROVED',
+                                        addDays: 9999
+                                      },
+                                      `회원 #${user.id} (${user.name || user.nickname})님이 [운영자]로 임명되었습니다.`
+                                    );
+                                  } else if (val === 'USER') {
+                                    handleUpdateUser(
+                                      user.id, 
+                                      { 
+                                        role: 'USER', 
+                                        tier: 'PRO', 
+                                        approvalStatus: 'APPROVED',
+                                        addDays: 30
+                                      },
+                                      `회원 #${user.id} (${user.name || user.nickname})님의 운영자 권한이 해제되어 [일반회원]으로 변경되었습니다.`
+                                    );
+                                  }
+                                }}
+                                className={`rounded-xl px-2.5 py-1.5 text-xs font-bold border focus:outline-none cursor-pointer transition shadow-sm bg-slate-900 ${
+                                  isOperator 
+                                    ? 'border-purple-500/60 text-purple-300 bg-purple-950/60'
+                                    : isVip 
+                                    ? 'border-amber-500/60 text-amber-300 bg-amber-950/60'
+                                    : isPro 
+                                    ? 'border-indigo-500/60 text-indigo-300 bg-indigo-950/60'
+                                    : 'border-slate-700 text-slate-300 bg-slate-900'
+                                }`}
+                              >
+                                <option value="FREE_TRIAL" className="bg-slate-900 text-slate-200">🟢 무료 (1슬롯)</option>
+                                <option value="PRO" className="bg-slate-900 text-indigo-300">🔵 PRO 플랜 (3슬롯)</option>
+                                <option value="VIP" className="bg-slate-900 text-amber-300">🟡 VIP 플랜 (9슬롯)</option>
+                                {isOperator && (
+                                  <option value="OPERATOR" className="bg-slate-900 text-purple-300">👑 운영자</option>
+                                )}
+                                {isDeveloper && !isOperator && (
+                                  <option value="OPERATOR" className="bg-slate-900 text-purple-300">👑 운영자로 임명</option>
+                                )}
+                                {isDeveloper && isOperator && (
+                                  <option value="USER" className="bg-slate-900 text-slate-400">⚪ 일반회원으로 전환</option>
+                                )}
+                              </select>
+                            )}
                           </div>
                         </div>
                       </td>

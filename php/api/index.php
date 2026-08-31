@@ -95,6 +95,11 @@ function sendTelegramDirectMessage(string $text, ?string $targetChatId = null): 
         return ['success' => true, 'data' => $json];
     }
     $desc = $json['description'] ?? "HTTP {$httpCode} 전송 오류";
+    if (stripos($desc, 'chat not found') !== false) {
+        $desc = "누리오 봇(@nurioh_trade_bot)과 아직 대화를 시작하지 않았습니다. 텔레그램에서 @nurioh_trade_bot 에 접속하여 [시작(Start)] 버튼을 먼저 눌러주셔야 메시지를 수신할 수 있습니다!";
+    } else if (stripos($desc, 'bot was blocked by the user') !== false) {
+        $desc = "사용자가 누리오 텔레그램 봇을 차단했습니다. 텔레그램에서 봇 차단을 해제해 주세요.";
+    }
     return ['success' => false, 'error' => $desc, 'httpCode' => $httpCode];
 }
 
@@ -325,7 +330,8 @@ try {
 }
 
 try {
-    // 🛠️ DB 테이블 컬럼 마이그레이션 (telegram_notify_settings & 4대 리스크 방어 쉴드 포함)
+    // 🛠️ DB 테이블 컬럼 마이그레이션 (run_migration=1 파라미터가 있을 때만 1회성 실행)
+    if (!empty($_GET['run_migration'])) {
     try { $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN telegram_notify_settings TEXT DEFAULT NULL AFTER telegram_chat_id"); } catch (Exception $e) {}
     try { $pdo->exec("ALTER TABLE nurioh_settings ADD COLUMN surge_sustain_seconds DECIMAL(3,1) DEFAULT 1.5 AFTER surge_check_seconds"); } catch (Exception $e) {}
     try { $pdo->exec("ALTER TABLE nurioh_settings ADD COLUMN surge_base_mode VARCHAR(16) DEFAULT 'VWAP' AFTER surge_sustain_seconds"); } catch (Exception $e) {}
@@ -333,22 +339,30 @@ try {
     try { $pdo->exec("ALTER TABLE nurioh_settings ADD COLUMN time_block_enabled TINYINT(1) DEFAULT 1 AFTER stoploss_cooldown_minutes"); } catch (Exception $e) {}
     try { $pdo->exec("ALTER TABLE nurioh_settings ADD COLUMN time_block_start VARCHAR(8) DEFAULT '08:50' AFTER time_block_enabled"); } catch (Exception $e) {}
     try { $pdo->exec("ALTER TABLE nurioh_settings ADD COLUMN time_block_end VARCHAR(8) DEFAULT '09:30' AFTER time_block_start"); } catch (Exception $e) {}
-
-    if (!empty($_GET['run_migration'])) {
-        try { $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN name VARCHAR(100) DEFAULT NULL AFTER kakao_id"); } catch (Exception $e) {}
-        try { $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN phone VARCHAR(50) DEFAULT NULL AFTER email"); } catch (Exception $e) {}
-        try { $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN birthyear VARCHAR(10) DEFAULT '1990' AFTER phone"); } catch (Exception $e) {}
-        try { $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN auto_trading TEXT DEFAULT NULL AFTER agreed_terms"); } catch (Exception $e) {}
-        try { $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN approval_status VARCHAR(32) DEFAULT 'APPROVED' AFTER is_active"); } catch (Exception $e) {}
-        try { $pdo->exec("ALTER TABLE nurioh_users MODIFY COLUMN role VARCHAR(32) DEFAULT 'USER'"); } catch (Exception $e) {}
-        try { $pdo->exec("ALTER TABLE nurioh_settings ADD COLUMN excluded_markets TEXT DEFAULT NULL AFTER surge_min_volume_krw"); } catch (Exception $e) {}
-        try { $pdo->exec("ALTER TABLE nurioh_settings ADD COLUMN telegram_bot_token VARCHAR(255) DEFAULT NULL AFTER excluded_markets"); } catch (Exception $e) {}
-        try { $pdo->exec("ALTER TABLE nurioh_slots MODIFY COLUMN position_status VARCHAR(32) DEFAULT 'IDLE'"); } catch (Exception $e) {}
-        try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN entry_amount_krw DECIMAL(15,2) DEFAULT NULL"); } catch (Exception $e) {}
-        try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN entered_at DATETIME DEFAULT NULL"); } catch (Exception $e) {}
-        try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN highest_profit_pct DECIMAL(8,4) DEFAULT 0.0000"); } catch (Exception $e) {}
-        try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN surge_base_mode VARCHAR(10) DEFAULT 'VWAP'"); } catch (Exception $e) {}
-    }
+    try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN surge_window_seconds INT DEFAULT 5"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN surge_rate_pct DECIMAL(5,2) DEFAULT 1.50"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN surge_min_volume_krw BIGINT DEFAULT 10000000"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN surge_base_mode VARCHAR(10) DEFAULT 'VWAP'"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN target_profit_pct DECIMAL(5,2) DEFAULT 3.00"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN trailing_callback_pct DECIMAL(5,2) DEFAULT 1.00"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN stop_loss_pct DECIMAL(5,2) DEFAULT 2.00"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN total_trades INT DEFAULT 0"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN win_trades INT DEFAULT 0"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN total_realized_profit_krw DECIMAL(15,2) DEFAULT 0.00"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN strategy_type VARCHAR(20) DEFAULT 'RECOMMENDED'"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN entry_amount_krw DECIMAL(15,2) DEFAULT NULL"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN entered_at DATETIME DEFAULT NULL"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN highest_profit_pct DECIMAL(8,4) DEFAULT 0.0000"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_slots MODIFY COLUMN position_status VARCHAR(32) DEFAULT 'IDLE'"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN name VARCHAR(100) DEFAULT NULL AFTER kakao_id"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN phone VARCHAR(50) DEFAULT NULL AFTER email"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN birthyear VARCHAR(10) DEFAULT '1990' AFTER phone"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN auto_trading TEXT DEFAULT NULL AFTER agreed_terms"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN approval_status VARCHAR(32) DEFAULT 'APPROVED' AFTER is_active"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_users MODIFY COLUMN role VARCHAR(32) DEFAULT 'USER'"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_settings ADD COLUMN excluded_markets TEXT DEFAULT NULL AFTER surge_min_volume_krw"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_settings ADD COLUMN telegram_bot_token VARCHAR(255) DEFAULT NULL AFTER excluded_markets"); } catch (Exception $e) {}
+}
 
     try {
         $pdo->exec("CREATE TABLE IF NOT EXISTS `nurioh_payment_logs` (
@@ -1264,64 +1278,110 @@ try {
         exit;
     }
 
-    // 7. POST slots/{id} : 개별 슬롯 설정 저장
+    // 7. POST slots/{id} : 개별 슬롯 설정 저장 (부분 업데이트 및 안전 동기화)
     if (preg_match('#^slots/([0-9]+)$#', $path, $matches) && $method === 'POST') {
-        $slotId = (int)$matches[1];
-        $userId = (int)($input['userId'] ?? 1);
-        $targetMarket = $input['targetMarket'] ?? 'KRW-BTC';
-        $tradeAmount = (float)($input['tradeAmountKrw'] ?? 0);
-        $isEnabled = isset($input['isEnabled']) ? (int)$input['isEnabled'] : 1;
-        $strategyType = $input['strategyType'] ?? 'RECOMMENDED';
-        $surgeWindowSeconds = max(1, abs((int)($input['surgeWindowSeconds'] ?? 5)));
-        $surgeRatePct = abs((float)($input['surgeRatePct'] ?? 1.5));
-        $surgeMinVolumeKrw = abs((float)($input['surgeMinVolumeKrw'] ?? 10000000));
-        $surgeBaseMode = in_array(strtoupper($input['surgeBaseMode'] ?? 'VWAP'), ['VWAP', 'MIN'], true) ? strtoupper($input['surgeBaseMode']) : 'VWAP';
-        $targetProfitPct = abs((float)($input['targetProfitPct'] ?? 3.0));
-        $trailingCallbackPct = abs((float)($input['trailingCallbackPct'] ?? 1.0));
-        $stopLossPct = abs((float)($input['stopLossPct'] ?? 2.0));
+        try {
+            $slotId = (int)$matches[1];
+            $userId = (int)($input['userId'] ?? 1);
 
-        // 🛡️ 만약 현재 슬롯이 IN_POSITION 상태라면, target_market을 임의로 변경하지 않고 기존 보유 코인 마켓을 철저히 보존!
-        $checkStmt = $pdo->prepare("SELECT position_status, target_market FROM nurioh_slots WHERE user_id = ? AND slot_id = ?");
-        $checkStmt->execute([$userId, $slotId]);
-        $existingSlot = $checkStmt->fetch();
-        if ($existingSlot && $existingSlot['position_status'] === 'IN_POSITION' && !empty($existingSlot['target_market'])) {
-            $targetMarket = $existingSlot['target_market'];
+            // 🛡️ 기존 슬롯 정보 조회
+            $checkStmt = $pdo->prepare("SELECT * FROM nurioh_slots WHERE user_id = ? AND slot_id = ?");
+            $checkStmt->execute([$userId, $slotId]);
+            $existingSlot = $checkStmt->fetch();
+
+            $defaultMarkets = [1 => 'KRW-BTC', 2 => 'KRW-ETH', 3 => 'KRW-SOL', 4 => 'KRW-XRP', 5 => 'KRW-DOGE', 6 => 'KRW-ADA', 7 => 'KRW-AVAX', 8 => 'KRW-DOT', 9 => 'KRW-NEAR'];
+            $defaultMkt = $defaultMarkets[$slotId] ?? 'KRW-BTC';
+
+            $targetMarket = $input['targetMarket'] ?? $existingSlot['target_market'] ?? $defaultMkt;
+            // 🛡️ 만약 현재 슬롯이 IN_POSITION 상태라면, target_market을 임의로 변경하지 않고 기존 보유 코인 마켓을 철저히 보존!
+            if ($existingSlot && $existingSlot['position_status'] === 'IN_POSITION' && !empty($existingSlot['target_market'])) {
+                $targetMarket = $existingSlot['target_market'];
+            }
+
+            $tradeAmount = isset($input['tradeAmountKrw']) ? (float)$input['tradeAmountKrw'] : (float)($existingSlot['trade_amount_krw'] ?? 50000);
+            
+            // isEnabled 파라미터 정밀 불리언/정수 변환 (명시적 OFF/ON 처리)
+            $isEnabled = $existingSlot ? (int)$existingSlot['is_enabled'] : 1;
+            if (isset($input['isEnabled'])) {
+                $val = $input['isEnabled'];
+                $isEnabled = ($val === true || $val === 1 || $val === '1' || $val === 'true') ? 1 : 0;
+            }
+
+            $strategyType = $input['strategyType'] ?? $existingSlot['strategy_type'] ?? 'RECOMMENDED';
+            $surgeWindowSeconds = isset($input['surgeWindowSeconds']) ? max(1, abs((int)$input['surgeWindowSeconds'])) : (int)($existingSlot['surge_window_seconds'] ?? 5);
+            $surgeRatePct = isset($input['surgeRatePct']) ? abs((float)$input['surgeRatePct']) : (float)($existingSlot['surge_rate_pct'] ?? 1.5);
+            $surgeMinVolumeKrw = isset($input['surgeMinVolumeKrw']) ? abs((float)$input['surgeMinVolumeKrw']) : (float)($existingSlot['surge_min_volume_krw'] ?? 10000000);
+            $surgeBaseMode = isset($input['surgeBaseMode']) ? (in_array(strtoupper($input['surgeBaseMode']), ['VWAP', 'MIN'], true) ? strtoupper($input['surgeBaseMode']) : 'VWAP') : ($existingSlot['surge_base_mode'] ?? 'VWAP');
+            $targetProfitPct = isset($input['targetProfitPct']) ? abs((float)$input['targetProfitPct']) : (float)($existingSlot['target_profit_pct'] ?? 3.0);
+            $trailingCallbackPct = isset($input['trailingCallbackPct']) ? abs((float)$input['trailingCallbackPct']) : (float)($existingSlot['trailing_callback_pct'] ?? 1.0);
+            $stopLossPct = isset($input['stopLossPct']) ? abs((float)$input['stopLossPct']) : (float)($existingSlot['stop_loss_pct'] ?? 2.0);
+
+            if ($existingSlot) {
+                $stmt = $pdo->prepare("UPDATE nurioh_slots SET 
+                    target_market = ?, 
+                    trade_amount_krw = ?, 
+                    is_enabled = ?,
+                    strategy_type = ?,
+                    surge_window_seconds = ?,
+                    surge_rate_pct = ?,
+                    surge_min_volume_krw = ?,
+                    surge_base_mode = ?,
+                    target_profit_pct = ?,
+                    trailing_callback_pct = ?,
+                    stop_loss_pct = ?
+                    WHERE user_id = ? AND slot_id = ?");
+                $stmt->execute([
+                    $targetMarket, 
+                    $tradeAmount, 
+                    $isEnabled, 
+                    $strategyType,
+                    $surgeWindowSeconds,
+                    $surgeRatePct,
+                    $surgeMinVolumeKrw,
+                    $surgeBaseMode,
+                    $targetProfitPct,
+                    $trailingCallbackPct,
+                    $stopLossPct,
+                    $userId, 
+                    $slotId
+                ]);
+            } else {
+                $stmt = $pdo->prepare("INSERT INTO nurioh_slots 
+                    (user_id, slot_id, slot_name, is_enabled, target_market, trade_amount_krw, strategy_type, surge_window_seconds, surge_rate_pct, surge_min_volume_krw, surge_base_mode, target_profit_pct, trailing_callback_pct, stop_loss_pct, position_status) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'IDLE')");
+                $stmt->execute([
+                    $userId,
+                    $slotId,
+                    "{$slotId}번 슬롯",
+                    $isEnabled,
+                    $targetMarket,
+                    $tradeAmount,
+                    $strategyType,
+                    $surgeWindowSeconds,
+                    $surgeRatePct,
+                    $surgeMinVolumeKrw,
+                    $surgeBaseMode,
+                    $targetProfitPct,
+                    $trailingCallbackPct,
+                    $stopLossPct
+                ]);
+            }
+
+            echo json_encode([
+                'success' => true,
+                'slotId' => $slotId,
+                'isEnabled' => (bool)$isEnabled,
+                'message' => "슬롯 {$slotId}번 ({$strategyType}) 설정이 저장되었습니다."
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'error' => '슬롯 저장 실패: ' . $e->getMessage()
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
         }
-
-        $stmt = $pdo->prepare("UPDATE nurioh_slots SET 
-            target_market = ?, 
-            trade_amount_krw = ?, 
-            is_enabled = ?,
-            strategy_type = ?,
-            surge_window_seconds = ?,
-            surge_rate_pct = ?,
-            surge_min_volume_krw = ?,
-            surge_base_mode = ?,
-            target_profit_pct = ?,
-            trailing_callback_pct = ?,
-            stop_loss_pct = ?
-            WHERE user_id = ? AND slot_id = ?");
-        $stmt->execute([
-            $targetMarket, 
-            $tradeAmount, 
-            $isEnabled, 
-            $strategyType,
-            $surgeWindowSeconds,
-            $surgeRatePct,
-            $surgeMinVolumeKrw,
-            $surgeBaseMode,
-            $targetProfitPct,
-            $trailingCallbackPct,
-            $stopLossPct,
-            $userId, 
-            $slotId
-        ]);
-
-        echo json_encode([
-            'success' => true,
-            'message' => "슬롯 {$slotId}번 ({$strategyType}) 설정이 저장되었습니다."
-        ], JSON_UNESCAPED_UNICODE);
-        exit;
     }
 
     // 7.1 POST slots/{id}/buy : 슬롯 급등 포착 시 업비트 시장가 자동 매수 집행
