@@ -59,9 +59,14 @@ class TelegramBotManager {
     const profitPctText = `${sign}${profitPct.toFixed(2)}%`;
     const profitKrwText = `${sign}${Math.round(profitKrw).toLocaleString()} KRW`;
 
+    const userId = signal.userId || 1;
+    const user = userManager.getUserProfile(userId);
+    const userName = user?.name || user?.nickname || `회원 #${userId}`;
+
     const text = `
 <b>${profitEmoji}</b>
 
+👤 <b>계정:</b> <b>${userName}</b> (ID: ${userId})
 🎰 <b>배정 슬롯:</b> <b>${signal.slotId || 1}번 슬롯 (${signal.slotName || '자동매매'})</b>
 📌 <b>암호화폐:</b> <code>${signal.market}</code>
 📈 <b>실현 수익률:</b> <b>${profitPctText}</b>
@@ -73,8 +78,6 @@ class TelegramBotManager {
 `;
 
     // 🎯 모든 거래 알림은 본인에게만 전송 (해당 유저의 telegramChatId 조회)
-    const userId = signal.userId || 1;
-    const user = userManager.getUserProfile(userId);
     const targetChatId = signal.telegramChatId || user?.telegramChatId;
 
     if (targetChatId) {

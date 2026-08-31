@@ -414,9 +414,12 @@ export default function App() {
 
     // 🎯 각 슬롯별 보유 포지션 실시간 트레일링 스탑 & 손절 조건 감시 및 즉각 집행 (슬롯 개별 ON 스위치 기준)
     const evaluateSlotRisk = (tickCode, tickPrice) => {
+      const activeUser = currentUserRef.current;
+      // 🛡️ 비로그인 상태이거나 유저 정보가 없으면 슬롯 리스크 감시/매도 실행 전면 차단!
+      if (!activeUser || !activeUser.id) return;
+
       const currentSlots = slotsRef.current || [];
       const currentSettings = settingsRef.current || {};
-      const activeUser = currentUserRef.current;
 
       if (!tickPrice || !tickCode) return;
 
@@ -425,8 +428,8 @@ export default function App() {
         if (!slot.isEnabled || slot.positionStatus !== 'IN_POSITION') continue;
         if (slot.targetMarket !== tickCode) continue;
 
-        // 진입가 대비 현재 수익률 계산
-        const entryPrice = slot.entryPrice || tickPrice;
+        // 진입가 대비 현재 수익률 계산 (진입가가 0 이하이거나 유효하지 않은 가상 상태는 방어)
+        const entryPrice = Number(slot.entryPrice || 0);
         if (!entryPrice || entryPrice <= 0) continue;
         const currentProfitPct = ((tickPrice - entryPrice) / entryPrice) * 100;
         if (Math.abs(currentProfitPct) > 1000) continue;
@@ -567,6 +570,10 @@ export default function App() {
         evaluateSlotRisk(tick.code, tick.trade_price);
       },
       onSurge: (tick, buffer) => {
+        const activeUser = currentUserRef.current;
+        // 🛡️ 비로그인 상태에서는 급등 감시 및 자동 매수 전면 차단
+        if (!activeUser || !activeUser.id) return;
+
         const marketCode = tick.code.toUpperCase();
         const currentSettings = settingsRef.current || {};
         const excludedList = (currentSettings.EXCLUDED_MARKETS || []).map(m => String(m).trim().toUpperCase());
@@ -591,7 +598,6 @@ export default function App() {
           return;
         }
 
-        const activeUser = currentUserRef.current;
         const now = Date.now();
 
         // 🛡️ 실제 주문 가능 원화 잔고 실시간 확인 (accountsRef live 동기화)

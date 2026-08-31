@@ -1551,9 +1551,14 @@ try {
             $holdingDurationStr = $mins > 0 ? "{$mins}분 {$secs}초" : "{$secs}초";
         }
 
-        $upbitOrderInfo = $orderRes ? "시장가 전량 체결 (주문: " . substr($orderRes['uuid'] ?? '', 0, 13) . "...)" : ($orderErr ?: "모의 정산 체결");
+        $uStmt = $pdo->prepare("SELECT name, nickname, telegram_chat_id FROM nurioh_users WHERE id = ?");
+        $uStmt->execute([$userId]);
+        $uRow = $uStmt->fetch();
+        $userName = !empty($uRow['name']) ? $uRow['name'] : (!empty($uRow['nickname']) ? $uRow['nickname'] : "회원 #{$userId}");
+        $userChatId = !empty($uRow['telegram_chat_id']) ? trim((string)$uRow['telegram_chat_id']) : null;
 
         $alertMsg = "{$emoji}\n\n" .
+                    "👤 <b>계정:</b> <b>{$userName}</b> (ID: {$userId})\n" .
                     "🎰 <b>슬롯:</b> <b>{$slotId}번 슬롯 ({$stratName})</b>\n" .
                     "📌 <b>종목:</b> <code>{$mkt}</code>\n" .
                     "🎯 <b>매도 사유:</b> {$sellReason}\n" .
@@ -1568,10 +1573,6 @@ try {
                     "⚡ <b>주문 결과:</b> {$upbitOrderInfo}\n" .
                     "🕒 <b>체결 시각:</b> {$timeStr}\n";
 
-        $uStmt = $pdo->prepare("SELECT telegram_chat_id FROM nurioh_users WHERE id = ?");
-        $uStmt->execute([$userId]);
-        $uRow = $uStmt->fetch();
-        $userChatId = !empty($uRow['telegram_chat_id']) ? trim((string)$uRow['telegram_chat_id']) : null;
         if ($userChatId) {
             sendTelegramDirectMessage($alertMsg, $userChatId);
         }
