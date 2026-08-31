@@ -11,6 +11,7 @@ import {
   ArrowRight,
   Sparkles
 } from 'lucide-react';
+import { formatCoinWithKo } from '../services/coinNames';
 
 export default function ImportCoinModal({
   isOpen,
@@ -194,9 +195,8 @@ export default function ImportCoinModal({
                       {coin.currency.slice(0, 3)}
                     </div>
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-black text-white text-sm tracking-tight">{coin.currency}</span>
-                        <span className="text-[10px] text-slate-400 font-mono">({coin.market})</span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-black text-white text-sm tracking-tight">{formatCoinWithKo(coin.market)}</span>
                         {coin.avgBuyPrice > 0 && (
                           <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold font-mono flex items-center gap-0.5 ${
                             isPositive 

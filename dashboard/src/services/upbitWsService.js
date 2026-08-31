@@ -5,6 +5,8 @@
  * 슬롯별 급등 감지 및 자동 매매를 완벽하게 집행합니다.
  */
 
+import { registerUpbitMarketList } from './coinNames';
+
 // 🛡️ 기본 안전 마켓 폴백 목록 (네트워크 오류 시 비상용)
 const FALLBACK_KRW_MARKETS = [
   'KRW-BTC', 'KRW-ETH', 'KRW-XRP', 'KRW-SOL', 'KRW-DOGE', 'KRW-ADA', 'KRW-AVAX', 'KRW-DOT',
@@ -61,6 +63,7 @@ class ClientUpbitEngine {
         const res = await fetch('https://api.upbit.com/v1/market/all?isDetails=false');
         if (res.ok) {
           const list = await res.json();
+          registerUpbitMarketList(list);
           markets = list.filter(m => m.market && m.market.startsWith('KRW-')).map(m => m.market);
         }
       } catch (err) {

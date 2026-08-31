@@ -29,6 +29,7 @@ import {
   Coins
 } from 'lucide-react';
 import ImportCoinModal from './ImportCoinModal';
+import { formatCoinWithKo, getCoinNameKo } from '../services/coinNames';
 
 const DEFAULT_SLOTS = [
   { id: 1, slotId: 1, slotName: '1번 슬롯', isEnabled: true, targetMarket: 'KRW-BTC', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, trailingTargetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
@@ -678,11 +679,11 @@ export default function SlotManager({
                       {/* 보유 상태 시: 깔끔한 3단 라인 구조 (| 코인 | -> 진입단가: xx원 -> 수량: xx 코인) */}
                       {hasPosition ? (
                         <div className="space-y-1">
-                          {/* 1. | 🪙 SAND | */}
+                          {/* 1. | 🪙 AUCTION (바운스토큰) | */}
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="px-2.5 py-0.5 rounded-lg bg-amber-500/25 text-amber-300 font-black text-sm font-mono border border-amber-500/40 shadow-sm flex items-center gap-1">
+                            <span className="px-2.5 py-0.5 rounded-lg bg-amber-500/25 text-amber-300 font-black text-sm font-mono border border-amber-500/40 shadow-sm flex items-center gap-1.5">
                               <Coins className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                              {(slot.targetMarket || '').replace('KRW-', '')}
+                              <span>{formatCoinWithKo(slot.targetMarket)}</span>
                             </span>
                             {(() => {
                               const vol = parseFloat(slot.entryVolume || 0);
