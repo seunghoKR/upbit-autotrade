@@ -1,7 +1,7 @@
 # 📝 누리오(NURIOH) AI 트레이더 종합 개발 메모 & 시스템 가이드
 
-> **버전 (Version):** `v2.1.0 (Enterprise Production Release)`  
-> **최종 갱신일시:** 2026-08-27 22:55 (KST)  
+> **버전 (Version):** `v2.8.0 (Enterprise Production Release - Live Price & Clean Full-Auto)`  
+> **최종 갱신일시:** 2026-09-01 09:57 (KST)  
 > **작성자:** AI 디자인실장 영자 & 마스터 개발자 이승호 대표님  
 > **프로젝트 위치:** `y:\SynologyDrive\00.withAI\자동매매프로그램`  
 > **GitHub 저장소:** `https://github.com/seunghoKR/upbit-autotrade.git` (`main` 브랜치)
