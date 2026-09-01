@@ -610,6 +610,7 @@ export default function App() {
         // 🛡️ 비로그인 상태에서는 급등 감시 및 자동 매수 전면 차단
         if (!activeUser || !activeUser.id) return;
 
+        const now = Date.now();
         const marketCode = tick.code.toUpperCase();
         const currentSettings = settingsRef.current || {};
         const excludedList = (currentSettings.EXCLUDED_MARKETS || []).map(m => String(m).trim().toUpperCase());
