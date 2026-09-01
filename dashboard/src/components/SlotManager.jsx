@@ -269,7 +269,7 @@ export default function SlotManager({
           const targetMkt = slot.targetMarket || '';
           const cleanSym = targetMkt.replace('KRW-', '').toUpperCase();
           const marketData = (livePriceMap && typeof livePriceMap === 'object')
-            ? (livePriceMap[targetMkt] || livePriceMap[`KRW-${cleanSym}`] || livePriceMap[cleanSym])
+            ? (livePriceMap[targetMkt] || livePriceMap[`KRW-${cleanSym}`] || livePriceMap[cleanSym] || livePriceMap[targetMkt.toLowerCase()] || livePriceMap[cleanSym.toLowerCase()])
             : null;
           const hasLivePrice = Boolean(marketData?.trade_price && marketData.trade_price > 0);
           const currentPrice = hasLivePrice ? marketData.trade_price : (effectiveEntryPrice || 0);

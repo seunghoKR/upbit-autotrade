@@ -35,7 +35,8 @@ export default function BalanceCard({
   const processedCoins = activeCoinAccounts
     .map(coin => {
       const market = `KRW-${coin.currency}`;
-      const liveTick = livePriceMap[market] || livePriceMap[coin.currency];
+      const sym = coin.currency;
+      const liveTick = livePriceMap[market] || livePriceMap[sym] || livePriceMap[market.toLowerCase()] || livePriceMap[sym.toLowerCase()];
       const avgBuyPrice = parseFloat(coin.avg_buy_price || 0);
       const currentPrice = liveTick ? parseFloat(liveTick.trade_price || 0) : (avgBuyPrice > 0 ? avgBuyPrice : 0);
       const balance = parseFloat(coin.balance || 0) + parseFloat(coin.locked || 0);
@@ -67,7 +68,7 @@ export default function BalanceCard({
       if (slot.positionStatus === 'IN_POSITION' && slot.entryVolume > 0) {
         const slotMkt = slot.targetMarket || '';
         const slotSym = slotMkt.replace('KRW-', '');
-        const tick = livePriceMap[slotMkt] || livePriceMap[slotSym];
+        const tick = livePriceMap[slotMkt] || livePriceMap[slotSym] || livePriceMap[slotMkt.toLowerCase()] || livePriceMap[slotSym.toLowerCase()];
         const livePrice = tick?.trade_price || slot.entryPrice || 0;
         if (livePrice > 0) {
           slotBasedCoinValue += slot.entryVolume * livePrice;

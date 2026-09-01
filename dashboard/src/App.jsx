@@ -343,7 +343,7 @@ export default function App() {
           const serverBatch = {};
           status.tickers.forEach(t => {
             if (t.market && t.trade_price) {
-              serverBatch[t.market] = {
+              const tickObj = {
                 code: t.market,
                 trade_price: t.trade_price,
                 change: t.change,
@@ -351,6 +351,11 @@ export default function App() {
                 signed_change_rate: t.signed_change_rate,
                 trade_volume: t.trade_volume
               };
+              const rawSymbol = t.market.replace('KRW-', '');
+              serverBatch[t.market] = tickObj;
+              serverBatch[rawSymbol] = tickObj;
+              serverBatch[t.market.toLowerCase()] = tickObj;
+              serverBatch[rawSymbol.toLowerCase()] = tickObj;
             }
           });
           setLivePriceMap(prev => ({ ...prev, ...serverBatch }));
@@ -360,19 +365,21 @@ export default function App() {
         const relevantMarkets = Array.from(new Set([
           ...(status.slots || []).map(s => s.targetMarket).filter(Boolean),
           ...(status.accounts || []).map(a => `KRW-${a.currency}`).filter(Boolean),
-          'KRW-BTC', 'KRW-ETH', 'KRW-XRP', 'KRW-SOL', 'KRW-DOGE', 'KRW-CRV', 'KRW-AUCTION', 'KRW-QTUM'
+          'KRW-BTC', 'KRW-ETH', 'KRW-XRP', 'KRW-SOL', 'KRW-DOGE', 'KRW-CRV', 'KRW-AUCTION', 'KRW-QTUM', 'KRW-FIL', 'KRW-BTT'
         ])).filter(m => m.startsWith('KRW-'));
 
         if (relevantMarkets.length > 0) {
           upbitClientEngine.setTargetMarkets(relevantMarkets);
-          fetch(`/api/tickers?markets=${relevantMarkets.join(',')}`)
-            .then(res => res.ok ? res.json() : fetch(`https://api.upbit.com/v1/ticker?markets=${relevantMarkets.join(',')}`).then(r => r.json()))
+          const tickerQuery = relevantMarkets.join(',');
+          fetch(`https://api.upbit.com/v1/ticker?markets=${tickerQuery}`)
+            .then(res => res.ok ? res.json() : fetch(`/api/tickers?markets=${tickerQuery}`).then(r => r.json()))
+            .catch(() => fetch(`/api/tickers?markets=${tickerQuery}`).then(r => r.json()).catch(() => []))
             .then(tickers => {
               if (Array.isArray(tickers) && tickers.length > 0) {
                 const batch = {};
                 tickers.forEach(t => {
                   if (t.market && t.trade_price) {
-                    batch[t.market] = {
+                    const tickObj = {
                       code: t.market,
                       trade_price: t.trade_price,
                       change: t.change,
@@ -380,6 +387,11 @@ export default function App() {
                       signed_change_rate: t.signed_change_rate,
                       trade_volume: t.trade_volume
                     };
+                    const rawSymbol = t.market.replace('KRW-', '');
+                    batch[t.market] = tickObj;
+                    batch[rawSymbol] = tickObj;
+                    batch[t.market.toLowerCase()] = tickObj;
+                    batch[rawSymbol.toLowerCase()] = tickObj;
                   }
                 });
                 setLivePriceMap(prev => ({ ...prev, ...batch }));
@@ -656,9 +668,11 @@ export default function App() {
 
       upbitClientEngine.setTargetMarkets(activeCoins);
 
-      // ⚡ 업비트 직접 조회 (브라우저 → 업비트 Public API - 서버 프록시 의존 없음)
-      fetch(`https://api.upbit.com/v1/ticker?markets=${activeCoins.join(',')}`)
-        .then(r => r.ok ? r.json() : [])
+      // ⚡ 업비트 직접 조회 (브라우저 → 업비트 Public API, 실패 시 백엔드 프록시로 폴백)
+      const q = activeCoins.join(',');
+      fetch(`https://api.upbit.com/v1/ticker?markets=${q}`)
+        .then(r => r.ok ? r.json() : fetch(`/api/tickers?markets=${q}`).then(r2 => r2.json()))
+        .catch(() => fetch(`/api/tickers?markets=${q}`).then(r2 => r2.json()).catch(() => []))
         .then(tickers => {
           if (Array.isArray(tickers) && tickers.length > 0) {
             const batch = {};
@@ -667,11 +681,15 @@ export default function App() {
                 const tickObj = {
                   code: t.market,
                   trade_price: t.trade_price,
+                  change: t.change,
                   change_rate: t.change_rate,
                   signed_change_rate: t.signed_change_rate
                 };
+                const rawSym = t.market.replace('KRW-', '');
                 batch[t.market] = tickObj;
-                batch[t.market.replace('KRW-', '')] = tickObj;
+                batch[rawSym] = tickObj;
+                batch[t.market.toLowerCase()] = tickObj;
+                batch[rawSym.toLowerCase()] = tickObj;
                 evaluateSlotRisk(t.market, t.trade_price);
               }
             });
@@ -690,7 +708,7 @@ export default function App() {
     // ⚡ 1. 브라우저 직접 업비트 실시간 웹소켓 & 급등 감지기 가동
     upbitClientEngine.init({
       onMarketsLoaded: (count) => {
-        if (count && count >= 200) {
+        if (count && count >= 50) {
           setMarketCount(count);
           try { localStorage.setItem('nurioh_market_count', String(count)); } catch (e) {}
         }
@@ -978,6 +996,7 @@ export default function App() {
 
     return () => {
       upbitClientEngine.destroy();
+      if (syncTimer) clearInterval(syncTimer);
       if (ws) ws.close();
       if (countdownTimersRef.current) {
         Object.values(countdownTimersRef.current).forEach(timer => clearInterval(timer));
