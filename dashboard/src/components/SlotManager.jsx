@@ -258,11 +258,20 @@ export default function SlotManager({
             (pendingSurgeCountdown && pendingSurgeCountdown.slotId === slot.slotId ? pendingSurgeCountdown : null);
           const isSurgeCounting = Boolean(slotCountdown);
 
+          const rawSymbol = (slot.targetMarket || '').replace('KRW-', '');
+          const matchedAcc = Array.isArray(accounts) 
+            ? accounts.find(a => a.currency === rawSymbol || `KRW-${a.currency}` === slot.targetMarket)
+            : null;
+          const liveAvgBuyPrice = matchedAcc && parseFloat(matchedAcc.avg_buy_price) > 0 
+            ? parseFloat(matchedAcc.avg_buy_price) 
+            : null;
+          const effectiveEntryPrice = liveAvgBuyPrice || slot.entryPrice || 0;
+
           const marketData = livePriceMap[slot.targetMarket];
           const hasLivePrice = Boolean(marketData?.trade_price);
-          const currentPrice = hasLivePrice ? marketData.trade_price : (slot.entryPrice || 0);
-          const profitPct = (slot.entryPrice && hasLivePrice) 
-            ? (((currentPrice - slot.entryPrice) / slot.entryPrice) * 100)
+          const currentPrice = hasLivePrice ? marketData.trade_price : (effectiveEntryPrice || 0);
+          const profitPct = (effectiveEntryPrice > 0 && hasLivePrice) 
+            ? (((currentPrice - effectiveEntryPrice) / effectiveEntryPrice) * 100)
             : (slot.highestProfitPct || 0);
           const isProfit = profitPct >= 0;
 
@@ -774,7 +783,7 @@ export default function SlotManager({
 
                           <div className="text-[11px] font-mono text-slate-300 flex items-center gap-1">
                             <span className="text-slate-400 text-[10px]">진입:</span>
-                            <span className="text-white font-extrabold">{formatPrice(slot.entryPrice || currentPrice)}</span>
+                            <span className="text-white font-extrabold">{formatPrice(effectiveEntryPrice || currentPrice)}</span>
                           </div>
 
                           <div className="text-[10px] font-mono text-slate-400 truncate" title={`수량: ${slot.entryVolume ? slot.entryVolume.toFixed(6) : ''}`}>

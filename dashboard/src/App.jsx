@@ -452,8 +452,17 @@ export default function App() {
         if (!slot.isEnabled || slot.positionStatus !== 'IN_POSITION') continue;
         if (slot.targetMarket !== tickCode) continue;
 
-        // 진입가 대비 현재 수익률 계산 (진입가가 0 이하이거나 유효하지 않은 가상 상태는 방어)
-        const entryPrice = Number(slot.entryPrice || 0);
+        // 🛡️ 업비트 실계좌 매수평균가(avg_buy_price)와 100% 동기화하여 수수료 오차 완전 제거
+        const rawSymbol = (slot.targetMarket || '').replace('KRW-', '');
+        const currentAccounts = accountsRef.current || [];
+        const matchedAcc = Array.isArray(currentAccounts)
+          ? currentAccounts.find(a => a.currency === rawSymbol || `KRW-${a.currency}` === slot.targetMarket)
+          : null;
+        const liveAvgBuyPrice = matchedAcc && parseFloat(matchedAcc.avg_buy_price) > 0
+          ? parseFloat(matchedAcc.avg_buy_price)
+          : null;
+        const entryPrice = liveAvgBuyPrice || Number(slot.entryPrice || 0);
+
         if (!entryPrice || entryPrice <= 0) continue;
         const currentProfitPct = ((tickPrice - entryPrice) / entryPrice) * 100;
         if (Math.abs(currentProfitPct) > 1000) continue;
