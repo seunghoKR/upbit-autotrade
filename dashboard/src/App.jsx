@@ -724,16 +724,25 @@ export default function App() {
 
           const currentPrice = recentTicks[recentTicks.length - 1].price;
           const priceDiffRate = ((currentPrice - basePrice) / basePrice) * 100;
-          const totalVolumeKrw = recentTicks.reduce((sum, item) => sum + item.amount, 0);
+          
+          // 📊 윈도우 기간 내 실제 실시간 체결 대금 정밀 계산 (누적 거래대금 차분 또는 틱 합산 중 최댓값)
+          let totalVolumeKrw = recentTicks.reduce((sum, item) => sum + (item.amount || 0), 0);
+          if (recentTicks.length >= 2) {
+            const lastAcc = recentTicks[recentTicks.length - 1].accTradePrice || 0;
+            const firstAcc = recentTicks[0].accTradePrice || 0;
+            if (lastAcc > 0 && firstAcc > 0 && lastAcc >= firstAcc) {
+              totalVolumeKrw = Math.max(totalVolumeKrw, lastAcc - firstAcc);
+            }
+          }
 
           // 🛡️ [쉴드 4] 급등 지지 확인 시간 (Sustain Time Delay: 1초 윗꼬리 설거지 방어)
           const isSurgeConditionMet = (priceDiffRate >= rateThreshold && totalVolumeKrw >= minVolumeKrw);
 
           if (pendingSustainRef.current[marketCode]) {
             const sustainItem = pendingSustainRef.current[marketCode];
-            // 1) 1초 만에 가격이 돌파 기준가 대비 -0.5% 이하로 꺾였으면 가짜 윗꼬리(설거지)로 판정하여 즉시 취소!
-            if (currentPrice < sustainItem.baseBreakPrice * 0.995) {
-              console.log(`🚫 [Sustain Cancelled] ${marketCode}: 1초 윗꼬리 하락 감지 (${currentPrice} < ${sustainItem.baseBreakPrice}) -> 가짜 펌핑 설거지 회피!`);
+            // 1) 급락 시에만 가짜 윗꼬리(설거지)로 판정하여 취소 (기준가의 -1.5% 이하로 폭락 시)
+            if (currentPrice < sustainItem.baseBreakPrice * 0.985) {
+              console.log(`🚫 [Sustain Cancelled] ${marketCode}: 윗꼬리 급락 감지 (${currentPrice} < ${sustainItem.baseBreakPrice * 0.985}) -> 가짜 펌핑 설거지 회피!`);
               delete pendingSustainRef.current[marketCode];
               activeSurgeCoinsRef.current.delete(marketCode);
               return;

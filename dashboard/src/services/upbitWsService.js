@@ -224,7 +224,8 @@ class ClientUpbitEngine {
     }
 
     const buffer = this.tickBuffers.get(market);
-    buffer.push({ price, volume, amount, timestamp: now });
+    const accTradePrice = tick.acc_trade_price || tick.acc_trade_price_24h || 0;
+    buffer.push({ price, volume, amount, accTradePrice, timestamp: now });
 
     const maxCutoff = now - 300000;
     while (buffer.length > 0 && buffer[0].timestamp < maxCutoff) {
