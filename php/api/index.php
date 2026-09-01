@@ -965,11 +965,12 @@ try {
             $ch = curl_init();
             curl_setopt($ch, CURLOPT_URL, "https://api.telegram.org/bot{$curToken}/getMe");
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 4);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
             $res = curl_exec($ch);
             curl_close($ch);
-            $botInfo = json_decode($res, true) ?: ['ok' => false];
+            $botInfo = $res ? json_decode($res, true) : ['ok' => false];
 
             echo json_encode([
                 'success' => true,
@@ -992,15 +993,16 @@ try {
             $ch = curl_init();
             curl_setopt($ch, CURLOPT_URL, "https://api.telegram.org/bot{$newToken}/getMe");
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 4);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 5);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
             $res = curl_exec($ch);
             curl_close($ch);
-            $botInfo = json_decode($res, true);
+            $botInfo = $res ? json_decode($res, true) : null;
 
             if (empty($botInfo['ok'])) {
                 http_response_code(400);
-                $errDesc = $botInfo['description'] ?? '텔레그램 API 인증 실패 (토큰 확인 필요)';
+                $errDesc = $botInfo['description'] ?? '텔레그램 API 인증 실패 (새로 발급받은 유효한 토큰인지 확인해 주세요)';
                 echo json_encode(['success' => false, 'error' => "유효하지 않은 봇 토큰입니다: {$errDesc}"]);
                 exit;
             }
