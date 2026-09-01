@@ -749,18 +749,22 @@ export default function App() {
 
           if (pendingSustainRef.current[marketCode]) {
             const sustainItem = pendingSustainRef.current[marketCode];
+            if (sustainItem.slotId !== slot.slotId) {
+              continue;
+            }
+
             // 1) 급락 시에만 가짜 윗꼬리(설거지)로 판정하여 취소 (기준가의 -1.5% 이하로 폭락 시)
             if (currentPrice < sustainItem.baseBreakPrice * 0.985) {
               console.log(`🚫 [Sustain Cancelled] ${marketCode}: 윗꼬리 급락 감지 (${currentPrice} < ${sustainItem.baseBreakPrice * 0.985}) -> 가짜 펌핑 설거지 회피!`);
               delete pendingSustainRef.current[marketCode];
               activeSurgeCoinsRef.current.delete(marketCode);
-              return;
+              continue;
             }
 
             // 2) 지지 유지 시간 검사
             const elapsedSec = (now - sustainItem.firstTriggerTime) / 1000;
             if (elapsedSec < sustainSeconds) {
-              // 지지 검증 진행 중... (아직 매수하지 않고 대기)
+              // 지지 검증 진행 중... (현재 슬롯 검증 대기)
               return;
             }
 
@@ -786,7 +790,8 @@ export default function App() {
                 return;
               }
             } else {
-              return;
+              // 🛡️ 현재 슬롯 조건에 부합하지 않으면 다음 슬롯(2~9번)으로 넘어가서 계속 탐색!
+              continue;
             }
           }
 
