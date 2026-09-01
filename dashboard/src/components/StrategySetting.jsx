@@ -147,40 +147,15 @@ export default function StrategySetting({ settings, onSaveSettings }) {
             </div>
           </div>
 
-          {/* 3. 텔레그램 승인 및 안전 정책 */}
-          <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 space-y-2.5">
+          {/* 3. 100% 완전 자동 매매 안내 */}
+          <div className="bg-slate-950/60 p-3 rounded-xl border border-indigo-900/40 space-y-1.5">
             <div className="flex items-center gap-1.5 text-indigo-400 font-bold">
               <Clock className="w-3.5 h-3.5" />
-              <span>승인 비서 및 자동 집행 정책</span>
+              <span>100% 완전 자동 매매 집행</span>
             </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-slate-300">승인 제한시간 (초)</span>
-              <input
-                type="number"
-                value={form.APPROVAL_TIMEOUT_SECONDS || 30}
-                onChange={(e) => handleChange('APPROVAL_TIMEOUT_SECONDS', Number(e.target.value))}
-                className="w-20 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-center text-slate-200 focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-
-            <div className="flex items-center justify-between pt-1">
-              <div>
-                <span className="text-slate-300 block">타임아웃 시 자동 주문</span>
-                <span className="text-[10px] text-slate-500">시간 초과 시 취소 대신 자동 실행</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleChange('AUTO_EXECUTE_ON_TIMEOUT', !form.AUTO_EXECUTE_ON_TIMEOUT)}
-                className={`w-9 h-5 rounded-full p-0.5 transition-colors ${
-                  form.AUTO_EXECUTE_ON_TIMEOUT ? 'bg-indigo-600' : 'bg-slate-700'
-                }`}
-              >
-                <div className={`w-4 h-4 rounded-full bg-white transition-transform ${
-                  form.AUTO_EXECUTE_ON_TIMEOUT ? 'translate-x-4' : 'translate-x-0'
-                }`} />
-              </button>
-            </div>
+            <p className="text-[11px] text-slate-300 leading-relaxed">
+              설정된 감시 조건에 부합하면 수동 승인 대기 없이 <b className="text-emerald-400">0.1초 즉시 시장가 매수 및 트레일링 익절/손절</b>이 자동으로 실행됩니다.
+            </p>
           </div>
         </form>
       </div>

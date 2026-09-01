@@ -23,6 +23,18 @@ class StrategyEngine {
     surgeDetector.onSurge(async (surge) => {
       if (!this.isRunning) return;
 
+      // 🛡️ [타임 블록 필터] 오전 경주마/위험 시간대 신규 매수 일시정지 체크
+      if (this.settings.TIME_BLOCK_ENABLED) {
+        const nowObj = new Date();
+        const curTotalMin = nowObj.getHours() * 60 + nowObj.getMinutes();
+        const [sH, sM] = (this.settings.TIME_BLOCK_START || '08:50').split(':').map(Number);
+        const [eH, eM] = (this.settings.TIME_BLOCK_END || '09:30').split(':').map(Number);
+        if (curTotalMin >= (sH * 60 + sM) && curTotalMin <= (eH * 60 + eM)) {
+          console.log(`ℹ️ [타임블록 매수 차단] ${this.settings.TIME_BLOCK_START}~${this.settings.TIME_BLOCK_END} 위험 시간대이므로 신규 매수를 건너뜁니다.`);
+          return;
+        }
+      }
+
       // 🚫 제외 코인(EXCLUDED_MARKETS) 이중 방어 체크
       if (Array.isArray(this.settings.EXCLUDED_MARKETS)) {
         const excluded = this.settings.EXCLUDED_MARKETS.map(m => String(m).trim().toUpperCase());
@@ -224,10 +236,9 @@ class StrategyEngine {
     }
   }
 
-  triggerSignal(signal) {
+  async triggerSignal(signal) {
     const now = Date.now();
     if (now - this.lastSignalTime < this.signalCooldownMs) return;
-    if (this.pendingApproval) return;
 
     this.lastSignalTime = now;
     const signalId = `SIG-${now}`;
@@ -235,12 +246,17 @@ class StrategyEngine {
       id: signalId,
       ...signal,
       createdAt: new Date().toISOString(),
-      status: 'PENDING_APPROVAL',
-      timeoutSeconds: this.settings.APPROVAL_TIMEOUT_SECONDS || 30
+      status: 'AUTO_EXECUTING'
     };
 
-    this.pendingApproval = fullSignal;
     this.emitSignal({ type: 'TRADE_SIGNAL', signal: fullSignal });
+
+    // ⚡ 100% 완전 자동 매매: 승인 대기 없이 즉각 시장가 매수/매도 집행
+    try {
+      await this.executeTrade(fullSignal, 'AUTO_SIGNAL_TRIGGER');
+    } catch (err) {
+      console.error(`❌ [자동 매매 집행 실패] ${fullSignal.market}:`, err.message);
+    }
   }
 
   async executeTrade(signal, triggerType) {

@@ -629,46 +629,88 @@ export default function OperatorDashboardModal({
                   </div>
 
                   {/* 4. ⏰ 특정 시간대 매수 일시정지 (Time Block Filter) */}
-                  <div className="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-slate-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer">
-                        <Clock className="w-3.5 h-3.5 text-amber-400" />
-                        <span>4. 오전 경주마/위험 시간대 매수 일시정지</span>
-                      </label>
+                  <div className={`p-4 rounded-xl border transition-all space-y-3 ${
+                    recommendedStrategy.TIME_BLOCK_ENABLED 
+                      ? 'bg-amber-950/20 border-amber-500/40 ring-1 ring-amber-500/20' 
+                      : 'bg-slate-950/70 border-slate-800'
+                  }`}>
+                    <div 
+                      onClick={() => setRecommendedStrategy(prev => ({ ...prev, TIME_BLOCK_ENABLED: !prev.TIME_BLOCK_ENABLED }))}
+                      className="flex items-center justify-between cursor-pointer select-none group"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className={`p-2 rounded-lg transition-colors ${
+                          recommendedStrategy.TIME_BLOCK_ENABLED ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-slate-500 group-hover:text-slate-300'
+                        }`}>
+                          <Clock className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-slate-200 text-xs font-bold flex items-center gap-2">
+                            <span>4. 오전 경주마/위험 시간대 매수 일시정지</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border transition ${
+                              recommendedStrategy.TIME_BLOCK_ENABLED 
+                                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' 
+                                : 'bg-slate-800 text-slate-400 border-slate-700'
+                            }`}>
+                              {recommendedStrategy.TIME_BLOCK_ENABLED ? '✅ 활성 (가동 중)' : '❌ 비활성 (해제됨)'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            클릭하여 위험 시간대 신규 매수 차단 기능을 켜거나 끕니다.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* iOS 스타일 인터랙티브 토글 스위치 */}
                       <button
                         type="button"
-                        onClick={() => setRecommendedStrategy({ ...recommendedStrategy, TIME_BLOCK_ENABLED: !recommendedStrategy.TIME_BLOCK_ENABLED })}
-                        className={`px-3 py-1 rounded-full text-[11px] font-bold transition cursor-pointer ${
-                          recommendedStrategy.TIME_BLOCK_ENABLED
-                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                            : 'bg-slate-800 text-slate-500 border border-slate-700'
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setRecommendedStrategy(prev => ({ ...prev, TIME_BLOCK_ENABLED: !prev.TIME_BLOCK_ENABLED }));
+                        }}
+                        className={`w-12 h-6 rounded-full p-0.5 transition-colors cursor-pointer flex items-center shrink-0 ${
+                          recommendedStrategy.TIME_BLOCK_ENABLED ? 'bg-amber-500 shadow-lg shadow-amber-500/30' : 'bg-slate-700 hover:bg-slate-600'
                         }`}
                       >
-                        {recommendedStrategy.TIME_BLOCK_ENABLED ? '✅ 타임블록 가동 중' : '비활성'}
+                        <div className={`w-5 h-5 rounded-full bg-white transition-transform transform shadow-md flex items-center justify-center text-[9px] font-black ${
+                          recommendedStrategy.TIME_BLOCK_ENABLED ? 'translate-x-6 text-amber-600' : 'translate-x-0 text-slate-400'
+                        }`}>
+                          {recommendedStrategy.TIME_BLOCK_ENABLED ? 'ON' : 'OFF'}
+                        </div>
                       </button>
                     </div>
 
-                    {recommendedStrategy.TIME_BLOCK_ENABLED && (
-                      <div className="flex items-center gap-2 pt-1">
-                        <span className="text-[11px] text-slate-400">정지 구간:</span>
-                        <input
-                          type="time"
-                          value={recommendedStrategy.TIME_BLOCK_START}
-                          onChange={(e) => setRecommendedStrategy({ ...recommendedStrategy, TIME_BLOCK_START: e.target.value })}
-                          className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs font-mono font-bold text-amber-300"
-                        />
-                        <span className="text-slate-400 font-bold">~</span>
-                        <input
-                          type="time"
-                          value={recommendedStrategy.TIME_BLOCK_END}
-                          onChange={(e) => setRecommendedStrategy({ ...recommendedStrategy, TIME_BLOCK_END: e.target.value })}
-                          className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs font-mono font-bold text-amber-300"
-                        />
-                        <span className="text-[11px] text-amber-300/80 font-bold">(매일 자동 적용)</span>
+                    {/* 시간 설정 입력 영역 */}
+                    <div className={`p-3 rounded-lg border transition-all ${
+                      recommendedStrategy.TIME_BLOCK_ENABLED 
+                        ? 'bg-slate-900/90 border-amber-500/30' 
+                        : 'bg-slate-900/40 border-slate-800/80 opacity-60'
+                    }`}>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-slate-300">정지 구간 설정:</span>
+                          <input
+                            type="time"
+                            value={recommendedStrategy.TIME_BLOCK_START || '08:50'}
+                            onChange={(e) => setRecommendedStrategy(prev => ({ ...prev, TIME_BLOCK_START: e.target.value }))}
+                            className="bg-slate-950 border border-slate-700 focus:border-amber-500 rounded-lg px-2.5 py-1 text-xs font-mono font-bold text-amber-300 focus:outline-none"
+                          />
+                          <span className="text-slate-400 font-bold">~</span>
+                          <input
+                            type="time"
+                            value={recommendedStrategy.TIME_BLOCK_END || '09:30'}
+                            onChange={(e) => setRecommendedStrategy(prev => ({ ...prev, TIME_BLOCK_END: e.target.value }))}
+                            className="bg-slate-950 border border-slate-700 focus:border-amber-500 rounded-lg px-2.5 py-1 text-xs font-mono font-bold text-amber-300 focus:outline-none"
+                          />
+                        </div>
+                        <span className="text-[11px] text-amber-300/90 font-medium">
+                          {recommendedStrategy.TIME_BLOCK_ENABLED ? '⚡ 매일 해당 시간대 신규 매수 차단' : '⏸ 스위치가 꺼져 있어 상시 매수 허용'}
+                        </span>
                       </div>
-                    )}
-                    <p className="text-[11px] text-slate-400">
-                      💡 08:50 ~ 09:30 등 가짜 펌핑이 심한 시간대에는 <strong>신규 매수만 자동 정지</strong>하며, <strong>보유 중인 코인의 익절/손절 매도는 100% 정상 작동</strong>합니다.
+                    </div>
+
+                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                      💡 <b>08:50 ~ 09:30</b> 등 업비트 일봉 마감/경주마 시간대에는 <strong>신규 매수만 자동 정지</strong>하며, <strong>보유 중인 코인의 익절/손절 매도는 100% 정상 작동</strong>합니다.
                     </p>
                   </div>
                 </div>

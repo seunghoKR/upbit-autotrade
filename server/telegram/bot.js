@@ -114,55 +114,24 @@ class TelegramBotManager {
       const chatId = update.message.chat.id;
       const firstName = update.message.from?.first_name || '회원';
 
-      if (text.startsWith('/start') || text === '/help' || text === '/chatid' || text.toLowerCase() === '@userinfobot' || text.toLowerCase() === 'u') {
-        const welcomeMsg = `
-<b>🤖 누리오 매매비서 (@nurioh_trade_bot)</b>
+      // 텔레그램은 순수 알림 수신 채널로 동작: 사용자가 말을 걸면 Chat ID 연동 안내만 깔끔하게 제공
+      const welcomeMsg = `
+<b>🔔 누리오 트레이더 실시간 알림 채널</b>
 
 안녕하세요, <b>${firstName}</b>님! 🚀
-누리오 트레이더(NURIOH TRADER) 자동매매 봇입니다.
+이 봇은 회원님의 <b>[매도 익절/손절 정산 카드]</b>를 1:1로 실시간 전달해 드리는 알림 전용 채널입니다.
 
 📌 <b>회원님의 텔레그램 Chat ID:</b>
 👉 <code>${chatId}</code> <i>(터치하여 복사)</i>
 
 ━━━━━━━━━━━━━━━━━━━
-💡 <b>대시보드 연동 방법:</b>
+💡 <b>실시간 정산 알림 연동 방법:</b>
 1. 위 Chat ID 번호(<code>${chatId}</code>)를 복사합니다.
-2. 누리오 AI 트레이더 웹 대시보드에 접속합니다.
-3. 상단 <b>[마이페이지] ➔ [텔레그램]</b> 탭에서 붙여넣고 <b>[저장]</b>을 눌러주세요!
+2. 누리오 웹 대시보드 ➔ <b>[마이페이지] ➔ [텔레그램]</b> 탭에 붙여넣고 <b>[저장]</b>을 눌러주세요!
 
-📊 <b>지원 명령어:</b>
-• <code>/status</code> - 24시간 실시간 감시 봇 상태 조회
-• <code>/balance</code> - 업비트 실계좌 잔고 조회
-• <code>/start</code> - 내 Chat ID 및 도움말 확인
-━━━━━━━━━━━━━━━━━━━
+🎯 연동이 완료되면 회원님 계좌의 거래 정산 알림이 이곳으로 자동 발송됩니다.
 `;
-        await this.sendMessage(welcomeMsg, null, chatId);
-      } else if (text === '/balance') {
-        try {
-          const accounts = await upbitClient.getAccounts();
-          let balanceMsg = '<b>📊 실시간 업비트 잔고 현황</b>\n\n';
-          accounts.forEach(acc => {
-            if (Number(acc.balance) > 0 || Number(acc.locked) > 0) {
-              balanceMsg += `• <b>${acc.currency}:</b> ${Number(acc.balance).toLocaleString()} (잠김: ${Number(acc.locked).toLocaleString()})\n`;
-            }
-          });
-          await this.sendMessage(balanceMsg, null, chatId);
-        } catch (err) {
-          await this.sendMessage(`❌ 잔고 조회 실패: ${err.message}`, null, chatId);
-        }
-      } else if (text === '/status') {
-        const isRunning = this.strategyEngine ? this.strategyEngine.isRunning : false;
-        const msg = `
-<b>🤖 NURIOH 자동매매 봇 상태</b>
-
-• <b>상태:</b> ${isRunning ? '🟢 24시간 실시간 감시 중' : '🔴 일시 정지'}
-• <b>알림 모드:</b> 🎯 매도 정산 알림만 발송 (스팸 방지)
-• <b>급등 감시 주기:</b> ${this.strategyEngine?.settings?.SURGE_CHECK_SECONDS || 5}초
-• <b>목표 익절선:</b> +${this.strategyEngine?.settings?.TRAILING_TARGET_PROFIT_PCT || 3.0}%
-• <b>최대 손절선:</b> -${this.strategyEngine?.settings?.STOP_LOSS_PCT || 2.0}%
-`;
-        await this.sendMessage(msg, null, chatId);
-      }
+      await this.sendMessage(welcomeMsg, null, chatId);
     }
   }
 }
