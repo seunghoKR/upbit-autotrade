@@ -3,6 +3,7 @@ import { Wallet, Coins, TrendingUp, TrendingDown, Info, ShieldCheck, Sparkles, C
 
 export default function BalanceCard({ 
   accounts = [], 
+  slots = [],
   livePriceMap = {}, 
   accountError = null, 
   serverIp = '115.68.168.243',
@@ -34,7 +35,7 @@ export default function BalanceCard({
   const processedCoins = activeCoinAccounts
     .map(coin => {
       const market = `KRW-${coin.currency}`;
-      const liveTick = livePriceMap[market];
+      const liveTick = livePriceMap[market] || livePriceMap[coin.currency];
       const avgBuyPrice = parseFloat(coin.avg_buy_price || 0);
       const currentPrice = liveTick ? parseFloat(liveTick.trade_price || 0) : (avgBuyPrice > 0 ? avgBuyPrice : 0);
       const balance = parseFloat(coin.balance || 0) + parseFloat(coin.locked || 0);
@@ -58,7 +59,27 @@ export default function BalanceCard({
     totalCoinEvalValue += coin.evalAmount;
   });
 
-  const totalAssets = activeKrwBalance + totalCoinEvalValue;
+  // 🛡️ accounts가 비어있거나 0원일 때 → 슬롯 포지션 + 실시간 시세로 총자산 보정
+  let slotBasedCoinValue = 0;
+  let slotHasPosition = false;
+  if (!hasRealAccounts && Array.isArray(slots)) {
+    slots.forEach(slot => {
+      if (slot.positionStatus === 'IN_POSITION' && slot.entryVolume > 0) {
+        const slotMkt = slot.targetMarket || '';
+        const slotSym = slotMkt.replace('KRW-', '');
+        const tick = livePriceMap[slotMkt] || livePriceMap[slotSym];
+        const livePrice = tick?.trade_price || slot.entryPrice || 0;
+        if (livePrice > 0) {
+          slotBasedCoinValue += slot.entryVolume * livePrice;
+          slotHasPosition = true;
+        }
+      }
+    });
+  }
+
+  const totalAssets = hasRealAccounts
+    ? (activeKrwBalance + totalCoinEvalValue)
+    : (slotHasPosition ? slotBasedCoinValue : 0);
   const totalProfitAmount = totalCoinEvalValue - totalCoinBuyAmount;
   const totalProfitRate = totalCoinBuyAmount > 0 ? (totalProfitAmount / totalCoinBuyAmount) * 100 : 0;
   const isPositive = totalProfitRate >= 0;
@@ -96,7 +117,7 @@ export default function BalanceCard({
             </span>
           )}
           <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-bold">
-            v2.8.2
+            v2.9.1
           </span>
         </div>
       </div>

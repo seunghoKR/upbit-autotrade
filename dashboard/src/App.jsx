@@ -157,7 +157,16 @@ export default function App() {
   const [accountError, setAccountError] = useState(null);
   const hasRealAccounts = Array.isArray(accounts) && accounts.length > 0 && accounts.some(a => parseFloat(a.balance || 0) > 0 || parseFloat(a.locked || 0) > 0);
   const isApiConnected = !accountError && hasRealAccounts;
-  const [slots, setSlots] = useState(DEFAULT_SLOTS);
+  const [slots, setSlots] = useState(() => {
+    try {
+      const cached = localStorage.getItem('nurioh_cached_slots');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return DEFAULT_SLOTS;
+  });
   const [candles, setCandles] = useState([]);
   const [pendingApproval, setPendingApproval] = useState(null);
   const [tradeHistory, setTradeHistory] = useState([]);
@@ -322,22 +331,44 @@ export default function App() {
             };
           });
           setSlots(normalizedSlots);
+          try {
+            localStorage.setItem('nurioh_cached_slots', JSON.stringify(normalizedSlots));
+          } catch (e) {}
         }
         if (status.pendingApproval) setPendingApproval(status.pendingApproval);
         if (status.tradeHistory) setTradeHistory(status.tradeHistory);
+
+        // ⚡ [서버 직통 0초 즉시 시세 주입] 백엔드 /api/status 에서 함께 동봉된 실시간 현재가 즉시 반영!
+        if (status.tickers && Array.isArray(status.tickers) && status.tickers.length > 0) {
+          const serverBatch = {};
+          status.tickers.forEach(t => {
+            if (t.market && t.trade_price) {
+              serverBatch[t.market] = {
+                code: t.market,
+                trade_price: t.trade_price,
+                change: t.change,
+                change_rate: t.change_rate,
+                signed_change_rate: t.signed_change_rate,
+                trade_volume: t.trade_volume
+              };
+            }
+          });
+          setLivePriceMap(prev => ({ ...prev, ...serverBatch }));
+        }
 
         // ⚡ [0.01초 즉시 동기화] 슬롯 대상 코인 및 보유 코인의 실시간 현재가를 REST API로 즉시 조회하여 livePriceMap에 주입!
         const relevantMarkets = Array.from(new Set([
           ...(status.slots || []).map(s => s.targetMarket).filter(Boolean),
           ...(status.accounts || []).map(a => `KRW-${a.currency}`).filter(Boolean),
-          'KRW-BTC', 'KRW-ETH', 'KRW-XRP', 'KRW-SOL', 'KRW-DOGE', 'KRW-SAND', 'KRW-QTUM'
+          'KRW-BTC', 'KRW-ETH', 'KRW-XRP', 'KRW-SOL', 'KRW-DOGE', 'KRW-CRV', 'KRW-AUCTION', 'KRW-QTUM'
         ])).filter(m => m.startsWith('KRW-'));
 
         if (relevantMarkets.length > 0) {
-          fetch(`https://api.upbit.com/v1/ticker?markets=${relevantMarkets.join(',')}`)
-            .then(res => res.json())
+          upbitClientEngine.setTargetMarkets(relevantMarkets);
+          fetch(`/api/tickers?markets=${relevantMarkets.join(',')}`)
+            .then(res => res.ok ? res.json() : fetch(`https://api.upbit.com/v1/ticker?markets=${relevantMarkets.join(',')}`).then(r => r.json()))
             .then(tickers => {
-              if (Array.isArray(tickers)) {
+              if (Array.isArray(tickers) && tickers.length > 0) {
                 const batch = {};
                 tickers.forEach(t => {
                   if (t.market && t.trade_price) {
@@ -411,11 +442,20 @@ export default function App() {
   }, [settings]);
 
   useEffect(() => {
-    // ⚡ [0.01초 초광속 초기화] 컴포넌트 마운트 즉시 주요 마켓 실시간 현재가 즉시 REST 선조회
-    const instantMarkets = [
-      'KRW-SAND', 'KRW-GRVT', 'KRW-DOGE', 'KRW-QTUM', 'KRW-BTC', 'KRW-ETH', 'KRW-XRP',
-      'KRW-SOL', 'KRW-ADA', 'KRW-AVAX', 'KRW-DOT', 'KRW-NEAR', 'KRW-STX', 'KRW-SUI'
-    ];
+    // ⚡ [0.01초 초광속 초기화] 캐시된 슬롯 코인 + 주요 코인을 브라우저에서 업비트 직접 조회!
+    const cachedSlotMarkets = (() => {
+      try {
+        const cached = JSON.parse(localStorage.getItem('nurioh_cached_slots') || '[]');
+        return cached.map(s => s.targetMarket).filter(m => m && m.startsWith('KRW-'));
+      } catch (e) { return []; }
+    })();
+    const instantMarkets = Array.from(new Set([
+      ...cachedSlotMarkets,
+      'KRW-PROM', 'KRW-FIL', 'KRW-QTUM', 'KRW-AUCTION',
+      'KRW-BTC', 'KRW-ETH', 'KRW-XRP', 'KRW-SOL', 'KRW-DOGE',
+      'KRW-ADA', 'KRW-AVAX', 'KRW-DOT', 'KRW-NEAR', 'KRW-STX', 'KRW-SUI'
+    ]));
+    // 업비트 직접 조회 (브라우저 → 업비트, 서버 프록시 불필요)
     fetch(`https://api.upbit.com/v1/ticker?markets=${instantMarkets.join(',')}`)
       .then(res => res.ok ? res.json() : [])
       .then(tickers => {
@@ -423,12 +463,14 @@ export default function App() {
           const batch = {};
           tickers.forEach(t => {
             if (t.market && t.trade_price) {
-              batch[t.market] = {
+              const tick = {
                 code: t.market,
                 trade_price: t.trade_price,
                 change_rate: t.change_rate,
                 signed_change_rate: t.signed_change_rate
               };
+              batch[t.market] = tick;
+              batch[t.market.replace('KRW-', '')] = tick;
             }
           });
           setLivePriceMap(prev => ({ ...prev, ...batch }));
@@ -445,35 +487,55 @@ export default function App() {
       const currentSlots = slotsRef.current || [];
       const currentSettings = settingsRef.current || {};
 
-      if (!tickPrice || !tickCode) return;
+      if (!tickPrice || tickPrice <= 0 || !tickCode) return;
 
       for (const slot of currentSlots) {
-        // 개별 슬롯이 ON이고 포지션 보유 중인 경우 무조건 손절/익절 감시 실행!
-        if (!slot.isEnabled || slot.positionStatus !== 'IN_POSITION') continue;
-        if (slot.targetMarket !== tickCode) continue;
+        if (!slot.isEnabled) continue;
 
-        // 🛡️ 업비트 실계좌 매수평균가(avg_buy_price)와 100% 동기화하여 수수료 오차 완전 제거
-        const rawSymbol = (slot.targetMarket || '').replace('KRW-', '');
+        // 이미 매도 진행 중인 슬롯은 스킵
+        if (isExecutingSellRef.current[slot.slotId]) continue;
+
+        // 🛡️ 마켓 코드 대소문자 및 KRW- 접두사 유연 매칭
+        const slotMarket = (slot.targetMarket || '').trim().toUpperCase();
+        const incomingTick = (tickCode || '').trim().toUpperCase();
+        const slotSymbol = slotMarket.replace('KRW-', '');
+        const tickSymbol = incomingTick.replace('KRW-', '');
+        const isMarketMatched = slotSymbol === tickSymbol;
+        
+        if (!isMarketMatched) continue;
+
+        // 🛡️ 업비트 실계좌 매수평균가(avg_buy_price) 및 잔고와 100% 동기화
         const currentAccounts = accountsRef.current || [];
         const matchedAcc = Array.isArray(currentAccounts)
-          ? currentAccounts.find(a => a.currency === rawSymbol || `KRW-${a.currency}` === slot.targetMarket)
+          ? currentAccounts.find(a => a.currency === slotSymbol)
           : null;
-        const liveAvgBuyPrice = matchedAcc && parseFloat(matchedAcc.avg_buy_price) > 0
-          ? parseFloat(matchedAcc.avg_buy_price)
-          : null;
-        const entryPrice = liveAvgBuyPrice || Number(slot.entryPrice || 0);
+        const accBalance = matchedAcc ? parseFloat(matchedAcc.balance || 0) : 0;
+        const hasRealBalance = accBalance > 0.0000001;
+
+        // hasPosition: 슬롯 상태가 IN_POSITION이고, 진입가 또는 실계좌 잔고가 실제로 존재할 때만 감시!
+        const slotEntryPrice = Number(slot.entryPrice || 0);
+        const isDbInPosition = (slot.positionStatus === 'IN_POSITION' || slot.positionStatus === 'HOLDING' || slot.positionStatus === 'TRAILING_ACTIVE');
+        const hasPosition = isDbInPosition && (slotEntryPrice > 0 || hasRealBalance);
+
+        // 포지션이 실제로 없으면 감시 즉시 스킵
+        if (!hasPosition) continue;
+
+        // 진입가: 실계좌 평균단가 → 슬롯 DB 진입가 순으로 폴백
+        const accAvgBuyPrice = matchedAcc ? parseFloat(matchedAcc.avg_buy_price || 0) : 0;
+        const entryPrice = (accAvgBuyPrice > 0) ? accAvgBuyPrice : slotEntryPrice;
 
         if (!entryPrice || entryPrice <= 0) continue;
         const currentProfitPct = ((tickPrice - entryPrice) / entryPrice) * 100;
-        if (Math.abs(currentProfitPct) > 1000) continue;
+        // 비정상 수익률 방어 (1000% 이상이면 데이터 오류)
+        if (Math.abs(currentProfitPct) > 500) continue;
 
         // 🛡️ Live slotTrackersRef를 통해 최고가/최고수익률 실시간 보존
         if (!slotTrackersRef.current[slot.slotId]) {
           slotTrackersRef.current[slot.slotId] = {
             entryPrice,
             highestPrice: slot.highestPrice || entryPrice,
-            highestProfitPct: slot.highestProfitPct || 0,
-            targetMarket: tickCode
+            highestProfitPct: Math.max(slot.highestProfitPct || 0, currentProfitPct),
+            targetMarket: slotMarket
           };
         }
 
@@ -493,19 +555,13 @@ export default function App() {
         }
 
         const highestProfitPct = tracker.highestProfitPct;
-        const highestPrice = tracker.highestPrice;
 
-        // 🎯 추천전략 vs 셀프전략 분기
-        const isSelf = (slot.strategyType === 'SELF');
-        const targetProfitPct = isSelf 
-          ? (parseFloat(slot.trailingTargetProfitPct !== undefined ? slot.trailingTargetProfitPct : (slot.targetProfitPct || 3.0))) 
-          : (parseFloat(currentSettings.TRAILING_TARGET_PROFIT_PCT) || 3.0);
-        const callbackPct = isSelf 
-          ? (parseFloat(slot.trailingCallbackPct) || 1.0) 
-          : (parseFloat(currentSettings.TRAILING_CALLBACK_PCT) || 1.0);
-        const stopLossPct = isSelf 
-          ? (parseFloat(slot.stopLossPct) || 2.0) 
-          : (parseFloat(currentSettings.STOP_LOSS_PCT) || 2.0);
+        // 🎯 손절/익절 파라미터: 셀프전략은 슬롯 설정값, 추천전략은 슬롯 설정값 (모두 슬롯별 개별 설정 우선!)
+        const stopLossPct = parseFloat(slot.stopLossPct) > 0 ? parseFloat(slot.stopLossPct) : 2.0;
+        const targetProfitPct = parseFloat(slot.targetProfitPct || slot.trailingTargetProfitPct) > 0 
+          ? parseFloat(slot.targetProfitPct || slot.trailingTargetProfitPct) 
+          : 3.0;
+        const callbackPct = parseFloat(slot.trailingCallbackPct) > 0 ? parseFloat(slot.trailingCallbackPct) : 1.0;
 
         // 1) 트레일링 익절 매도 조건: 목표 수익률 도달 후 최고점 대비 callbackPct 이상 하락 시
         const isTargetReached = (highestProfitPct >= targetProfitPct);
@@ -521,9 +577,9 @@ export default function App() {
 
           const reason = isTrailingProfitHit 
             ? `트레일링 익절 매도 (최고 +${highestProfitPct.toFixed(2)}% 달성 후 -${dropFromPeak.toFixed(2)}% 콜백 하락 감지)`
-            : `손절 매도 (-${stopLossPct}% 손절 기준선 도달)`;
+            : `손절 매도 (-${stopLossPct}% 손절 기준선 도달, 현재 ${currentProfitPct.toFixed(2)}%)`;
 
-          console.log(`🚨 [Auto Sell Trigger] 슬롯 ${slot.slotId} (${slot.targetMarket}): ${reason} [현재수익률: ${currentProfitPct.toFixed(2)}%]`);
+          console.log(`🚨 [Auto Sell Trigger] 슬롯 ${slot.slotId} (${slot.targetMarket}): ${reason}`);
 
           // 즉시 슬롯 매도 실행 API 호출
           sellSlotPosition(slot.slotId, {
@@ -533,6 +589,25 @@ export default function App() {
           })
             .then(async (res) => {
               console.log('✅ [Auto Sell Success]', res);
+
+              // ⚡ 1. 프론트엔드 슬롯 상태 0초 즉각 비우기 (Optimistic Instant Clear)
+              setSlots(prev => {
+                const updated = prev.map(s => s.slotId === slot.slotId ? {
+                  ...s,
+                  positionStatus: 'IDLE',
+                  entryPrice: null,
+                  entryVolume: null,
+                  entryAmountKrw: null,
+                  highestPrice: null,
+                  highestProfitPct: 0
+                } : s);
+                try { localStorage.setItem('nurioh_cached_slots', JSON.stringify(updated)); } catch (e) {}
+                return updated;
+              });
+
+              delete slotTrackersRef.current[slot.slotId];
+              lastSlotUpdatesRef.current[slot.slotId] = Date.now();
+
               if (isTrailingProfitHit || currentProfitPct >= 0) {
                 soundService.playProfitAlert();
               } else {
@@ -542,7 +617,7 @@ export default function App() {
                 if (cooldownMinutes > 0 && slot.targetMarket) {
                   const unblockTime = Date.now() + (cooldownMinutes * 60 * 1000);
                   stopLossCooldownsRef.current[slot.targetMarket] = unblockTime;
-                  console.log(`🧊 [StopLoss Cool-down] ${slot.targetMarket} 손절 발생 -> ${cooldownMinutes}분간 재진입 차단 (${new Date(unblockTime).toLocaleTimeString()})`);
+                  console.log(`🧊 [StopLoss Cool-down] ${slot.targetMarket} 손절 발생 -> ${cooldownMinutes}분간 재진입 차단`);
                 }
               }
               await loadData();
@@ -559,14 +634,29 @@ export default function App() {
       }
     };
 
-    // ⚡ 2초마다 슬롯에 배정된 코인들의 REST 현재가를 백그라운드에서 안전하게 최신화 & 손절/익절 감시
-    const syncTimer = setInterval(() => {
-      const activeCoins = Array.from(new Set(
-        (slotsRef.current || [])
-          .map(s => s.targetMarket)
-          .filter(m => m && m.startsWith('KRW-'))
-      ));
+    // ⚡ 슬롯에 배정된 코인들의 REST 현재가를 0초 즉시 및 2초 주기로 백그라운드 최신화
+    const fetchActiveSlotPrices = () => {
+      const slotCoins = (Array.isArray(slotsRef.current) ? slotsRef.current : [])
+        .map(s => s?.targetMarket)
+        .filter(m => m && typeof m === 'string' && m.startsWith('KRW-'));
+      const accCoins = (Array.isArray(accountsRef.current) ? accountsRef.current : [])
+        .filter(a => a && a.currency && a.currency !== 'KRW')
+        .map(a => `KRW-${a.currency}`);
+      let activeCoins = Array.from(new Set([...slotCoins, ...accCoins]));
+
+      if (activeCoins.length === 0) {
+        try {
+          const cached = JSON.parse(localStorage.getItem('nurioh_cached_slots') || '[]');
+          activeCoins = Array.from(new Set(
+            cached.map(s => s.targetMarket).filter(m => m && m.startsWith('KRW-'))
+          ));
+        } catch (e) {}
+      }
       if (activeCoins.length === 0) return;
+
+      upbitClientEngine.setTargetMarkets(activeCoins);
+
+      // ⚡ 업비트 직접 조회 (브라우저 → 업비트 Public API - 서버 프록시 의존 없음)
       fetch(`https://api.upbit.com/v1/ticker?markets=${activeCoins.join(',')}`)
         .then(r => r.ok ? r.json() : [])
         .then(tickers => {
@@ -574,12 +664,14 @@ export default function App() {
             const batch = {};
             tickers.forEach(t => {
               if (t.market && t.trade_price) {
-                batch[t.market] = {
+                const tickObj = {
                   code: t.market,
                   trade_price: t.trade_price,
                   change_rate: t.change_rate,
                   signed_change_rate: t.signed_change_rate
                 };
+                batch[t.market] = tickObj;
+                batch[t.market.replace('KRW-', '')] = tickObj;
                 evaluateSlotRisk(t.market, t.trade_price);
               }
             });
@@ -587,7 +679,11 @@ export default function App() {
           }
         })
         .catch(() => {});
-    }, 2000);
+    };
+
+    // 마운트 즉시 0초에 한 번 바로 호출!
+    fetchActiveSlotPrices();
+    const syncTimer = setInterval(fetchActiveSlotPrices, 2000);
 
     loadData();
 
@@ -1068,6 +1164,25 @@ export default function App() {
 
     try {
       const res = await sellSlotPosition(slotId, { userId, currentPrice });
+
+      // ⚡ 슬롯 0초 즉각 비우기 (Optimistic Instant Clear)
+      setSlots(prev => {
+        const updated = prev.map(s => s.slotId === slotId ? {
+          ...s,
+          positionStatus: 'IDLE',
+          entryPrice: null,
+          entryVolume: null,
+          entryAmountKrw: null,
+          highestPrice: null,
+          highestProfitPct: 0
+        } : s);
+        try { localStorage.setItem('nurioh_cached_slots', JSON.stringify(updated)); } catch (e) {}
+        return updated;
+      });
+
+      delete slotTrackersRef.current[slotId];
+      lastSlotUpdatesRef.current[slotId] = Date.now();
+
       const profitPct = res?.profitPct ?? (((currentPrice - (slot?.entryPrice || currentPrice)) / (slot?.entryPrice || 1)) * 100);
       if (profitPct >= 0) {
         soundService.playProfitAlert();
@@ -1307,6 +1422,27 @@ export default function App() {
     return 'bg-[#090d16] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900/40 via-[#090d16] to-[#04060b]';
   };
 
+  // 🔄 강력 새로고침 (PWA 캐시 스토리지 초기화 & 최신 빌드 버전 강제 리로드)
+  const handleHardRefresh = async () => {
+    try {
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
+      }
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (let reg of registrations) {
+          await reg.update();
+        }
+      }
+    } catch (e) {
+      console.warn('Cache clear error:', e);
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.set('_v', Date.now().toString());
+    window.location.href = url.toString();
+  };
+
   return (
     <div className={`min-h-screen ${getThemeBgClass()} text-slate-100 selection:bg-emerald-500 selection:text-black flex flex-col font-sans pb-12 transition-colors duration-500`}>
       {/* 글로벌 네비게이션 헤더 */}
@@ -1322,7 +1458,7 @@ export default function App() {
         onOpenMyPage={() => setIsMyPageOpen(true)}
         onOpenManual={() => setIsManualOpen(true)}
         onLogout={handleLogout}
-        onRefresh={loadData}
+        onRefresh={handleHardRefresh}
         marketCount={marketCount}
       />
 
@@ -1331,6 +1467,7 @@ export default function App() {
         {/* 계좌 잔고 요약 카드 */}
         <BalanceCard 
           accounts={accounts} 
+          slots={visibleSlots}
           livePriceMap={livePriceMap} 
           serverIp={serverIp} 
           accountError={accountError}

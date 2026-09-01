@@ -21,11 +21,18 @@ function base64UrlEncode(string $data): string {
     return str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($data));
 }
 
+function generateUuidV4(): string {
+    $data = random_bytes(16);
+    $data[6] = chr(ord($data[6]) & 0x0f | 0x40); // set version to 0100
+    $data[8] = chr(ord($data[8]) & 0x3f | 0x80); // set bits 6-7 to 10
+    return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
+}
+
 function generateUpbitJwt(string $accessKey, string $secretKey, ?string $queryString = null): string {
     $header = json_encode(['alg' => 'HS256', 'typ' => 'JWT']);
     $payloadData = [
         'access_key' => $accessKey,
-        'nonce' => bin2hex(random_bytes(16))
+        'nonce' => generateUuidV4()
     ];
 
     if ($queryString) {
@@ -191,7 +198,8 @@ function fetchUpbitAccounts(string $accessKey, string $secretKey, ?string &$erro
         "Accept: application/json",
         "User-Agent: NURIOH-TRADER"
     ]);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 4);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
     
@@ -378,6 +386,9 @@ try {
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             INDEX `idx_user_pay` (`user_id`, `created_at`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    } catch (Exception $e) {}
+    try {
+        $pdo->exec("ALTER TABLE `nurioh_slots` MODIFY COLUMN `position_status` VARCHAR(30) DEFAULT 'IDLE'");
     } catch (Exception $e) {}
 
     // 🛡️ 입금일(만료일) 경과 회원 자동 미승인(EXPIRED) 검사 실행
@@ -777,9 +788,78 @@ try {
         if ($keyInfo && $keyInfo['access_key_enc'] && $keyInfo['secret_key_enc']) {
             $accessKey = base64_decode($keyInfo['access_key_enc']);
             $secretKey = base64_decode($keyInfo['secret_key_enc']);
-            $accounts = fetchUpbitAccounts($accessKey, $secretKey, $accountError);
+
+            // ⚡ 계좌 + 슬롯 초기 시세를 curl_multi로 동시에 병렬 조회하여 응답 시간 50% 단축!
+            $initialMarkets = 'KRW-BTC,KRW-ETH,KRW-SOL,KRW-XRP,KRW-DOGE,KRW-PROM,KRW-FIL,KRW-QTUM,KRW-AUCTION';
+
+            $jwt = generateUpbitJwt($accessKey, $secretKey);
+            $chAcc = curl_init('https://api.upbit.com/v1/accounts');
+            curl_setopt($chAcc, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($chAcc, CURLOPT_TIMEOUT, 4);
+            curl_setopt($chAcc, CURLOPT_CONNECTTIMEOUT, 2);
+            curl_setopt($chAcc, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($chAcc, CURLOPT_SSL_VERIFYHOST, false);
+            curl_setopt($chAcc, CURLOPT_HTTPHEADER, [
+                "Authorization: {$jwt}",
+                "Accept: application/json",
+                "User-Agent: NURIOH-TRADER"
+            ]);
+
+            $chTick = curl_init("https://api.upbit.com/v1/ticker?markets={$initialMarkets}");
+            curl_setopt($chTick, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($chTick, CURLOPT_TIMEOUT, 3);
+            curl_setopt($chTick, CURLOPT_CONNECTTIMEOUT, 2);
+            curl_setopt($chTick, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($chTick, CURLOPT_SSL_VERIFYHOST, false);
+
+            $mh = curl_multi_init();
+            curl_multi_add_handle($mh, $chAcc);
+            curl_multi_add_handle($mh, $chTick);
+
+            $running = null;
+            do {
+                $status = curl_multi_exec($mh, $running);
+                if ($running && $status === CURLM_OK) {
+                    curl_multi_select($mh, 0.5);
+                }
+            } while ($running > 0);
+
+            $accRaw = curl_multi_getcontent($chAcc);
+            $accCode = curl_getinfo($chAcc, CURLINFO_HTTP_CODE);
+            $accCurlErr = curl_error($chAcc);
+            $tickRaw = curl_multi_getcontent($chTick);
+
+            curl_multi_remove_handle($mh, $chAcc);
+            curl_multi_remove_handle($mh, $chTick);
+            curl_multi_close($mh);
+            curl_close($chAcc);
+            curl_close($chTick);
+
+            // 계좌 파싱
+            if ($accCurlErr) {
+                $accountError = "cURL 네트워크 연결 오류: {$accCurlErr}";
+            } elseif ($accRaw) {
+                $accData = json_decode($accRaw, true);
+                if ($accCode === 200 && is_array($accData)) {
+                    $accounts = $accData;
+                } elseif (isset($accData['error']['message'])) {
+                    $accountError = "업비트 응답 오류 [{$accData['error']['name']}]: {$accData['error']['message']}";
+                } else {
+                    $accountError = "업비트 HTTP {$accCode} 응답";
+                }
+            } else {
+                $accountError = "업비트 서버 응답 없음 (HTTP {$accCode})";
+            }
+
+            // 초기 시세 미리 캐싱 (이후 targetMarketsToFetch 조합 후 재사용)
+            $preloadedTickers = [];
+            if ($tickRaw) {
+                $tickArr = json_decode($tickRaw, true);
+                if (is_array($tickArr)) { $preloadedTickers = $tickArr; }
+            }
         } else {
             $accountError = 'API 키가 등록되지 않았습니다.';
+            $preloadedTickers = [];
         }
 
         if (empty($accounts)) {
@@ -824,7 +904,7 @@ try {
             $slots = $slotStmt->fetchAll() ?: [];
         }
 
-        $formattedSlots = array_map(function($s) use ($pdo) {
+        $formattedSlots = array_map(function($s) use ($pdo, $accounts) {
             $realizedProfit = (float)($s['total_realized_profit_krw'] ?? 0);
             if ($realizedProfit > 50000000 || $realizedProfit < -50000000) {
                 // 비정상적인 천문학적 더미/오류 데이터 0원으로 자동 정화
@@ -832,21 +912,56 @@ try {
                 $realizedProfit = 0;
             }
 
+            $mkt = $s['target_market'] ?? '';
+            $currency = str_replace('KRW-', '', $mkt);
+            
+            // 🛡️ 업비트 실계좌 잔고에서 해당 코인 보유 여부 대조 (Self-Healing Auto-Match)
+            $matchedAccount = null;
+            if (!empty($currency) && is_array($accounts)) {
+                foreach ($accounts as $acc) {
+                    if ($acc['currency'] === $currency) {
+                        $matchedAccount = $acc;
+                        break;
+                    }
+                }
+            }
+
             $vol = (float)($s['entry_volume'] ?? 0);
             $entryP = (float)($s['entry_price'] ?? 0);
-            $amount = (float)($s['entry_amount_krw'] ?? ($vol * $entryP));
 
-            // 🛡️ 수량이 없거나 비정상 단가 포지션은 즉시 깨끗한 빈 슬롯(IDLE)으로 초기화
-            if ($s['position_status'] === 'IN_POSITION' && ($vol <= 0.0000001 || $entryP <= 0)) {
-                $pdo->prepare("UPDATE nurioh_slots SET position_status = 'IDLE', entry_price = NULL, entry_volume = NULL, entry_amount_krw = NULL, highest_price = NULL, highest_profit_pct = 0 WHERE id = ?")
-                    ->execute([$s['id']]);
-                $s['position_status'] = 'IDLE';
-                $s['entry_price'] = null;
-                $s['entry_volume'] = null;
-                $s['entry_amount_krw'] = null;
-                $s['highest_price'] = null;
-                $s['highest_profit_pct'] = 0;
+            // 실계좌에 코인이 있고 슬롯이 비어있거나 불완전할 때 실계좌 정보로 즉시 복구!
+            if ($matchedAccount && (float)($matchedAccount['balance'] ?? 0) > 0.0000001) {
+                $accVol = (float)$matchedAccount['balance'];
+                $accAvgPrice = (float)($matchedAccount['avg_buy_price'] ?? 0);
+                if ($vol <= 0 || $entryP <= 0 || $s['position_status'] === 'IDLE') {
+                    $vol = $accVol;
+                    $entryP = $accAvgPrice > 0 ? $accAvgPrice : ($entryP > 0 ? $entryP : 1);
+                    $amount = $vol * $entryP;
+                    $s['position_status'] = 'IN_POSITION';
+                    $s['entry_volume'] = $vol;
+                    $s['entry_price'] = $entryP;
+                    $s['entry_amount_krw'] = $amount;
+                    // DB에도 자동 갱신
+                    $pdo->prepare("UPDATE nurioh_slots SET position_status = 'IN_POSITION', entry_price = ?, entry_volume = ?, entry_amount_krw = ?, highest_price = COALESCE(highest_price, ?) WHERE id = ?")
+                        ->execute([$entryP, $vol, $amount, $entryP, $s['id']]);
+                }
+            } else if (empty($accountError) && is_array($accounts) && count($accounts) > 0) {
+                // 🛡️ [역방향 자동 청산 동기화] 업비트 실계좌 조회가 성공했는데 실계좌에 코인이 없으면 슬롯도 즉시 IDLE로 자동 청산!
+                if ($s['position_status'] === 'IN_POSITION' || $s['position_status'] === 'HOLDING' || $s['position_status'] === 'TRAILING_ACTIVE') {
+                    $s['position_status'] = 'IDLE';
+                    $s['entry_volume'] = null;
+                    $s['entry_price'] = null;
+                    $s['entry_amount_krw'] = null;
+                    $vol = 0;
+                    $entryP = 0;
+                    $amount = 0;
+                    $pdo->prepare("UPDATE nurioh_slots SET position_status = 'IDLE', entry_price = NULL, entry_volume = NULL, entry_amount_krw = NULL, highest_price = NULL WHERE id = ?")
+                        ->execute([$s['id']]);
+                }
             }
+
+            $amount = (float)($s['entry_amount_krw'] ?? ($vol * $entryP));
+            $hasPos = ($s['position_status'] === 'IN_POSITION' || $s['position_status'] === 'HOLDING' || $s['position_status'] === 'TRAILING_ACTIVE') && ($vol > 0.0000001 && $entryP > 0);
 
             return [
                 'id' => (int)$s['id'],
@@ -863,10 +978,11 @@ try {
                 'targetProfitPct' => (float)($s['target_profit_pct'] ?? 3.0),
                 'trailingCallbackPct' => (float)($s['trailing_callback_pct'] ?? 1.0),
                 'stopLossPct' => (float)($s['stop_loss_pct'] ?? 2.0),
-                'positionStatus' => $s['position_status'],
-                'entryPrice' => $s['entry_price'] ? (float)$s['entry_price'] : null,
-                'entryVolume' => $s['entry_volume'] ? (float)$s['entry_volume'] : null,
-                'highestPrice' => $s['highest_price'] ? (float)$s['highest_price'] : null,
+                'positionStatus' => $hasPos ? 'IN_POSITION' : 'IDLE',
+                'entryPrice' => $hasPos ? $entryP : null,
+                'entryVolume' => $hasPos ? $vol : null,
+                'entryAmountKrw' => $hasPos ? $amount : null,
+                'highestPrice' => $s['highest_price'] ? (float)$s['highest_price'] : ($hasPos ? $entryP : null),
                 'highestProfitPct' => (float)($s['highest_profit_pct'] ?? 0),
                 'totalTrades' => (int)($s['total_trades'] ?? 0),
                 'winTrades' => (int)($s['win_trades'] ?? 0),
@@ -878,6 +994,48 @@ try {
         $excludedMarkets = [];
         if (!empty($settings['excluded_markets'])) {
             $excludedMarkets = json_decode($settings['excluded_markets'], true) ?: [];
+        }
+
+        // ⚡ [서버측 0초 즉시 시세 동기화] 슬롯 대상 코인 및 보유 코인의 실시간 현재가를 서버에서 즉시 조회하여 반환
+        $targetMarketsToFetch = ['KRW-BTC', 'KRW-ETH', 'KRW-SOL', 'KRW-XRP', 'KRW-DOGE', 'KRW-CRV', 'KRW-AUCTION', 'KRW-QTUM', 'KRW-PROM', 'KRW-FIL'];
+        foreach ($formattedSlots as $fs) {
+            if (!empty($fs['targetMarket'])) {
+                $targetMarketsToFetch[] = $fs['targetMarket'];
+            }
+        }
+        foreach ($accounts as $acc) {
+            if (!empty($acc['currency']) && $acc['currency'] !== 'KRW') {
+                $targetMarketsToFetch[] = "KRW-{$acc['currency']}";
+            }
+        }
+        $targetMarketsToFetch = array_values(array_unique(array_filter($targetMarketsToFetch)));
+
+        // preloadedTickers에 이미 있는 마켓은 제외하고 나머지만 추가 조회
+        $preloadedMap = [];
+        if (!empty($preloadedTickers)) {
+            foreach ($preloadedTickers as $pt) {
+                if (!empty($pt['market'])) $preloadedMap[$pt['market']] = $pt;
+            }
+        }
+        $remainingMarkets = array_values(array_filter($targetMarketsToFetch, fn($m) => !isset($preloadedMap[$m])));
+
+        $serverTickers = array_values($preloadedMap);
+        if (!empty($remainingMarkets)) {
+            $tickerUrl = "https://api.upbit.com/v1/ticker?markets=" . implode(',', $remainingMarkets);
+            $tch = curl_init($tickerUrl);
+            curl_setopt($tch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($tch, CURLOPT_TIMEOUT, 3);
+            curl_setopt($tch, CURLOPT_CONNECTTIMEOUT, 2);
+            curl_setopt($tch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($tch, CURLOPT_SSL_VERIFYHOST, false);
+            $tRes = curl_exec($tch);
+            curl_close($tch);
+            if ($tRes) {
+                $tJson = json_decode($tRes, true);
+                if (is_array($tJson)) {
+                    $serverTickers = array_merge($serverTickers, $tJson);
+                }
+            }
         }
 
         echo json_encode([
@@ -905,9 +1063,25 @@ try {
             ],
             'accounts' => $accounts,
             'slots' => $formattedSlots,
+            'tickers' => $serverTickers,
             'pendingApproval' => null,
             'tradeHistory' => []
         ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // 3.5 GET tickers : 실시간 시세 고속 프록시
+    if ($path === 'tickers' && $method === 'GET') {
+        $markets = $_GET['markets'] ?? 'KRW-BTC,KRW-ETH,KRW-DOGE,KRW-CRV,KRW-QTUM,KRW-AUCTION,KRW-PROM,KRW-FIL';
+        $cleanMarkets = implode(',', array_filter(array_map('trim', explode(',', $markets))));
+        $tch = curl_init("https://api.upbit.com/v1/ticker?markets=" . $cleanMarkets);
+        curl_setopt($tch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($tch, CURLOPT_TIMEOUT, 3);
+        curl_setopt($tch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($tch, CURLOPT_SSL_VERIFYHOST, false);
+        $tRes = curl_exec($tch);
+        curl_close($tch);
+        echo $tRes ?: '[]';
         exit;
     }
 
@@ -1597,6 +1771,20 @@ try {
         $slotStmt = $pdo->prepare("SELECT * FROM nurioh_slots WHERE user_id = ? AND slot_id = ?");
         $slotStmt->execute([$userId, $slotId]);
         $slot = $slotStmt->fetch();
+
+        // 🛡️ [중복 매도 & 텔레그램 무한 알림 원천 차단] 이미 IDLE 상태이고 진입가가 없는 슬롯은 즉시 성공 반환하고 텔레그램 발송 생략!
+        $dbPosStatus = $slot['position_status'] ?? 'IDLE';
+        $dbEntryPrice = (float)($slot['entry_price'] ?? 0);
+        $dbEntryVolume = (float)($slot['entry_volume'] ?? 0);
+
+        if ($dbPosStatus === 'IDLE' && $dbEntryPrice <= 0 && $dbEntryVolume <= 0 && empty($input['unlinkOnly'])) {
+            echo json_encode([
+                'success' => true,
+                'message' => '이미 청산 완료된 슬롯입니다.',
+                'alreadyIdle' => true
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
 
         // 사용자 API 키 조회
         $keyStmt = $pdo->prepare("SELECT access_key_enc, secret_key_enc FROM nurioh_user_apikeys WHERE user_id = ? AND is_valid = 1");

@@ -251,24 +251,27 @@ export default function SlotManager({
         {displaySlots.map((slot) => {
           const isSelected = (selectedSlotId === slot.slotId);
           const isEditing = (editingSlotId === slot.slotId);
-          const hasPosition = (slot.positionStatus === 'IN_POSITION' || slot.positionStatus === 'HOLDING' || slot.positionStatus === 'TRAILING_ACTIVE') || Boolean(slot.entryPrice && slot.entryPrice > 0);
+          const rawSymbol = (slot.targetMarket || '').replace('KRW-', '');
+          const matchedAcc = Array.isArray(accounts) 
+            ? accounts.find(a => a.currency === rawSymbol || `KRW-${a.currency}` === slot.targetMarket)
+            : null;
+          const hasPosition = (slot.positionStatus === 'IN_POSITION' || slot.positionStatus === 'HOLDING' || slot.positionStatus === 'TRAILING_ACTIVE') || Boolean(slot.entryPrice && slot.entryPrice > 0) || Boolean(matchedAcc && parseFloat(matchedAcc.balance || 0) > 0.0000001);
           
           // ⚡ 각 슬롯별 독립적인 카운트다운 상태 매핑
           const slotCountdown = (pendingSurgeCountdowns && pendingSurgeCountdowns[slot.slotId]) || 
             (pendingSurgeCountdown && pendingSurgeCountdown.slotId === slot.slotId ? pendingSurgeCountdown : null);
           const isSurgeCounting = Boolean(slotCountdown);
 
-          const rawSymbol = (slot.targetMarket || '').replace('KRW-', '');
-          const matchedAcc = Array.isArray(accounts) 
-            ? accounts.find(a => a.currency === rawSymbol || `KRW-${a.currency}` === slot.targetMarket)
-            : null;
           const liveAvgBuyPrice = matchedAcc && parseFloat(matchedAcc.avg_buy_price) > 0 
             ? parseFloat(matchedAcc.avg_buy_price) 
             : null;
           const effectiveEntryPrice = liveAvgBuyPrice || slot.entryPrice || 0;
-
-          const marketData = livePriceMap[slot.targetMarket];
-          const hasLivePrice = Boolean(marketData?.trade_price);
+          const targetMkt = slot.targetMarket || '';
+          const cleanSym = targetMkt.replace('KRW-', '').toUpperCase();
+          const marketData = (livePriceMap && typeof livePriceMap === 'object')
+            ? (livePriceMap[targetMkt] || livePriceMap[`KRW-${cleanSym}`] || livePriceMap[cleanSym])
+            : null;
+          const hasLivePrice = Boolean(marketData?.trade_price && marketData.trade_price > 0);
           const currentPrice = hasLivePrice ? marketData.trade_price : (effectiveEntryPrice || 0);
           const profitPct = (effectiveEntryPrice > 0 && hasLivePrice) 
             ? (((currentPrice - effectiveEntryPrice) / effectiveEntryPrice) * 100)
@@ -800,10 +803,12 @@ export default function SlotManager({
                         </span>
                         <span className={`text-sm sm:text-base font-black font-mono block ${
                           hasPosition 
-                            ? (isProfit ? 'text-rose-400' : 'text-blue-400')
+                            ? (!hasLivePrice ? 'text-slate-400 animate-pulse text-xs sm:text-sm' : (isProfit ? 'text-rose-400' : 'text-blue-400'))
                             : 'text-slate-500 text-xs sm:text-sm'
                         }`}>
-                          {hasPosition ? `${isProfit ? '+' : ''}${profitPct.toFixed(2)}%` : '🟢 포지션 대기'}
+                          {hasPosition 
+                            ? (!hasLivePrice ? '⏳ 시세 동기화' : `${isProfit ? '+' : ''}${profitPct.toFixed(2)}%`) 
+                            : '🟢 포지션 대기'}
                         </span>
                       </div>
                       {hasPosition ? (
@@ -811,7 +816,7 @@ export default function SlotManager({
                           <div className="text-[10px] font-mono flex items-center justify-end gap-1">
                             <span className="text-slate-400">현재:</span>
                             <span className="font-extrabold text-amber-300 drop-shadow-sm">
-                              {formatPrice(currentPrice)}
+                              {hasLivePrice ? formatPrice(currentPrice) : '...'}
                             </span>
                           </div>
                           <span className="text-[9px] font-mono text-slate-400 block" title={`최고 기록 수익률: +${Math.max(profitPct, slot.highestProfitPct || 0).toFixed(2)}%`}>
@@ -984,9 +989,7 @@ export default function SlotManager({
                           alert('현재 해당 슬롯에 보유 중인 포지션(코인)이 없습니다.');
                           return;
                         }
-                        if (window.confirm(`🚨 [긴급 강제 매도]\n${slot.slotId}번 슬롯의 ${slot.targetMarket} 포지션을 지금 즉시 업비트 시장가로 전량 매도 청산하시겠습니까?`)) {
-                          onSellSlot && onSellSlot(slot.slotId);
-                        }
+                        onSellSlot && onSellSlot(slot.slotId);
                       }}
                       className={`px-2.5 sm:px-3 py-1.5 rounded-xl font-black text-xs flex items-center gap-1 transition-all shadow-md shrink-0 whitespace-nowrap ${
                         hasPosition

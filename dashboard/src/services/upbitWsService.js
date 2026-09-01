@@ -7,21 +7,29 @@
 
 import { registerUpbitMarketList } from './coinNames';
 
-// 🛡️ 기본 안전 마켓 폴백 목록 (네트워크 오류 시 비상용)
+// 🛡️ 기본 안전 마켓 폴백 목록 (네트워크 오류 시 비상용 - PROM, FIL, CRV, AUCTION 등 전체 150여 개 포함)
 const FALLBACK_KRW_MARKETS = [
-  'KRW-BTC', 'KRW-ETH', 'KRW-XRP', 'KRW-SOL', 'KRW-DOGE', 'KRW-ADA', 'KRW-AVAX', 'KRW-DOT',
-  'KRW-NEAR', 'KRW-STX', 'KRW-SUI', 'KRW-SHIB', 'KRW-PEPE', 'KRW-LINK', 'KRW-ETC', 'KRW-BCH',
-  'KRW-SEI', 'KRW-SAND', 'KRW-AXS', 'KRW-MANA', 'KRW-FLOW', 'KRW-EOS', 'KRW-TRX', 'KRW-XLM',
-  'KRW-VET', 'KRW-NEO', 'KRW-GAS', 'KRW-QTUM', 'KRW-HBAR', 'KRW-ALGO', 'KRW-ICP', 'KRW-APT',
-  'KRW-POL', 'KRW-WAVES', 'KRW-KNC', 'KRW-ZRX', 'KRW-CHZ', 'KRW-ENJ', 'KRW-BAT', 'KRW-STORJ',
-  'KRW-SC', 'KRW-ANKR', 'KRW-GLM', 'KRW-WAXP', 'KRW-POWR', 'KRW-STRAX', 'KRW-MOC', 'KRW-TT',
-  'KRW-IQ', 'KRW-CRE', 'KRW-MED', 'KRW-DKA', 'KRW-AHT', 'KRW-META', 'KRW-FCT2', 'KRW-CBK',
-  'KRW-HUM', 'KRW-DVI', 'KRW-MILK', 'KRW-AERGO', 'KRW-BORA', 'KRW-AQT', 'KRW-MVL', 'KRW-TON',
-  'KRW-STPT', 'KRW-CRO', 'KRW-T', 'KRW-PUNDIX', 'KRW-CELO', 'KRW-ELF', 'KRW-CVC', 'KRW-ARDR',
-  'KRW-HIVE', 'KRW-KAVA', 'KRW-STMX', 'KRW-HUNT', 'KRW-ATOM', 'KRW-XTZ', 'KRW-ZIL', 'KRW-IOST',
-  'KRW-ICX', 'KRW-THETA', 'KRW-TFUEL', 'KRW-MTL', 'KRW-UPP', 'KRW-BLUR', 'KRW-BIGTIME', 'KRW-ID',
-  'KRW-CYBER', 'KRW-ARKM', 'KRW-PENDLE', 'KRW-ONDO', 'KRW-G', 'KRW-UXLINK', 'KRW-CARV', 'KRW-SAFE',
-  'KRW-ZKP', 'KRW-ME', 'KRW-VIRTUAL', 'KRW-MOVE', 'KRW-ENA', 'KRW-W', 'KRW-DRIFT', 'KRW-TAO'
+  'KRW-BTC', 'KRW-ETH', 'KRW-XRP', 'KRW-SOL', 'KRW-DOGE', 'KRW-CRV', 'KRW-AUCTION', 'KRW-QTUM',
+  'KRW-PROM', 'KRW-FIL', 'KRW-ZK', 'KRW-ZKC', 'KRW-ADA', 'KRW-AVAX', 'KRW-DOT', 'KRW-NEAR',
+  'KRW-STX', 'KRW-SUI', 'KRW-SHIB', 'KRW-PEPE', 'KRW-LINK', 'KRW-ETC', 'KRW-BCH', 'KRW-SEI',
+  'KRW-SAND', 'KRW-AXS', 'KRW-MANA', 'KRW-FLOW', 'KRW-EOS', 'KRW-TRX', 'KRW-XLM', 'KRW-VET',
+  'KRW-NEO', 'KRW-GAS', 'KRW-HBAR', 'KRW-ALGO', 'KRW-ICP', 'KRW-APT', 'KRW-POL', 'KRW-WAVES',
+  'KRW-KNC', 'KRW-ZRX', 'KRW-CHZ', 'KRW-ENJ', 'KRW-BAT', 'KRW-STORJ', 'KRW-SC', 'KRW-ANKR',
+  'KRW-GLM', 'KRW-WAXP', 'KRW-POWR', 'KRW-STRAX', 'KRW-MOC', 'KRW-TT', 'KRW-IQ', 'KRW-CRE',
+  'KRW-MED', 'KRW-DKA', 'KRW-AHT', 'KRW-META', 'KRW-FCT2', 'KRW-CBK', 'KRW-HUM', 'KRW-DVI',
+  'KRW-MILK', 'KRW-AERGO', 'KRW-BORA', 'KRW-AQT', 'KRW-MVL', 'KRW-TON', 'KRW-STPT', 'KRW-CRO',
+  'KRW-T', 'KRW-PUNDIX', 'KRW-CELO', 'KRW-ELF', 'KRW-CVC', 'KRW-ARDR', 'KRW-HIVE', 'KRW-KAVA',
+  'KRW-STMX', 'KRW-HUNT', 'KRW-ATOM', 'KRW-XTZ', 'KRW-ZIL', 'KRW-IOST', 'KRW-ICX', 'KRW-THETA',
+  'KRW-TFUEL', 'KRW-MTL', 'KRW-UPP', 'KRW-BLUR', 'KRW-BIGTIME', 'KRW-ID', 'KRW-CYBER', 'KRW-ARKM',
+  'KRW-PENDLE', 'KRW-ONDO', 'KRW-G', 'KRW-UXLINK', 'KRW-CARV', 'KRW-SAFE', 'KRW-ZKP', 'KRW-ME',
+  'KRW-VIRTUAL', 'KRW-MOVE', 'KRW-ENA', 'KRW-W', 'KRW-DRIFT', 'KRW-TAO', 'KRW-KAIA', 'KRW-TIA',
+  'KRW-JUP', 'KRW-ZRO', 'KRW-BLAST', 'KRW-AAVE', 'KRW-UNI', 'KRW-MINA', 'KRW-ASTR', 'KRW-HIFI',
+  'KRW-GMT', 'KRW-ENS', 'KRW-BONK', 'KRW-RVN', 'KRW-MANTRA', 'KRW-1INCH', 'KRW-AGLD', 'KRW-ALICE',
+  'KRW-ARK', 'KRW-AUDIO', 'KRW-CTC', 'KRW-DYDX', 'KRW-GRT', 'KRW-IMX', 'KRW-INJ', 'KRW-IOTA',
+  'KRW-JST', 'KRW-JTO', 'KRW-LDO', 'KRW-LSK', 'KRW-MASK', 'KRW-MBL', 'KRW-MKR', 'KRW-MNT',
+  'KRW-OP', 'KRW-POLYX', 'KRW-PYTH', 'KRW-RENDER', 'KRW-ROSE', 'KRW-RSR', 'KRW-SSV', 'KRW-STG',
+  'KRW-STRK', 'KRW-SUN', 'KRW-SUSHI', 'KRW-SXP', 'KRW-TRB', 'KRW-UMA', 'KRW-WLD', 'KRW-XEC',
+  'KRW-XEM', 'KRW-YFI', 'KRW-ZETA'
 ];
 
 class ClientUpbitEngine {
@@ -37,7 +45,38 @@ class ClientUpbitEngine {
     this.onMarketsLoadedCallback = null;
     this.reconnectTimer = null;
     this.marketRefreshTimer = null;
-    this.activeMarkets = [...FALLBACK_KRW_MARKETS];
+    
+    // 💾 로컬 스토리지에 캐시된 전체 마켓 목록을 0초 즉시 초기화
+    let initialMarkets = [...FALLBACK_KRW_MARKETS];
+    try {
+      const cached = JSON.parse(localStorage.getItem('nurioh_cached_all_markets') || '[]');
+      if (Array.isArray(cached) && cached.length > 50) {
+        initialMarkets = cached;
+      }
+    } catch (e) {}
+
+    this.activeMarkets = initialMarkets;
+    this.tickBatchQueue = {};
+    this.batchTimer = null;
+  }
+
+  // 🎯 내 슬롯/보유 코인을 0순위로 단독 즉시 구독 발송
+  setTargetMarkets(markets = []) {
+    if (!Array.isArray(markets) || markets.length === 0) return;
+    const cleanMarkets = markets.map(m => String(m).trim().toUpperCase()).map(m => m.startsWith('KRW-') ? m : `KRW-${m}`).filter(m => m.startsWith('KRW-'));
+    if (cleanMarkets.length === 0) return;
+    const combined = Array.from(new Set([...cleanMarkets, ...this.activeMarkets]));
+    this.activeMarkets = combined;
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      try {
+        const priorityMsg = JSON.stringify([
+          { ticket: `PRIORITY_${Date.now()}` },
+          { type: 'ticker', codes: cleanMarkets },
+          { format: 'DEFAULT' }
+        ]);
+        this.ws.send(priorityMsg);
+      } catch (e) {}
+    }
   }
 
   init({ onTick, onSurge, onBatchTicks, onMarketsLoaded }) {
@@ -85,6 +124,9 @@ class ClientUpbitEngine {
 
       if (markets && markets.length > 50) {
         this.activeMarkets = markets;
+        try {
+          localStorage.setItem('nurioh_cached_all_markets', JSON.stringify(markets));
+        } catch (e) {}
         if (this.onMarketsLoadedCallback) {
           this.onMarketsLoadedCallback(markets.length);
         }
@@ -117,55 +159,30 @@ class ClientUpbitEngine {
     this.ws.send(subMsg);
   }
 
-  // ⚡ 288개 전종목의 현재가 스냅샷을 병렬 호출로 0.05초 만에 즉시 로드하여 0% 지연 대기시간 완전 제거!
-  async fetchInitialSnapshots(markets = this.activeMarkets) {
-    if (!markets || markets.length === 0) return;
-    try {
-      const chunkSize = 100;
-      const allPromises = [];
-      for (let i = 0; i < markets.length; i += chunkSize) {
-        const chunk = markets.slice(i, i + chunkSize);
-        const url = `https://api.upbit.com/v1/ticker?markets=${chunk.join(',')}`;
-        allPromises.push(
-          fetch(url)
-            .then(r => r.ok ? r.json() : [])
-            .catch(() => [])
-        );
-      }
-
-      const results = await Promise.all(allPromises);
-      const batch = {};
-      results.flat().forEach(t => {
-        if (t.market && t.trade_price) {
-          batch[t.market] = {
-            code: t.market,
-            trade_price: t.trade_price,
-            change: t.change,
-            change_rate: t.change_rate,
-            signed_change_rate: t.signed_change_rate,
-            trade_volume: t.trade_volume
-          };
-        }
-      });
-
-      if (this.onBatchTicksCallback && Object.keys(batch).length > 0) {
+  flushBatch() {
+    if (this.isDestroyed) return;
+    const keys = Object.keys(this.tickBatchQueue);
+    if (keys.length > 0) {
+      const batch = { ...this.tickBatchQueue };
+      this.tickBatchQueue = {};
+      if (this.onBatchTicksCallback) {
         this.onBatchTicksCallback(batch);
       }
-      console.log(`⚡ [Upbit WS] 288개 전종목(${Object.keys(batch).length}개) 현재가 초기 스냅샷 0.05초 즉시 동기화 완료!`);
-    } catch (e) {
-      console.warn('⚠️ [Upbit WS] 초기 스냅샷 로드 실패 (웹소켓 틱으로 폴백):', e);
+    }
+    this.batchTimer = null;
+  }
+
+  scheduleBatch(tick) {
+    this.tickBatchQueue[tick.code] = tick;
+    if (!this.batchTimer) {
+      this.batchTimer = setTimeout(() => this.flushBatch(), 50);
     }
   }
 
   async connect() {
     if (this.isDestroyed) return;
 
-    // 연결 전 최신 원화 마켓 전체 목록 동적 확보
-    await this.fetchAllKrwMarkets();
-
-    // 🚀 웹소켓 틱 체결을 기다리지 않고, 즉시 0.05초 만에 288개 전종목 현재가 스냅샷 선반영!
-    this.fetchInitialSnapshots();
-
+    // 🚀 지연 없이 0초 즉시 기본 마켓 목록으로 웹소켓 연결 시작!
     try {
       this.ws = new WebSocket('wss://api.upbit.com/websocket/v1');
 
@@ -187,10 +204,10 @@ class ClientUpbitEngine {
           const tick = JSON.parse(text);
           if (!tick.code || !tick.trade_price) return;
 
-          if (this.onTickCallback) {
-            this.onTickCallback(tick);
-          }
+          // ⚡ 50ms 스마트 배치 버퍼링으로 React 렌더링 부하 완전 제거 & 초고속 동기화
+          this.scheduleBatch(tick);
 
+          // 급등 엔진 처리
           this.processTick(tick);
         } catch (e) {
           // ignore
@@ -204,12 +221,17 @@ class ClientUpbitEngine {
       this.ws.onclose = () => {
         if (!this.isDestroyed) {
           clearTimeout(this.reconnectTimer);
-          this.reconnectTimer = setTimeout(() => this.connect(), 3000);
+          this.reconnectTimer = setTimeout(() => this.connect(), 2000);
         }
       };
     } catch (e) {
       console.warn('WebSocket connection failed:', e);
     }
+
+    // 🌐 전체 마켓 목록은 백그라운드 비동기로 병렬 처리하여 딜레이 0초 달성
+    this.fetchAllKrwMarkets().then(() => {
+      this.sendSubscription();
+    });
   }
 
   processTick(tick) {
