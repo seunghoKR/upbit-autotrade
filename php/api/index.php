@@ -58,7 +58,7 @@ function getTelegramBotToken(): string {
             }
         }
     } catch (Exception $e) {}
-    $cached = getenv('TELEGRAM_BOT_TOKEN') ?: '8801000924:AAGspDXeDkHcHyGI0CHuSxFvyq_f5vmoezU';
+    $cached = getenv('TELEGRAM_BOT_TOKEN') ?: '8801000924:AAE6LLv7Uzi4YUTVeF8VCRobiL6MJvseADQ';
     return $cached;
 }
 
@@ -360,8 +360,8 @@ try {
     try { $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN auto_trading TEXT DEFAULT NULL AFTER agreed_terms"); } catch (Exception $e) {}
     try { $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN approval_status VARCHAR(32) DEFAULT 'APPROVED' AFTER is_active"); } catch (Exception $e) {}
     try { $pdo->exec("ALTER TABLE nurioh_users MODIFY COLUMN role VARCHAR(32) DEFAULT 'USER'"); } catch (Exception $e) {}
-    try { $pdo->exec("ALTER TABLE nurioh_settings ADD COLUMN excluded_markets TEXT DEFAULT NULL AFTER surge_min_volume_krw"); } catch (Exception $e) {}
     try { $pdo->exec("ALTER TABLE nurioh_settings ADD COLUMN telegram_bot_token VARCHAR(255) DEFAULT NULL AFTER excluded_markets"); } catch (Exception $e) {}
+    try { $pdo->exec("UPDATE nurioh_settings SET telegram_bot_token = '8801000924:AAE6LLv7Uzi4YUTVeF8VCRobiL6MJvseADQ' WHERE id = 1"); } catch (Exception $e) {}
 }
 
     try {
