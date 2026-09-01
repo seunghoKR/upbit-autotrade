@@ -43,6 +43,15 @@ const DEFAULT_SLOTS = [
   { id: 9, slotId: 9, slotName: '9번 슬롯', isEnabled: true, targetMarket: 'KRW-NEAR', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, trailingTargetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
 ];
 
+const formatPrice = (p) => {
+  if (!p || p <= 0) return '0원';
+  const num = Number(p);
+  if (num < 1) return `${num.toFixed(4)}원`;
+  if (num < 10) return `${num.toFixed(2)}원`;
+  if (num < 100) return `${num.toFixed(1)}원`;
+  return `${Math.round(num).toLocaleString()}원`;
+};
+
 export default function SlotManager({ 
   slots = [], 
   onUpdateSlot, 
@@ -765,7 +774,7 @@ export default function SlotManager({
 
                           <div className="text-[11px] font-mono text-slate-300 flex items-center gap-1">
                             <span className="text-slate-400 text-[10px]">진입:</span>
-                            <span className="text-white font-extrabold">{Math.round(slot.entryPrice || currentPrice).toLocaleString()}원</span>
+                            <span className="text-white font-extrabold">{formatPrice(slot.entryPrice || currentPrice)}</span>
                           </div>
 
                           <div className="text-[10px] font-mono text-slate-400 truncate" title={`수량: ${slot.entryVolume ? slot.entryVolume.toFixed(6) : ''}`}>
@@ -789,9 +798,17 @@ export default function SlotManager({
                         </span>
                       </div>
                       {hasPosition ? (
-                        <span className="text-[10px] font-mono text-slate-400 block mt-0.5" title={`최고 기록 수익률: +${Math.max(profitPct, slot.highestProfitPct || 0).toFixed(2)}%`}>
-                          최고: <strong className="text-rose-300 font-bold">+{Math.max(profitPct, slot.highestProfitPct || 0).toFixed(2)}%</strong>
-                        </span>
+                        <div className="space-y-0.5 mt-0.5">
+                          <div className="text-[10px] font-mono flex items-center justify-end gap-1">
+                            <span className="text-slate-400">현재:</span>
+                            <span className="font-extrabold text-amber-300 drop-shadow-sm">
+                              {formatPrice(currentPrice)}
+                            </span>
+                          </div>
+                          <span className="text-[9px] font-mono text-slate-400 block" title={`최고 기록 수익률: +${Math.max(profitPct, slot.highestProfitPct || 0).toFixed(2)}%`}>
+                            최고: <strong className="text-rose-300 font-bold">+{Math.max(profitPct, slot.highestProfitPct || 0).toFixed(2)}%</strong>
+                          </span>
+                        </div>
                       ) : (
                         <span className="text-[10px] font-mono text-emerald-400/80 block mt-0.5">
                           레이더 상시 감시
