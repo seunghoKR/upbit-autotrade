@@ -257,8 +257,8 @@ export default function SlotManager({
             : (slot.highestProfitPct || 0);
           const isProfit = profitPct >= 0;
 
-          // 잔고 초과 여부 확인 (0원일 때는 경고 미표시)
-          const isOverBalance = (slot.tradeAmountKrw > 0 && slot.tradeAmountKrw > krwBalance);
+          // 잔고 초과 여부 확인 (이미 코인을 보유 중인 슬롯이나 0원일 때는 경고 미표시)
+          const isOverBalance = !hasPosition && slot.isEnabled && (slot.tradeAmountKrw > 0 && slot.tradeAmountKrw > krwBalance);
           const isZeroAmount = (!slot.tradeAmountKrw || slot.tradeAmountKrw === 0);
 
           const isPendingApproval = (currentUser?.role !== 'DEVELOPER' && currentUser?.role !== 'OPERATOR' && currentUser?.approvalStatus === 'PENDING');
