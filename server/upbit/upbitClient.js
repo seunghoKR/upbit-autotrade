@@ -112,6 +112,20 @@ class UpbitClient {
   }
 
   /**
+   * 호가 정보 (Orderbook) 조회 (호가창 불균형 분석용)
+   * @param {string} markets 예: 'KRW-BTC'
+   */
+  async getOrderbook(markets = 'KRW-BTC') {
+    try {
+      const response = await axios.get(`${this.serverUrl}/orderbook?markets=${markets}`);
+      return response.data;
+    } catch (error) {
+      console.error('Upbit getOrderbook Error:', error.response?.data || error.message);
+      throw error.response?.data || error;
+    }
+  }
+
+  /**
    * 분봉 캔들 조회
    * @param {string} market 예: 'KRW-BTC'
    * @param {number} unit 분 단위 (1, 3, 5, 15, 30, 60, 240)

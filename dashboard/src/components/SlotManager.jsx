@@ -83,7 +83,8 @@ export default function SlotManager({
     surgeBaseMode: 'VWAP',
     trailingTargetProfitPct: 3.0,
     trailingCallbackPct: 1.0,
-    stopLossPct: 2.0
+    stopLossPct: 2.0,
+    useAtrStopLoss: false
   });
 
   const [selectedStatsSlot, setSelectedStatsSlot] = useState(null);
@@ -130,7 +131,8 @@ export default function SlotManager({
       targetProfitPct: targetProfit,
       trailingTargetProfitPct: targetProfit,
       trailingCallbackPct: callback,
-      stopLossPct: stopLoss
+      stopLossPct: stopLoss,
+      useAtrStopLoss: Boolean(slot.useAtrStopLoss)
     });
   };
 
@@ -155,7 +157,8 @@ export default function SlotManager({
         targetProfitPct: targetProfit,
         trailingTargetProfitPct: targetProfit,
         trailingCallbackPct: editForm.trailingCallbackPct,
-        stopLossPct: editForm.stopLossPct
+        stopLossPct: editForm.stopLossPct,
+        useAtrStopLoss: Boolean(editForm.useAtrStopLoss)
       });
     }
     setEditingSlotId(null);
@@ -752,6 +755,39 @@ export default function SlotManager({
                       </p>
                     </div>
                   )}
+
+                  {/* ⚙️ [알고리즘 4번] AI 동적 변동성 손절 모드 ON/OFF 토글 카드 */}
+                  <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between gap-2 shadow-inner">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-slate-200 whitespace-nowrap">⚙️ AI 동적 변동성 손절 모드</span>
+                        <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
+                          editForm.useAtrStopLoss ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-slate-800 text-slate-400'
+                        }`}>
+                          {editForm.useAtrStopLoss ? '가동 중' : '고정 손절'}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">
+                        {editForm.useAtrStopLoss 
+                          ? '종목별 1분봉 ATR 변동성에 맞춰 손절선(1.2%~4.5%)을 자동 산출합니다.' 
+                          : '사용자가 지정한 고정 손절선(-2.0%)으로 엄격하게 청산합니다.'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditForm(prev => ({ ...prev, useAtrStopLoss: !prev.useAtrStopLoss }))}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        editForm.useAtrStopLoss ? 'bg-amber-500' : 'bg-slate-700'
+                      }`}
+                      title="AI 동적 변동성 손절 모드 토글"
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                          editForm.useAtrStopLoss ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
               ) : (
                 /* 📊 일반 보기 모드 */
@@ -891,7 +927,13 @@ export default function SlotManager({
                           </div>
                           <div className="px-2 py-1 flex items-center justify-between bg-slate-950/40">
                             <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">손실제한</span>
-                            <span className="font-bold text-blue-400">-{stopLoss}%</span>
+                            {slot.useAtrStopLoss ? (
+                              <span className="font-bold text-amber-300 text-[9px] sm:text-[10px] flex items-center gap-0.5" title="AI ATR 동적 변동성 손절 모드 가동 중 (1.2%~4.5% 맞춤 손절)">
+                                ⚡ AI ATR (동적)
+                              </span>
+                            ) : (
+                              <span className="font-bold text-blue-400">-{stopLoss}%</span>
+                            )}
                           </div>
                         </div>
                       </div>

@@ -28,7 +28,8 @@ export default function Header({
   onOpenMyPage,
   onOpenManual,
   onLogout,
-  marketCount = 134
+  marketCount = 134,
+  btcProtection = null
 }) {
   const role = user?.role || 'USER';
   const tier = user?.tier || 'FREE_TRIAL';
@@ -94,7 +95,7 @@ export default function Header({
                 </span>
               </div>
               <span className="text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-mono font-black border border-emerald-500/30 shrink-0">
-                v2.9.1
+                v3.0.0
               </span>
 
               {/* 🟢 실시간 레이더 가동 중 라이브 뱃지 (PC 전용 확장 뷰) */}
@@ -106,6 +107,23 @@ export default function Header({
                 <span className="text-emerald-300 font-bold whitespace-nowrap">레이더 가동 중</span>
                 <span className="text-emerald-400/80 font-mono text-[10px] whitespace-nowrap">({marketCount || 134}개 전종목)</span>
               </div>
+
+              {/* 🛡️ [알고리즘 2번] BTC 하락 감지 매수 보호 가동 상태 배지 */}
+              {btcProtection?.active ? (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-950/90 border border-rose-500/80 text-[11px] font-black text-rose-200 shadow-lg shadow-rose-950/60 animate-pulse shrink-0">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                  </span>
+                  <span className="whitespace-nowrap">🛡️ BTC 하락 감지: 매수 보호 가동 중</span>
+                  <span className="text-rose-300/90 font-mono text-[10px]">({btcProtection.dropRate}%)</span>
+                </div>
+              ) : (
+                <div className="hidden 2xl:flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-900/60 border border-slate-800 text-[10px] text-slate-400 shrink-0">
+                  <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                  <span className="whitespace-nowrap">BTC 커플링 보호 활성</span>
+                </div>
+              )}
             </div>
           </div>
 

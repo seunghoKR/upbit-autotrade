@@ -175,6 +175,9 @@ export default function App() {
   const [currentRsi, setCurrentRsi] = useState(50);
   const [currentBb, setCurrentBb] = useState(null);
 
+  // 🛡️ [알고리즘 2번] 비트코인 커플링 매수 보호 실시간 상태 ({ active: boolean, dropRate: number, reason: string })
+  const [btcProtection, setBtcProtection] = useState(null);
+
   // ⚡ 각 슬롯별 독립적인 실시간 급등 감지 3초 카운트다운 상태 ({ [slotId]: countdownData })
   const [pendingSurgeCountdowns, setPendingSurgeCountdowns] = useState({});
   const countdownTimersRef = useRef({});
@@ -272,6 +275,7 @@ export default function App() {
         if (status.serverIp) setServerIp(status.serverIp);
         if (status.settings) setSettings(status.settings);
         if (status.accounts) setAccounts(status.accounts);
+        if (status.btcProtection) setBtcProtection(status.btcProtection);
         if (status.accountError) setAccountError(status.accountError);
         else setAccountError(null);
         if (status.slots && Array.isArray(status.slots) && status.slots.length > 0) {
@@ -1479,6 +1483,7 @@ export default function App() {
         onLogout={handleLogout}
         onRefresh={handleHardRefresh}
         marketCount={marketCount}
+        btcProtection={btcProtection}
       />
 
       {/* 메인 콘텐츠 영역 (상단 헤더와 좌우 라인 100% 일치) */}

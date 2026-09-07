@@ -6,15 +6,15 @@
 class SlotManager {
   constructor() {
     this.slots = [
-      { slotId: 1, name: '1번 주력 슬롯', isEnabled: true, targetMarket: null, tradeAmountKrw: 50000, positionStatus: 'IDLE', position: null, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
-      { slotId: 2, name: '2번 알트 슬롯', isEnabled: true, targetMarket: null, tradeAmountKrw: 50000, positionStatus: 'IDLE', position: null, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
-      { slotId: 3, name: '3번 급등 슬롯', isEnabled: true, targetMarket: null, tradeAmountKrw: 30000, positionStatus: 'IDLE', position: null, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
-      { slotId: 4, name: '4번 리플 슬롯', isEnabled: true, targetMarket: null, tradeAmountKrw: 30000, positionStatus: 'IDLE', position: null, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
-      { slotId: 5, name: '5번 보조 슬롯', isEnabled: true, targetMarket: null, tradeAmountKrw: 20000, positionStatus: 'IDLE', position: null, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
-      { slotId: 6, name: '6번 보조 슬롯', isEnabled: true, targetMarket: null, tradeAmountKrw: 20000, positionStatus: 'IDLE', position: null, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
-      { slotId: 7, name: '7번 보조 슬롯', isEnabled: true, targetMarket: null, tradeAmountKrw: 20000, positionStatus: 'IDLE', position: null, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
-      { slotId: 8, name: '8번 보조 슬롯', isEnabled: true, targetMarket: null, tradeAmountKrw: 20000, positionStatus: 'IDLE', position: null, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
-      { slotId: 9, name: '9번 보조 슬롯', isEnabled: true, targetMarket: null, tradeAmountKrw: 20000, positionStatus: 'IDLE', position: null, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 }
+      { slotId: 1, name: '1번 주력 슬롯', isEnabled: true, targetMarket: null, tradeAmountKrw: 50000, positionStatus: 'IDLE', position: null, useAtrStopLoss: false, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
+      { slotId: 2, name: '2번 알트 슬롯', isEnabled: true, targetMarket: null, tradeAmountKrw: 50000, positionStatus: 'IDLE', position: null, useAtrStopLoss: false, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
+      { slotId: 3, name: '3번 급등 슬롯', isEnabled: true, targetMarket: null, tradeAmountKrw: 30000, positionStatus: 'IDLE', position: null, useAtrStopLoss: false, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
+      { slotId: 4, name: '4번 리플 슬롯', isEnabled: true, targetMarket: null, tradeAmountKrw: 30000, positionStatus: 'IDLE', position: null, useAtrStopLoss: false, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
+      { slotId: 5, name: '5번 보조 슬롯', isEnabled: true, targetMarket: null, tradeAmountKrw: 20000, positionStatus: 'IDLE', position: null, useAtrStopLoss: false, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
+      { slotId: 6, name: '6번 보조 슬롯', isEnabled: true, targetMarket: null, tradeAmountKrw: 20000, positionStatus: 'IDLE', position: null, useAtrStopLoss: false, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
+      { slotId: 7, name: '7번 보조 슬롯', isEnabled: true, targetMarket: null, tradeAmountKrw: 20000, positionStatus: 'IDLE', position: null, useAtrStopLoss: false, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
+      { slotId: 8, name: '8번 보조 슬롯', isEnabled: true, targetMarket: null, tradeAmountKrw: 20000, positionStatus: 'IDLE', position: null, useAtrStopLoss: false, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
+      { slotId: 9, name: '9번 보조 슬롯', isEnabled: true, targetMarket: null, tradeAmountKrw: 20000, positionStatus: 'IDLE', position: null, useAtrStopLoss: false, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 }
     ];
 
     this.listeners = new Set();
@@ -70,6 +70,8 @@ class SlotManager {
         profitKrw: Math.round(profitKrw),
         currentValuation: Math.round(currentValuation),
         reservedSurge: isReserved ? slot.reservedSurge : null,
+        useAtrStopLoss: Boolean(slot.useAtrStopLoss),
+        dynamicStopLossPct: hasPos ? (slot.position.dynamicStopLossPct || null) : null,
         totalTrades: slot.totalTrades || 0,
         winTrades: slot.winTrades || 0,
         totalRealizedProfitKrw: slot.totalRealizedProfitKrw || 0
@@ -85,6 +87,7 @@ class SlotManager {
     if (updateData.isEnabled !== undefined) slot.isEnabled = Boolean(updateData.isEnabled);
     if (updateData.targetMarket !== undefined) slot.targetMarket = updateData.targetMarket;
     if (updateData.tradeAmountKrw !== undefined) slot.tradeAmountKrw = Number(updateData.tradeAmountKrw);
+    if (updateData.useAtrStopLoss !== undefined) slot.useAtrStopLoss = Boolean(updateData.useAtrStopLoss);
     if (updateData.totalTrades !== undefined) slot.totalTrades = Number(updateData.totalTrades);
     if (updateData.winTrades !== undefined) slot.winTrades = Number(updateData.winTrades);
     if (updateData.totalRealizedProfitKrw !== undefined) slot.totalRealizedProfitKrw = Number(updateData.totalRealizedProfitKrw);
@@ -131,7 +134,7 @@ class SlotManager {
     this.emitSlotEvent({ type: 'SLOT_RESERVED', slotId, slot, surgeInfo });
   }
 
-  assignPosition(slotId, { market, entryPrice, entryVolume, entryAmountKrw }) {
+  assignPosition(slotId, { market, entryPrice, entryVolume, entryAmountKrw, dynamicStopLossPct = null }) {
     const slot = this.slots.find(s => s.slotId === Number(slotId));
     if (!slot) return;
 
@@ -145,10 +148,12 @@ class SlotManager {
       enteredAt: new Date().toISOString(),
       highestPrice: Number(entryPrice),
       highestProfitPct: 0.0,
+      dynamicStopLossPct: dynamicStopLossPct ? Number(dynamicStopLossPct) : null,
       trailingActivatedAt: null
     };
 
-    console.log(`📌 [Slot ${slotId}] Position Assigned: ${market} @ ${Number(entryPrice).toLocaleString()} KRW (수량: ${entryVolume})`);
+    const atrLog = (slot.useAtrStopLoss && dynamicStopLossPct) ? ` [AI 동적 손절선: -${Number(dynamicStopLossPct).toFixed(2)}%]` : '';
+    console.log(`📌 [Slot ${slotId}] Position Assigned: ${market} @ ${Number(entryPrice).toLocaleString()} KRW (수량: ${entryVolume})${atrLog}`);
     this.emitSlotEvent({ type: 'SLOT_POSITION_ASSIGNED', slotId, slot });
   }
 
@@ -237,9 +242,13 @@ class SlotManager {
         }
       }
 
-      // 4. 기본 손절선 검사 (손실률 <= -손절선)
-      if (profitRate <= -stopLossPct) {
-        console.log(`⚠️ [Slot ${slot.slotId}] Stop-Loss Triggered! Loss: ${profitRate.toFixed(2)}% <= -${stopLossPct}%`);
+      // 4. 손절선 검사 (AI 동적 변동성 ATR 손절 또는 기본 고정 손절선)
+      const isDynamicAtr = Boolean(slot.useAtrStopLoss && pos.dynamicStopLossPct);
+      const effectiveStopLossPct = isDynamicAtr ? Number(pos.dynamicStopLossPct) : stopLossPct;
+
+      if (profitRate <= -effectiveStopLossPct) {
+        const modeLabel = isDynamicAtr ? `[AI 동적 변동성 ATR 손절]` : `[손절매 실행]`;
+        console.log(`⚠️ [Slot ${slot.slotId}] ${modeLabel} Triggered! Loss: ${profitRate.toFixed(2)}% <= -${effectiveStopLossPct.toFixed(2)}%`);
         return {
           action: 'STOP_LOSS_SELL',
           slotId: slot.slotId,
@@ -250,7 +259,7 @@ class SlotManager {
           profitRate,
           profitKrw: ((currentPrice - pos.entryPrice) * pos.entryVolume),
           highestProfitPct: pos.highestProfitPct,
-          reason: `[손절매 실행] 손실률 ${profitRate.toFixed(2)}% (손절 기준: -${stopLossPct}%)`
+          reason: `${modeLabel} 손실률 ${profitRate.toFixed(2)}% (손절 기준: -${effectiveStopLossPct.toFixed(2)}%)`
         };
       }
     }

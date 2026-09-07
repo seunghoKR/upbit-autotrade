@@ -15,6 +15,17 @@ class StrategyEngine {
     this.lastSignalTime = 0;
     this.signalCooldownMs = 10000; // 동일 급등 10초 쿨다운
 
+    // 🛡️ 비트코인 커플링 하락 방어 상태
+    this.btcBuffer = []; // KRW-BTC 틱 버퍼 (5분)
+    this.btcProtection = {
+      active: false,
+      dropRate: 0,
+      currentPrice: 0,
+      peakPrice: 0,
+      reason: '정상',
+      updatedAt: Date.now()
+    };
+
     this.initSurgeAndSlots();
   }
 
@@ -43,6 +54,18 @@ class StrategyEngine {
           console.log(`ℹ️ [급등 감지 제외] ${surge.market}은(는) 제외 코인 목록에 등록되어 있어 매수를 건너뜁니다.`);
           return;
         }
+      }
+
+      // 🛡️ [알고리즘 2번] 비트코인 커플링 필터 (BTC 급락 중 알트코인 연쇄 폭락 방어)
+      if (this.settings.BTC_PROTECTION_ENABLED !== false && this.btcProtection?.active && surge.market !== 'KRW-BTC') {
+        console.log(`🛡️ [BTC 하락 매수 보호 가동] ${this.btcProtection.reason} -> 알트코인 [${surge.market}] 매수 진입을 안전하게 차단합니다.`);
+        this.emitSignal({
+          type: 'BTC_PROTECTION_BLOCKED',
+          market: surge.market,
+          reason: this.btcProtection.reason,
+          message: `🛡️ [BTC 하락 방어] 비트코인 급락(${this.btcProtection.dropRate}%) 감지로 [${surge.market}] 매수를 안전하게 차단했습니다.`
+        });
+        return;
       }
 
       const availableSlot = slotManager.getAvailableSlot(surge.market);
@@ -77,13 +100,64 @@ class StrategyEngine {
       });
 
       // ----------------------------------------------------
-      // [2단계] ⏱️ 발견 알림 후 정확히 3초 뒤 시장가 매수 실행 (체결 시 알림)
+      // [2단계] ⏱️ 발견 알림 후 정확히 3초 뒤 호가창 및 ATR 점검 후 시장가 매수 실행
       // ----------------------------------------------------
       setTimeout(async () => {
         // 3초 후 슬롯 상태 재확인 (엔진 정지 여부 체크)
         if (!this.isRunning) {
           slotManager.clearPosition(availableSlot.slotId);
           return;
+        }
+
+        // 🛡️ [알고리즘 1번] 호가창 불균형 필터 (Orderbook Imbalance: 가짜 펌핑 방어)
+        if (this.settings.ORDERBOOK_FILTER_ENABLED !== false) {
+          try {
+            const obData = await upbitClient.getOrderbook(surge.market);
+            if (Array.isArray(obData) && obData.length > 0) {
+              const ob = obData[0];
+              const totalBid = Number(ob.total_bid_size || 0);
+              const totalAsk = Number(ob.total_ask_size || 0);
+              const totalSize = totalBid + totalAsk;
+              const bidRatio = totalSize > 0 ? (totalBid / totalSize) * 100 : 50;
+              const minBidRatio = Number(this.settings.ORDERBOOK_MIN_BID_RATIO) || 35.0;
+
+              if (bidRatio < minBidRatio) {
+                console.warn(`🚫 [호가창 불균형 차단] ${surge.market} 매수잔량 비율 ${bidRatio.toFixed(1)}% < 기준 ${minBidRatio}% (가짜 펌핑/허매수 의심) -> 매수 취소`);
+                slotManager.clearPosition(availableSlot.slotId);
+                this.emitSignal({
+                  type: 'ORDERBOOK_FILTER_BLOCKED',
+                  slotId: availableSlot.slotId,
+                  market: surge.market,
+                  bidRatio: Number(bidRatio.toFixed(1)),
+                  minBidRatio,
+                  message: `🚫 [가짜 펌핑 방어] ${surge.market} 호가창 매수비율(${bidRatio.toFixed(1)}%) 부족으로 매수를 안전하게 취소했습니다.`
+                });
+                return;
+              }
+              console.log(`✅ [호가창 검증 통과] ${surge.market} 매수비율: ${bidRatio.toFixed(1)}% (기준 ${minBidRatio}% 이상 확보)`);
+            }
+          } catch (obErr) {
+            console.warn(`⚠️ [호가창 검증 경고] ${surge.market} 호가 조회 지연: ${obErr.message}`);
+          }
+        }
+
+        // ⚙️ [알고리즘 4번] AI 동적 변동성 ATR 손절선 산출 (해당 슬롯이 ON 상태일 때)
+        let dynamicStopLossPct = null;
+        if (availableSlot.useAtrStopLoss) {
+          try {
+            const candles = await upbitClient.getMinuteCandles(surge.market, 1, 30);
+            const atrResult = indicators.calculateATR(candles, Number(this.settings.ATR_PERIOD) || 14);
+            if (atrResult && atrResult.atrPct) {
+              const multiplier = Number(this.settings.ATR_MULTIPLIER) || 1.5;
+              const minStop = Number(this.settings.ATR_MIN_STOP_PCT) || 1.2;
+              const maxStop = Number(this.settings.ATR_MAX_STOP_PCT) || 4.5;
+              const rawStop = atrResult.atrPct * multiplier;
+              dynamicStopLossPct = Number(Math.min(Math.max(rawStop, minStop), maxStop).toFixed(2));
+              console.log(`⚙️ [AI 동적 변동성 손절 산출] ${surge.market} ATR: ${atrResult.currentATR} (${atrResult.atrPct}%) -> 동적 손절선: -${dynamicStopLossPct}%`);
+            }
+          } catch (atrErr) {
+            console.warn(`[ATR 계산 실패] ${surge.market}: ${atrErr.message}`);
+          }
         }
 
         const buySignal = {
@@ -94,7 +168,8 @@ class StrategyEngine {
           market: surge.market,
           price: surge.currentPrice,
           amount: tradeAmount,
-          reason: `${availableSlot.name}: ${surge.reason}`,
+          dynamicStopLossPct,
+          reason: `${availableSlot.name}: ${surge.reason}${dynamicStopLossPct ? ` [AI 동적 손절선: -${dynamicStopLossPct}%]` : ''}`,
           surgeInfo: surge,
           createdAt: new Date().toISOString()
         };
@@ -158,10 +233,63 @@ class StrategyEngine {
   }
 
   /**
+   * 🛡️ [알고리즘 2번] 비트코인(KRW-BTC) 5분 롤링 윈도우 하락률 및 보호 상태 실시간 산출
+   */
+  updateBtcProtectionStatus(tick) {
+    const price = Number(tick.trade_price);
+    if (!price || isNaN(price)) return;
+    const now = Date.now();
+
+    this.btcBuffer.push({ price, timestamp: now });
+    // 5분(300초) 롤링 윈도우 유지
+    const windowMs = 5 * 60 * 1000;
+    const cutoff = now - windowMs;
+    while (this.btcBuffer.length > 0 && this.btcBuffer[0].timestamp < cutoff) {
+      this.btcBuffer.shift();
+    }
+
+    if (this.btcBuffer.length < 2) return;
+
+    // 윈도우 내 최고가 탐색
+    let maxPrice = this.btcBuffer[0].price;
+    for (let i = 0; i < this.btcBuffer.length; i++) {
+      if (this.btcBuffer[i].price > maxPrice) maxPrice = this.btcBuffer[i].price;
+    }
+
+    const dropRate = ((price - maxPrice) / maxPrice) * 100;
+    const threshold = Number(this.settings.BTC_DROP_THRESHOLD_PCT) || 0.7; // 기본 0.7% 이상 하락 시
+
+    const isDropping = dropRate <= -threshold;
+    const prevActive = this.btcProtection.active;
+
+    this.btcProtection = {
+      active: isDropping,
+      dropRate: Number(dropRate.toFixed(2)),
+      currentPrice: price,
+      peakPrice: maxPrice,
+      reason: isDropping ? `비트코인 5분 고점 대비 ${dropRate.toFixed(2)}% 급락 감지` : '정상',
+      updatedAt: now
+    };
+
+    if (prevActive !== isDropping) {
+      console.log(`🛡️ [BTC 매수 보호 상태 변경] active: ${isDropping} (5분 변동: ${dropRate.toFixed(2)}%)`);
+      this.emitSignal({
+        type: 'BTC_PROTECTION_STATUS',
+        protection: this.btcProtection
+      });
+    }
+  }
+
+  /**
    * 실시간 WebSocket 틱 데이터 수신 시 처리
    */
   async processRealtimeTick(tick) {
     if (!this.isRunning) return;
+
+    // 🛡️ [알고리즘 2번] 비트코인 틱 감시 및 하락 커플링 보호 상태 실시간 업데이트
+    if (tick.code === 'KRW-BTC') {
+      this.updateBtcProtectionStatus(tick);
+    }
 
     // 1. 급등 감지기 틱 피딩
     surgeDetector.processTick(tick, this.settings);
@@ -280,7 +408,8 @@ class StrategyEngine {
           market: signal.market,
           entryPrice: signal.price,
           entryVolume: estimatedVolume,
-          entryAmountKrw: signal.amount
+          entryAmountKrw: signal.amount,
+          dynamicStopLossPct: signal.dynamicStopLossPct || null
         });
 
       } else if (signal.type === 'SELL') {

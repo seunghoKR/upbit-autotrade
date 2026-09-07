@@ -1,7 +1,7 @@
 # 📝 누리오(NURIOH) AI 트레이더 종합 개발 메모 & 시스템 가이드
 
-> **버전 (Version):** `v2.9.1 (Bi-directional Auto-Sync, Zero-Latency Ticker & Anti-Duplicate Guard Release)`  
-> **최종 갱신일시:** 2026-09-01 15:55 (KST)  
+> **버전 (Version):** `v3.0.0 (4-Stage Advanced Algo Engine & Whale/BTC Guard Release)`  
+> **최종 갱신일시:** 2026-09-07 22:30 (KST)  
 > **작성자:** AI 디자인실장 영자 & 마스터 개발자 이승호 대표님  
 > **프로젝트 위치:** `y:\SynologyDrive\00.withAI\자동매매프로그램`  
 > **GitHub 저장소:** `https://github.com/seunghoKR/upbit-autotrade.git` (`main` 브랜치)
@@ -110,6 +110,22 @@
   - 사용자가 실명, 닉네임, 연락처(전화번호) 및 업비트 API 키를 정확하게 입력해야 자동매매 시스템 승인이 가능하다는 점을 명확히 안내.
   - 최소한의 개인정보는 시스템 운영의 보안과 안전을 위해 필수이며, 텔레그램은 실시간 알림용 선택 사항임을 안내.
 - **해결:** `MyPageModal.jsx`의 `[내 정보 & API 키]` 탭 최상단에 골드/앰버 톤의 **`[💡 자동매매 시스템 이용 승인 및 보안 필수 안내]`** 배너 카드 디자인 적용 완료.
+
+### 🚀 [이슈 14] 4대 실전 트레이딩 알고리즘 고도화 완료 (v3.0.0)
+- **요구사항 및 도입 계획:**
+  1. **호가창 불균형 필터 (1단계 최우선):** 얇은 호가창을 이용한 세력의 가짜 윗꼬리 펌핑(Fake Pump) 방어.
+  2. **비트코인 커플링 필터 & 대시보드 배지 (1단계 최우선):** 비트코인 급락 시 알트코인 연쇄 폭락 방어 및 상단 배지 연동.
+  3. **고래 단일 틱 1,000만원 필터 (2단계):** 개미 쪼개기 매수/자전거래 잡음 수급 필터링.
+  4. **AI 동적 변동성 ATR 손절 모드 (선택형 옵션):** 종목별 1분봉 ATR 기반 1.2%~4.5% 맞춤형 동적 손절선 자동 부여 및 슬롯 토글 스위치 제공.
+- **해결 내역:**
+  - `server/upbit/upbitClient.js`: `getOrderbook(market)` REST 메서드 신설.
+  - `server/strategy/indicators.js`: `calculateATR(candles, 14)` 신설.
+  - `server/strategy/surgeDetector.js`: `maxSingleTickKrw >= 10,000,000` 고래 단일 틱 필터 탑재.
+  - `server/strategy/strategyEngine.js`: BTC 5분 롤링 하락률 감시 및 알트코인 매수 일시 차단, 매수 직전 호가창 매수비율(35% 미만 차단) 검증, ATR 동적 손절값 산출 및 슬롯 할당.
+  - `server/strategy/slotManager.js`: 슬롯별 `useAtrStopLoss` 및 `dynamicStopLossPct` 필드 지원 및 손절 평가 반영.
+  - `dashboard/src/components/Header.jsx`: **[🛡️ BTC 하락 감지: 매수 보호 가동 중]** 로즈 톤 펄스 라이브 배지 연동.
+  - `dashboard/src/components/SlotManager.jsx`: 편집 모달에 **[⚙️ AI 동적 변동성 손절 모드 ON/OFF]** 토글 스위치 및 슬롯 스펙 표에 **[⚡ AI ATR (동적)]** 뱃지 표출.
+  - `dashboard/src/App.jsx`: `btcProtection` 실시간 상태 연동 및 Vite 프로덕션 빌드 완료.
 
 ---
 

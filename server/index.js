@@ -8,6 +8,7 @@ const upbitClient = require('./upbit/upbitClient');
 const upbitWs = require('./upbit/upbitWs');
 const strategyEngine = require('./strategy/strategyEngine');
 const slotManager = require('./strategy/slotManager');
+const indicators = require('./strategy/indicators');
 const userManager = require('./auth/userManager');
 const telegramBot = require('./telegram/bot');
 const totp = require('./security/totp');
@@ -235,6 +236,7 @@ app.get('/api/status', async (req, res) => {
       accounts,
       accountError,
       slots,
+      btcProtection: strategyEngine.btcProtection,
       serverIp: '49.171.41.10',
       pendingApproval: strategyEngine.pendingApproval,
       tradeHistory: strategyEngine.tradeHistory
@@ -282,11 +284,28 @@ app.post('/api/slots/:slotId/buy', async (req, res) => {
       console.warn(`[Node Slot Buy] 업비트 API 키 미연결 또는 주문 실패: ${orderErr.message} -> 모의 매수로 지속`);
     }
 
+    // 해당 슬롯의 AI 동적 ATR 손절 모드 활성화 여부 확인 및 손절선 산출
+    const targetSlot = slotManager.getSlotById(Number(slotId));
+    let dynamicStopLossPct = null;
+    if (targetSlot && targetSlot.useAtrStopLoss) {
+      try {
+        const candles = await upbitClient.getMinuteCandles(market, 1, 30);
+        const atrResult = indicators.calculateATR(candles, Number(strategyEngine.settings.ATR_PERIOD) || 14);
+        if (atrResult && atrResult.atrPct) {
+          const multiplier = Number(strategyEngine.settings.ATR_MULTIPLIER) || 1.5;
+          const minStop = Number(strategyEngine.settings.ATR_MIN_STOP_PCT) || 1.2;
+          const maxStop = Number(strategyEngine.settings.ATR_MAX_STOP_PCT) || 4.5;
+          dynamicStopLossPct = Number(Math.min(Math.max(atrResult.atrPct * multiplier, minStop), maxStop).toFixed(2));
+        }
+      } catch (e) {}
+    }
+
     slotManager.assignPosition(Number(slotId), {
       market,
       entryPrice: calcPrice,
       entryVolume: estimatedVolume,
-      entryAmountKrw: tradeAmount
+      entryAmountKrw: tradeAmount,
+      dynamicStopLossPct
     });
 
     const updatedSlots = slotManager.getSlots(livePriceMap);
@@ -473,6 +492,7 @@ wss.on('connection', (ws) => {
     botRunning: strategyEngine.isRunning,
     settings: strategyEngine.settings,
     slots: slotManager.getSlots(livePriceMap),
+    btcProtection: strategyEngine.btcProtection,
     pendingApproval: strategyEngine.pendingApproval
   }));
 

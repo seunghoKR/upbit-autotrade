@@ -75,11 +75,22 @@ class SurgeDetector {
     const currentPrice = buffer[buffer.length - 1].price;
     const priceDiffRate = ((currentPrice - minPrice) / minPrice) * 100;
 
-    // 윈도우 내 총 누적 거래대금 (KRW)
+    // 윈도우 내 총 누적 거래대금 (KRW) 및 단일 최대 체결액 (고래 틱 분석)
     const totalVolumeKrw = buffer.reduce((sum, item) => sum + item.amount, 0);
+    const maxSingleTickKrw = buffer.reduce((max, item) => Math.max(max, item.amount), 0);
 
     const thresholdRate = Number(settings.SURGE_RATE_THRESHOLD !== undefined ? settings.SURGE_RATE_THRESHOLD : 0.8);
     const minVolumeKrw = Number(settings.SURGE_MIN_VOLUME_KRW !== undefined ? settings.SURGE_MIN_VOLUME_KRW : 1000000);
+
+    // 🐋 [알고리즘 3번] 단일 틱 1,000만원 고래 체결(Single Whale Tick) 조건 검증
+    const isWhaleFilterEnabled = settings.WHALE_TICK_FILTER_ENABLED !== false;
+    const minWhaleTickKrw = Number(settings.WHALE_SINGLE_TICK_MIN_KRW) || 10000000;
+    const hasWhaleTick = maxSingleTickKrw >= minWhaleTickKrw;
+
+    if (isWhaleFilterEnabled && !hasWhaleTick) {
+      // 1천만원 미만의 쪼개기 매수/잡음 수급은 급등 신호에서 제외
+      return;
+    }
 
     // 쿨다운 검사
     const lastSurge = this.lastSurgeTime.get(market) || 0;
@@ -92,6 +103,7 @@ class SurgeDetector {
       this.lastSurgeTime.set(market, now);
 
       const actualElapsedSeconds = Math.max(0.1, Number(((now - buffer[0].timestamp) / 1000).toFixed(1)));
+      const whaleText = isWhaleFilterEnabled ? ` (🐋 고래 틱: ${Math.round(maxSingleTickKrw).toLocaleString()}원)` : '';
 
       const surgeInfo = {
         market,
@@ -99,13 +111,15 @@ class SurgeDetector {
         currentPrice,
         priceDiffRate: Number(priceDiffRate.toFixed(2)),
         totalVolumeKrw: Math.round(totalVolumeKrw),
+        maxSingleTickKrw: Math.round(maxSingleTickKrw),
+        isWhaleConfirmed: hasWhaleTick,
         durationSeconds: windowSeconds,
         actualElapsedSeconds,
         detectedAt: new Date().toISOString(),
-        reason: `[급등 포착] ${actualElapsedSeconds}초 만에 +${priceDiffRate.toFixed(2)}% 급등 돌파! (누적 거래대금: ${Math.round(totalVolumeKrw).toLocaleString()}원)`
+        reason: `[급등 포착] ${actualElapsedSeconds}초 만에 +${priceDiffRate.toFixed(2)}% 급등 돌파!${whaleText} (누적: ${Math.round(totalVolumeKrw).toLocaleString()}원)`
       };
 
-      console.log(`🚨 [SURGE DETECTED] ${market} +${priceDiffRate.toFixed(2)}% in ${actualElapsedSeconds}s (설정창: ${windowSeconds}s 윈도우, 거래대금: ${Math.round(totalVolumeKrw).toLocaleString()}원)`);
+      console.log(`🚨 [SURGE DETECTED] ${market} +${priceDiffRate.toFixed(2)}% in ${actualElapsedSeconds}s (설정창: ${windowSeconds}s 윈도우, 누적: ${Math.round(totalVolumeKrw).toLocaleString()}원, 최대단일틱: ${Math.round(maxSingleTickKrw).toLocaleString()}원)`);
       this.emitSurge(surgeInfo);
     }
   }

@@ -361,6 +361,7 @@ try {
     try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN entry_amount_krw DECIMAL(15,2) DEFAULT NULL"); } catch (Exception $e) {}
     try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN entered_at DATETIME DEFAULT NULL"); } catch (Exception $e) {}
     try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN highest_profit_pct DECIMAL(8,4) DEFAULT 0.0000"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN use_atr_stop_loss TINYINT(1) DEFAULT 0"); } catch (Exception $e) {}
     try { $pdo->exec("ALTER TABLE nurioh_slots MODIFY COLUMN position_status VARCHAR(32) DEFAULT 'IDLE'"); } catch (Exception $e) {}
     try { $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN name VARCHAR(100) DEFAULT NULL AFTER kakao_id"); } catch (Exception $e) {}
     try { $pdo->exec("ALTER TABLE nurioh_users ADD COLUMN phone VARCHAR(50) DEFAULT NULL AFTER email"); } catch (Exception $e) {}
@@ -978,6 +979,7 @@ try {
                 'targetProfitPct' => (float)($s['target_profit_pct'] ?? 3.0),
                 'trailingCallbackPct' => (float)($s['trailing_callback_pct'] ?? 1.0),
                 'stopLossPct' => (float)($s['stop_loss_pct'] ?? 2.0),
+                'useAtrStopLoss' => (bool)($s['use_atr_stop_loss'] ?? 0),
                 'positionStatus' => $hasPos ? 'IN_POSITION' : 'IDLE',
                 'entryPrice' => $hasPos ? $entryP : null,
                 'entryVolume' => $hasPos ? $vol : null,
@@ -1491,6 +1493,7 @@ try {
             $targetProfitPct = isset($input['targetProfitPct']) ? abs((float)$input['targetProfitPct']) : (float)($existingSlot['target_profit_pct'] ?? 3.0);
             $trailingCallbackPct = isset($input['trailingCallbackPct']) ? abs((float)$input['trailingCallbackPct']) : (float)($existingSlot['trailing_callback_pct'] ?? 1.0);
             $stopLossPct = isset($input['stopLossPct']) ? abs((float)$input['stopLossPct']) : (float)($existingSlot['stop_loss_pct'] ?? 2.0);
+            $useAtrStopLoss = isset($input['useAtrStopLoss']) ? ((bool)$input['useAtrStopLoss'] ? 1 : 0) : (int)($existingSlot['use_atr_stop_loss'] ?? 0);
 
             if ($existingSlot) {
                 $stmt = $pdo->prepare("UPDATE nurioh_slots SET 
@@ -1504,7 +1507,8 @@ try {
                     surge_base_mode = ?,
                     target_profit_pct = ?,
                     trailing_callback_pct = ?,
-                    stop_loss_pct = ?
+                    stop_loss_pct = ?,
+                    use_atr_stop_loss = ?
                     WHERE user_id = ? AND slot_id = ?");
                 $stmt->execute([
                     $targetMarket, 
@@ -1518,13 +1522,14 @@ try {
                     $targetProfitPct,
                     $trailingCallbackPct,
                     $stopLossPct,
+                    $useAtrStopLoss,
                     $userId, 
                     $slotId
                 ]);
             } else {
                 $stmt = $pdo->prepare("INSERT INTO nurioh_slots 
-                    (user_id, slot_id, slot_name, is_enabled, target_market, trade_amount_krw, strategy_type, surge_window_seconds, surge_rate_pct, surge_min_volume_krw, surge_base_mode, target_profit_pct, trailing_callback_pct, stop_loss_pct, position_status) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'IDLE')");
+                    (user_id, slot_id, slot_name, is_enabled, target_market, trade_amount_krw, strategy_type, surge_window_seconds, surge_rate_pct, surge_min_volume_krw, surge_base_mode, target_profit_pct, trailing_callback_pct, stop_loss_pct, use_atr_stop_loss, position_status) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'IDLE')");
                 $stmt->execute([
                     $userId,
                     $slotId,
@@ -1539,7 +1544,8 @@ try {
                     $surgeBaseMode,
                     $targetProfitPct,
                     $trailingCallbackPct,
-                    $stopLossPct
+                    $stopLossPct,
+                    $useAtrStopLoss
                 ]);
             }
 
