@@ -147,7 +147,10 @@ export default function SlotManager({
         ? editForm.targetProfitPct 
         : (editForm.trailingTargetProfitPct !== undefined && editForm.trailingTargetProfitPct !== '' ? editForm.trailingTargetProfitPct : 3.0);
 
+      const currentSlot = slots.find(s => (s.id === slotId || s.slotId === slotId));
+
       onUpdateSlot(slotId, {
+        isEnabled: currentSlot ? currentSlot.isEnabled : true,
         tradeAmountKrw: editForm.tradeAmountKrw,
         strategyType: editForm.strategyType,
         surgeWindowSeconds: editForm.surgeWindowSeconds,

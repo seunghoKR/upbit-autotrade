@@ -331,6 +331,8 @@ $input = json_decode(file_get_contents('php://input'), true) ?? [];
 try {
     $pdo = Database::getConnection();
     $pdo->exec("SET NAMES utf8mb4");
+    // 🛡️ 필수 컬럼 자동 보정 (Unknown column 'use_atr_stop_loss' 에러 영구 방지)
+    try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN use_atr_stop_loss TINYINT(1) DEFAULT 0 AFTER stop_loss_pct"); } catch (Exception $e) {}
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(['error' => 'DB Connection failed: ' . $e->getMessage()]);

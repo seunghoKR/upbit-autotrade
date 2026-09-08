@@ -321,6 +321,15 @@ export default function App() {
               slotId: s.slotId,
               slotName: s.slotName || s.name || `${s.slotId}번 슬롯`,
               isEnabled: isEnabled,
+              strategyType: (isRecentlyUpdated && currentLocalSlot?.strategyType)
+                ? currentLocalSlot.strategyType
+                : (s.strategyType || s.strategy_type || 'RECOMMENDED'),
+              tradeAmountKrw: (isRecentlyUpdated && currentLocalSlot?.tradeAmountKrw)
+                ? currentLocalSlot.tradeAmountKrw
+                : (s.tradeAmountKrw || s.trade_amount_krw || 50000),
+              useAtrStopLoss: (isRecentlyUpdated && currentLocalSlot?.useAtrStopLoss !== undefined)
+                ? Boolean(currentLocalSlot.useAtrStopLoss)
+                : Boolean(s.useAtrStopLoss || s.use_atr_stop_loss),
               positionStatus: hasPosition ? 'IN_POSITION' : 'IDLE',
               entryPrice: entryPrice,
               entryVolume: hasPosition ? (rawEntryVolume > 0 ? rawEntryVolume : (entryPrice > 0 ? rawAmount / entryPrice : null)) : null,
