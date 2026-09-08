@@ -55,12 +55,26 @@ export default function Header({
   );
 
   useEffect(() => {
+    let faviconName = 'favicon.png';
     if (isLocalLab) {
       document.title = "🧪 [연구실 v3.1.0] NURIOH AI TRADER";
+      faviconName = 'favicon-lab.png';
     } else if (isStagingLab) {
       document.title = "🔬 [실험실 v3.1.0] NURIOH AI TRADER";
+      faviconName = 'favicon-lab.png';
     } else {
       document.title = "NURIOH AI TRADER (누리오 AI v3.1.0)";
+      faviconName = 'favicon.png';
+    }
+
+    try {
+      const linkEl = document.querySelector("link[rel*='icon']");
+      if (linkEl) {
+        const basePath = isStagingLab ? '/lab/' : './';
+        linkEl.href = `${basePath}${faviconName}?v=310`;
+      }
+    } catch (e) {
+      console.warn('Favicon switch error:', e);
     }
   }, [isLocalLab, isStagingLab]);
 
