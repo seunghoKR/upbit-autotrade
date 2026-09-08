@@ -68,9 +68,10 @@ async function main() {
     RewriteRule ^ index.html [L]
 </IfModule>
 `;
-  const htaccessLocal = path.join(LOCAL_BASE, '.htaccess');
-  fs.writeFileSync(htaccessLocal, htaccessContent, 'utf-8');
-  uploadFileWithCurl(htaccessLocal, '.htaccess');
+  const htaccessStaging = path.join(LOCAL_BASE, '.htaccess_staging');
+  fs.writeFileSync(htaccessStaging, htaccessContent, 'utf-8');
+  uploadFileWithCurl(htaccessStaging, '.htaccess');
+  if (fs.existsSync(htaccessStaging)) fs.unlinkSync(htaccessStaging);
 
   // 2. Upload Frontend Dist
   console.log('\n📦 Uploading Frontend Build (dashboard/dist)...');
