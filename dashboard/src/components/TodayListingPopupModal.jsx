@@ -1,24 +1,41 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 export default function TodayListingPopupModal({ isOpen, todayNotice, onClose, onOpenNoticeBoard }) {
-  if (!isOpen || !todayNotice) return null;
+  const [isDismissed, setIsDismissed] = useState(false);
 
-  const handleDoNotShowAgain = () => {
+  if (!isOpen || !todayNotice || isDismissed) return null;
+
+  const handleCloseImmediately = (e) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    setIsDismissed(true);
+    onClose();
+  };
+
+  const handleDoNotShowAgain = (e) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
     try {
       localStorage.setItem('hide_today_listing_popup_never', 'true');
       if (todayNotice?.id) {
         localStorage.setItem(`hide_listing_notice_${todayNotice.id}`, 'true');
       }
-    } catch (e) {
-      console.warn('LocalStorage error:', e);
+    } catch (err) {
+      console.warn('LocalStorage error:', err);
     }
+    setIsDismissed(true);
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
-      <div className="relative w-full max-w-lg bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-2 border-cyan-400/50 rounded-2xl shadow-2xl shadow-cyan-500/30 overflow-hidden text-slate-100">
-        
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn"
+      onClick={handleCloseImmediately}
+    >
+      <div 
+        className="relative w-full max-w-lg bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-2 border-cyan-400/50 rounded-2xl shadow-2xl shadow-cyan-500/30 overflow-hidden text-slate-100"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* 상단 네온 바 & 불꽃 배너 */}
         <div className="h-2 bg-gradient-to-r from-cyan-400 via-blue-500 to-emerald-400 animate-pulse"></div>
 
@@ -34,8 +51,9 @@ export default function TodayListingPopupModal({ isOpen, todayNotice, onClose, o
               </span>
             </div>
             <button
-              onClick={onClose}
-              className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+              type="button"
+              onClick={handleCloseImmediately}
+              className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer touch-manipulation"
             >
               ✕
             </button>
@@ -71,25 +89,28 @@ export default function TodayListingPopupModal({ isOpen, todayNotice, onClose, o
           {/* 액션 버튼 */}
           <div className="mt-5 space-y-2.5">
             <button
-              onClick={() => {
-                onClose();
+              type="button"
+              onClick={(e) => {
+                handleCloseImmediately(e);
                 onOpenNoticeBoard();
               }}
-              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-extrabold text-sm shadow-lg shadow-cyan-500/25 transition-all flex items-center justify-center gap-2"
+              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-extrabold text-sm shadow-lg shadow-cyan-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer touch-manipulation active:scale-98"
             >
-              <span>📢 신규 상장 상세 정보 & 봇 전략 확인</span>
+              <span>📢 신규 상장 상세 정보 &amp; 봇 전략 확인</span>
             </button>
 
             <div className="flex items-center justify-between text-xs pt-1 px-1 text-slate-400">
               <button
+                type="button"
                 onClick={handleDoNotShowAgain}
-                className="hover:text-slate-200 transition-colors underline underline-offset-4"
+                className="hover:text-cyan-300 active:text-cyan-400 transition-colors underline underline-offset-4 cursor-pointer touch-manipulation py-1"
               >
                 다시 열지 않기
               </button>
               <button
-                onClick={onClose}
-                className="hover:text-slate-200 transition-colors font-medium"
+                type="button"
+                onClick={handleCloseImmediately}
+                className="hover:text-slate-200 active:text-white transition-colors font-medium cursor-pointer touch-manipulation py-1"
               >
                 닫기
               </button>
