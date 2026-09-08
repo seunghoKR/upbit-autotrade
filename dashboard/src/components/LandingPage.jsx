@@ -19,12 +19,15 @@ import {
 } from 'lucide-react';
 
 export default function LandingPage({ onOpenKakaoLogin, onLabDevLogin }) {
-  // 🧪 연구실(Lab) 모드 감지
-  const isLabMode = typeof window !== 'undefined' && (
+  // 🏛️ 3단계 환경 감지: 🧪 연구실(로컬) | 🔬 실험실(호스팅 Staging) | 🏛️ 실서버(상용 Live)
+  const isLocalLab = typeof window !== 'undefined' && (
     window.location.hostname === 'localhost' ||
     window.location.hostname === '127.0.0.1' ||
-    window.location.hostname.includes('lab') ||
     Boolean(import.meta.env?.DEV)
+  );
+  const isStagingLab = typeof window !== 'undefined' && (
+    window.location.pathname.startsWith('/lab') ||
+    window.location.hostname.includes('lab')
   );
 
   return (
@@ -48,11 +51,18 @@ export default function LandingPage({ onOpenKakaoLogin, onLabDevLogin }) {
                 <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 font-bold">
                   AI TRADER
                 </span>
-                {isLabMode && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-mono font-bold border border-emerald-500/30">
+                  {(isLocalLab || isStagingLab) ? 'v3.0.1' : 'v3.0.0'}
+                </span>
+                {isLocalLab ? (
                   <span className="text-[9px] px-2 py-0.5 rounded-full bg-purple-950/80 text-purple-300 font-bold border border-purple-500/50 animate-pulse">
-                    🧪 LAB 연구실
+                    🧪 연구실 (로컬)
                   </span>
-                )}
+                ) : isStagingLab ? (
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-950/90 text-amber-300 font-bold border border-amber-500/60 animate-pulse">
+                    🔬 실험실 (Staging)
+                  </span>
+                ) : null}
               </div>
             </div>
           </div>

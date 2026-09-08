@@ -83,13 +83,17 @@ const LAB_DEV_USER = {
   approvalStatus: 'APPROVED'
 };
 
-// 🧪 연구실(Lab) 환경 감지 플래그
-const isLabEnvironment = typeof window !== 'undefined' && (
+// 🏛️ 3단계 환경 감지 플래그: 🧪 연구실(로컬) | 🔬 실험실(호스팅 Staging) | 🏛️ 실서버(상용 Live)
+const isLocalLab = typeof window !== 'undefined' && (
   window.location.hostname === 'localhost' ||
   window.location.hostname === '127.0.0.1' ||
-  window.location.hostname.includes('lab') ||
   Boolean(import.meta.env?.DEV)
 );
+const isStagingLab = typeof window !== 'undefined' && (
+  window.location.pathname.startsWith('/lab') ||
+  window.location.hostname.includes('lab')
+);
+const isLabEnvironment = isLocalLab || isStagingLab;
 
 export default function App() {
   const [botRunning, setBotRunning] = useState(false);
@@ -1581,6 +1585,24 @@ export default function App() {
         marketCount={marketCount}
         btcProtection={btcProtection}
       />
+
+      {/* 🔬 [실험실 전용 상단 띠 배너] 운영자/개발자 사전 체험 전용 안내 */}
+      {isStagingLab && (
+        <div className="bg-gradient-to-r from-amber-600/90 via-orange-600/90 to-amber-700/90 text-white px-4 py-2 border-b border-amber-400/50 shadow-md">
+          <div className="max-w-7xl mx-auto flex items-center justify-between text-xs sm:text-sm font-bold">
+            <div className="flex items-center gap-2">
+              <span className="text-base animate-bounce">🔬</span>
+              <span>[실험실 v3.0.1] 운영자 전용 사전 검증 공간입니다.</span>
+              <span className="hidden md:inline text-amber-100/90 font-normal text-xs">
+                (실서버 적용 전 신규 기능과 UI를 직접 테스트해 보세요. 개발자/운영자 승인 후 실서버로 배포됩니다.)
+              </span>
+            </div>
+            <span className="px-2 py-0.5 rounded bg-black/30 text-amber-200 text-[11px] font-mono border border-amber-300/40 shrink-0">
+              STAGING LAB
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* 메인 콘텐츠 영역 (상단 헤더와 좌우 라인 100% 일치) */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-6">

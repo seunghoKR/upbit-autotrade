@@ -17,13 +17,17 @@ export default function KakaoAuthModal({ isOpen, onClose, onLoginSuccess, onLabD
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // 🧪 연구실(Lab) 모드 감지
-  const isLabMode = typeof window !== 'undefined' && (
+  // 🏛️ 3단계 환경 감지: 🧪 연구실(로컬) | 🔬 실험실(호스팅 Staging)
+  const isLocalLab = typeof window !== 'undefined' && (
     window.location.hostname === 'localhost' ||
     window.location.hostname === '127.0.0.1' ||
-    window.location.hostname.includes('lab') ||
     Boolean(import.meta.env?.DEV)
   );
+  const isStagingLab = typeof window !== 'undefined' && (
+    window.location.pathname.startsWith('/lab') ||
+    window.location.hostname.includes('lab')
+  );
+  const isLabMode = isLocalLab || isStagingLab;
 
   useEffect(() => {
     if (isOpen) {
@@ -175,20 +179,22 @@ export default function KakaoAuthModal({ isOpen, onClose, onLoginSuccess, onLabD
           </span>
         </div>
 
-        {/* 🧪 연구실(로컬) 전용: 카카오 인증 우회 개발자 즉시 접속 배너 */}
+        {/* 🧪 연구실(로컬) / 🔬 실험실(호스팅) 전용: 개발자/운영자 즉시 접속 패스 */}
         {isLabMode && (
           <div className="p-3.5 rounded-2xl bg-purple-950/70 border border-purple-500/60 shadow-lg shadow-purple-900/30 text-left space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-purple-300 font-black text-xs flex items-center gap-1.5">
                 <span className="inline-block w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
-                🧪 연구실(LAB) 로컬 감지됨
+                {isStagingLab ? '🔬 실험실(Staging) 환경 감지됨' : '🧪 연구실(로컬) 환경 감지됨'}
               </span>
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold">
-                카톡 인증 불필요
+                개발자/운영자 전용
               </span>
             </div>
             <p className="text-[11px] text-purple-200/80 leading-snug">
-              로컬 개발 환경에서는 카톡 오류 없이 즉시 최고 권한(개발자/대표님)으로 입장하실 수 있습니다.
+              {isStagingLab 
+                ? '실험실은 개발자와 운영자만 접근 가능합니다. 원클릭으로 마스터 계정에 접속하실 수 있습니다.'
+                : '연구실에서는 카톡 오류 없이 즉시 최고 권한(개발자/대표님)으로 입장하실 수 있습니다.'}
             </p>
             <button
               type="button"
@@ -199,7 +205,7 @@ export default function KakaoAuthModal({ isOpen, onClose, onLoginSuccess, onLabD
               className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs sm:text-sm transition shadow-md shadow-purple-900/50 border border-purple-400/50 flex items-center justify-center gap-2 cursor-pointer"
             >
               <span>👑</span>
-              <span>연구실 최고 개발자(대표님)로 바로 입장</span>
+              <span>{isStagingLab ? '실험실 마스터 계정으로 입장' : '연구실 최고 개발자(대표님)로 바로 입장'}</span>
             </button>
           </div>
         )}

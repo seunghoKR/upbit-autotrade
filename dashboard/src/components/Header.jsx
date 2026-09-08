@@ -41,21 +41,26 @@ export default function Header({
   const [soundEnabled, setSoundEnabled] = useState(soundService.isEnabled());
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // 🧪 연구실(Lab) vs 실서버(Live) 환경 자동 감지
-  const isLabMode = typeof window !== 'undefined' && (
+  // 🏛️ 3단계 환경 감지: 🧪 연구실(로컬) | 🔬 실험실(호스팅 Staging) | 🏛️ 실서버(상용 Live)
+  const isLocalLab = typeof window !== 'undefined' && (
     window.location.hostname === 'localhost' ||
     window.location.hostname === '127.0.0.1' ||
-    window.location.hostname.includes('lab') ||
     Boolean(import.meta.env?.DEV)
+  );
+  const isStagingLab = typeof window !== 'undefined' && (
+    window.location.pathname.startsWith('/lab') ||
+    window.location.hostname.includes('lab')
   );
 
   useEffect(() => {
-    if (isLabMode) {
-      document.title = "🧪 [LAB 연구실] NURIOH AI TRADER";
+    if (isLocalLab) {
+      document.title = "🧪 [연구실 v3.0.1] NURIOH AI TRADER";
+    } else if (isStagingLab) {
+      document.title = "🔬 [실험실 v3.0.1] NURIOH AI TRADER";
     } else {
-      document.title = "NURIOH AI TRADER (누리오 AI)";
+      document.title = "NURIOH AI TRADER (누리오 AI v3.0.0)";
     }
-  }, [isLabMode]);
+  }, [isLocalLab, isStagingLab]);
 
   useEffect(() => {
     const handleSoundToggle = (e) => {
@@ -111,17 +116,22 @@ export default function Header({
                 </span>
               </div>
               <span className="text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-mono font-black border border-emerald-500/30 shrink-0">
-                v3.2.3
+                {(isLocalLab || isStagingLab) ? 'v3.0.1' : 'v3.0.0'}
               </span>
 
-              {/* 🧪 연구실(LAB) vs 🟢 실서버(LIVE) 시각적 직관 배지 */}
-              {isLabMode ? (
-                <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-purple-950/80 text-purple-300 font-black border border-purple-500/60 shadow-md shadow-purple-900/40 flex items-center gap-1 animate-pulse shrink-0" title="🧪 로컬 연구실(LAB) 테스트 환경입니다. 실거래와 분리되어 있습니다.">
+              {/* 🏛️ 3단계 시각적 직관 배지: 🧪 연구실 | 🔬 실험실 | 🟢 실서버 */}
+              {isLocalLab ? (
+                <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-purple-950/80 text-purple-300 font-black border border-purple-500/60 shadow-md shadow-purple-900/40 flex items-center gap-1 animate-pulse shrink-0" title="🧪 대표님 로컬 연구실(LAB) 개발 환경입니다.">
                   <span className="inline-block w-1.5 h-1.5 rounded-full bg-purple-400"></span>
-                  🧪 LAB 연구실
+                  🧪 연구실 (로컬)
+                </span>
+              ) : isStagingLab ? (
+                <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-amber-950/90 text-amber-300 font-black border border-amber-500/70 shadow-md shadow-amber-900/50 flex items-center gap-1 animate-pulse shrink-0" title="🔬 운영자 실전 검증용 실험실(Staging) 환경입니다.">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                  🔬 실험실 (Staging)
                 </span>
               ) : (
-                <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 font-black border border-emerald-500/50 flex items-center gap-1 shrink-0" title="🟢 운영자 실거래 상용 서버(LIVE)입니다.">
+                <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 font-black border border-emerald-500/50 flex items-center gap-1 shrink-0" title="🟢 회원 실거래 상용 서버(LIVE)입니다.">
                   <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                   LIVE 실서버
                 </span>
