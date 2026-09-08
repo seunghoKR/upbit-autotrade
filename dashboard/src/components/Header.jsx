@@ -41,6 +41,22 @@ export default function Header({
   const [soundEnabled, setSoundEnabled] = useState(soundService.isEnabled());
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // 🧪 연구실(Lab) vs 실서버(Live) 환경 자동 감지
+  const isLabMode = typeof window !== 'undefined' && (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname.includes('lab') ||
+    Boolean(import.meta.env?.DEV)
+  );
+
+  useEffect(() => {
+    if (isLabMode) {
+      document.title = "🧪 [LAB 연구실] NURIOH AI TRADER";
+    } else {
+      document.title = "NURIOH AI TRADER (누리오 AI)";
+    }
+  }, [isLabMode]);
+
   useEffect(() => {
     const handleSoundToggle = (e) => {
       setSoundEnabled(e.detail.enabled);
@@ -95,8 +111,21 @@ export default function Header({
                 </span>
               </div>
               <span className="text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-mono font-black border border-emerald-500/30 shrink-0">
-                v3.0.0
+                v3.2.3
               </span>
+
+              {/* 🧪 연구실(LAB) vs 🟢 실서버(LIVE) 시각적 직관 배지 */}
+              {isLabMode ? (
+                <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-purple-950/80 text-purple-300 font-black border border-purple-500/60 shadow-md shadow-purple-900/40 flex items-center gap-1 animate-pulse shrink-0" title="🧪 로컬 연구실(LAB) 테스트 환경입니다. 실거래와 분리되어 있습니다.">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+                  🧪 LAB 연구실
+                </span>
+              ) : (
+                <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 font-black border border-emerald-500/50 flex items-center gap-1 shrink-0" title="🟢 운영자 실거래 상용 서버(LIVE)입니다.">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  LIVE 실서버
+                </span>
+              )}
 
               {/* 🟢 실시간 레이더 가동 중 라이브 뱃지 (PC 전용 확장 뷰) */}
               <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-[11px] font-medium shadow-inner shrink-0">
