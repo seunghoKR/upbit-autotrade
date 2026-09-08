@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "powershell -Command \"if (Test-Path dist) { Remove-Item -Recurse -Force dist }; npx vite build\"",
+    "build:staging": "powershell -Command \"$env:VITE_BASE_PATH='/lab/'; if (Test-Path dist) { Remove-Item -Recurse -Force dist }; npx vite build\"",
     "lint": "oxlint",
     "preview": "vite preview"
   },

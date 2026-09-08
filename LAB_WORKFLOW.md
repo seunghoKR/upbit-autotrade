@@ -17,87 +17,69 @@
 
 ---
 
-## 🔄 2. 연구실 ➔ 실서버 5단계 워크플로우 (SOP)
+## 🔄 2. 3단계 연구실 & 안전 배포 워크플로우 (SOP)
 
 ```mermaid
 graph LR
-    A["🧪 1. 연구실(dev) 입장<br/>git checkout dev"] --> B["💻 2. 기능 개발 &<br/>로컬 모의 검증"]
-    B --> C["📦 3. 연구실 발자취 저장<br/>git push origin dev"]
-    C --> D["🔀 4. 실서버 병합<br/>git checkout main<br/>git merge dev"]
-    D --> E["🚀 5. 빌드 & FTP 배포<br/>npm run build<br/>node deploy_ftp.js"]
+    A["🧪 1단계: 로컬 연구실(dev)<br/>localhost:3000 / 4000"] -->|"개발자 1차 검증"| B["📦 발자취 저장 & 푸시<br/>git push origin dev"]
+    B -->|"staging 병합 & 배포"| C["🔬 2단계: 실서버 연구실(staging)<br/>nuriohtrade.iwinv.net/lab<br/>npm run deploy:staging"]
+    C -->|"운영자 실전 테스트 & 승인"| D["🔀 3단계: 상용 실서버(main)<br/>git checkout main<br/>git merge staging"]
+    D -->|"원클릭 안전 배포"| E["🚀 실서버 배포 완료<br/>npm run deploy:prod"]
 ```
 
-### [Step 1] 연구실 입장 (브랜치 전환)
-새로운 작업을 시작하기 전에 항상 `dev` 브랜치인지 확인합니다.
-```bash
-# 브랜치 확인
-git status
-
-# 연구실(dev) 브랜치로 전환
-git checkout dev
-
-# 원격의 최신 연구실 코드 동기화
-git pull origin dev
-```
+### [1단계] 로컬 연구실 (Dev LAB)
+- **목적:** 내 PC에서 기능 개발, UI 디자인, 로직 개선 및 시뮬레이션 테스트
+- **브랜치:** `dev`
+- **구동 명령어:**
+  ```bash
+  npm run dev
+  ```
+- **검증 후 저장 및 푸시:**
+  ```bash
+  git add .
+  git commit -m "feat(lab): 신규 기능 구현"
+  git push origin dev
+  ```
 
 ---
 
-### [Step 2] 연구실에서 개발 및 로컬 검증
-1. **로컬 개발 서버 구동 (실거래 없이 안전하게 테스트):**
-   ```bash
-   # 터미널 1: 로컬 백엔드 서버 (포트 4000)
-   node server/index.js
+### [2단계] 실서버 연구실 배포 (Staging LAB - 운영자 검증용)
+- **목적:** 호스팅 서버 환경(`nuriohtrade.iwinv.net/lab`)에서 운영자가 실전 기능을 직접 만져보고 검증
+- **브랜치:** `staging`
+- **실행 절차:**
+  ```bash
+  # 1. staging 브랜치로 이동 및 dev 최신 내용 병합
+  git checkout staging
+  git merge dev
+  git push origin staging
 
-   # 터미널 2: 로컬 Vite 프론트엔드 대시보드 (포트 3000 / 5173)
-   npm run dev --prefix dashboard
-   ```
-2. **브라우저 접속:** `http://localhost:5173` (또는 화면에 표시된 로컬 URL)
-3. **알고리즘 및 로직 검증:**
-   - 슬롯 ON/OFF 토글, 전략 변경(RECOMMENDED / SELF) 롤백 여부 확인
-   - 호가창 불균형, BTC 커플링 필터, 고래 틱 감지 로직 정상 동작 여부 확인
+  # 2. 실서버 연구실 원클릭 배포 (/public_html/lab)
+  npm run deploy:staging
 
----
-
-### [Step 3] 연구실 발자취 저장 (Commit & Push)
-연구실에서 작업한 결과물을 Git에 기록하여 다른 컴퓨터에서도 바로 볼 수 있게 원격 저장소에 올립니다.
-```bash
-git add .
-git commit -m "feat(lab): 슬롯 알고리즘 고도화 및 테스트 완료"
-git push origin dev
-```
+  # 3. 작업 브랜치 dev로 다시 복귀
+  git checkout dev
+  ```
+- **운영자 검증 URL:** `http://nuriohtrade.iwinv.net/lab`
 
 ---
 
-### [Step 4] 실서버 병합 (Merge into Main)
-연구실에서 검증이 끝난 안정적인 코드를 상용 `main` 브랜치로 가져옵니다.
-```bash
-# 실서버 브랜치로 이동
-git checkout main
+### [3단계] 상용 실서버 배포 (Production - 전체 회원 서비스)
+- **목적:** 운영자와 대표님의 상호 승인이 완료된 무결점 코드를 전체 상용 서버에 적용
+- **브랜치:** `main`
+- **실행 절차:**
+  ```bash
+  # 1. main 브랜치로 이동 및 검증된 staging 병합
+  git checkout main
+  git merge staging
+  git push origin main
 
-# 최신 main 확인
-git pull origin main
+  # 2. 상용 실서버 원클릭 배포 (/public_html)
+  npm run deploy:prod
 
-# 연구실(dev) 작업 내용 병합
-git merge dev
-
-# 실서버 Git 저장소에 푸시
-git push origin main
-```
-
----
-
-### [Step 5] 실서버 빌드 & 원클릭 배포 (Production Deploy)
-실제 운영자 및 고객들이 사용하는 호스팅 서버(`nuriohtrade.iwinv.net`)로 원클릭 배포합니다.
-```bash
-# 1. 프론트엔드 최적화 빌드
-cd dashboard
-npm run build
-cd ..
-
-# 2. 실서버 FTP 자동 배포 스크립트 실행
-node deploy_ftp.js
-```
-*(루트 경로에서 `npm run deploy` 명령어 한 줄로도 위 1, 2번이 자동 순차 실행됩니다!)*
+  # 3. 작업 브랜치 dev로 다시 복귀
+  git checkout dev
+  ```
+- **상용 서비스 URL:** `http://nuriohtrade.iwinv.net`
 
 ---
 

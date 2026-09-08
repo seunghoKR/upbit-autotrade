@@ -7,7 +7,10 @@
     "server": "node server/index.js",
     "dashboard": "npm run dev --prefix dashboard",
     "build": "npm run build --prefix dashboard",
-    "deploy": "npm run build --prefix dashboard && node deploy_ftp.js",
+    "build:staging": "npm run build:staging --prefix dashboard",
+    "deploy": "npm run deploy:prod",
+    "deploy:staging": "npm run build:staging --prefix dashboard && node deploy_staging.js",
+    "deploy:prod": "npm run build --prefix dashboard && node deploy_ftp.js",
     "dev": "concurrently \"npm run server\" \"npm run dashboard\""
   },
   "dependencies": {
