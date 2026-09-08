@@ -900,12 +900,35 @@ try {
                     ON DUPLICATE KEY UPDATE is_enabled=VALUES(is_enabled)");
                 $slotInsert->execute([$userId, $s, "{$s}번 슬롯", $isEnabled, $m]);
             }
-
             $slotStmt->execute([$userId]);
             $slots = $slotStmt->fetchAll() ?: [];
         }
 
-        $formattedSlots = array_map(function($s) use ($pdo, $accounts) {
+        $defaultMarkets = [
+            1 => 'KRW-BTC', 2 => 'KRW-ETH', 3 => 'KRW-SOL',
+            4 => 'KRW-XRP', 5 => 'KRW-DOGE', 6 => 'KRW-ADA',
+            7 => 'KRW-AVAX', 8 => 'KRW-DOT', 9 => 'KRW-NEAR'
+        ];
+
+        // 🛡️ 1차 점유 등록: 현재 활성화(ON)되어 있고 실제로 IN_POSITION인 슬롯의 코인을 먼저 점유!
+        $claimedCurrencies = [];
+        foreach ($slots as $sl) {
+            $slMkt = $sl['target_market'] ?? '';
+            $slCurr = str_replace('KRW-', '', $slMkt);
+            $slIsEnabled = !empty($sl['is_enabled']);
+            $slIsHolding = ($sl['position_status'] === 'IN_POSITION' || $sl['position_status'] === 'HOLDING' || $sl['position_status'] === 'TRAILING_ACTIVE');
+            $slVol = (float)($sl['entry_volume'] ?? 0);
+            if ($slIsEnabled && $slIsHolding && $slVol > 0 && !empty($slCurr)) {
+                $claimedCurrencies[$slCurr] = (int)$sl['slot_id'];
+            }
+        }
+
+        $formattedSlots = [];
+        foreach ($slots as $s) {
+            $slotId = (int)$s['slot_id'];
+            $defMkt = $defaultMarkets[$slotId] ?? 'KRW-BTC';
+            $isEnabled = !empty($s['is_enabled']);
+
             $realizedProfit = (float)($s['total_realized_profit_krw'] ?? 0);
             if ($realizedProfit > 50000000 || $realizedProfit < -50000000) {
                 // 비정상적인 천문학적 더미/오류 데이터 0원으로 자동 정화
@@ -916,9 +939,13 @@ try {
             $mkt = $s['target_market'] ?? '';
             $currency = str_replace('KRW-', '', $mkt);
             
-            // 🛡️ 업비트 실계좌 잔고에서 해당 코인 보유 여부 대조 (Self-Healing Auto-Match)
+            // 🛡️ [중복 바인딩 및 OFF 슬롯 바인딩 원천 차단]
+            // 다른 슬롯이 이미 보유 중인 코인이거나, 현재 슬롯이 OFF 상태이면 Self-Healing 매칭을 전면 차단!
+            $isAlreadyClaimedByOther = isset($claimedCurrencies[$currency]) && $claimedCurrencies[$currency] !== $slotId;
+            $canAutoMatch = $isEnabled && !$isAlreadyClaimedByOther;
+
             $matchedAccount = null;
-            if (!empty($currency) && is_array($accounts)) {
+            if ($canAutoMatch && !empty($currency) && is_array($accounts)) {
                 foreach ($accounts as $acc) {
                     if ($acc['currency'] === $currency) {
                         $matchedAccount = $acc;
@@ -933,7 +960,7 @@ try {
             // 실계좌에 코인이 있고 슬롯이 비어있거나 불완전할 때 실계좌 정보로 즉시 복구!
             if ($matchedAccount && (float)($matchedAccount['balance'] ?? 0) > 0.0000001) {
                 $accVol = (float)$matchedAccount['balance'];
-                $accAvgPrice = (float)($matchedAccount['avg_buy_price'] ?? 0);
+                $accAvgPrice = (float)$matchedAccount['avg_buy_price'] ?? 0;
                 $accEvalKrw = $accVol * ($accAvgPrice > 0 ? $accAvgPrice : 1);
 
                 // 🛡️ [업비트 최소 주문 기준 5,000원 가드]
@@ -941,8 +968,6 @@ try {
                 if ($accEvalKrw < 5000) {
                     // 이미 슬롯에 먼지 코인으로 비정상 등록되어 있는 경우 IDLE로 즉각 자동 정화
                     if ($s['position_status'] === 'IN_POSITION' || $s['position_status'] === 'HOLDING' || $s['position_status'] === 'TRAILING_ACTIVE') {
-                        $defaultMarkets = [1 => 'KRW-BTC', 2 => 'KRW-ETH', 3 => 'KRW-SOL', 4 => 'KRW-XRP', 5 => 'KRW-DOGE', 6 => 'KRW-ADA', 7 => 'KRW-AVAX', 8 => 'KRW-DOT', 9 => 'KRW-NEAR'];
-                        $defMkt = $defaultMarkets[$s['slot_id']] ?? 'KRW-BTC';
                         $s['position_status'] = 'IDLE';
                         $s['entry_volume'] = null;
                         $s['entry_price'] = null;
@@ -962,29 +987,40 @@ try {
                     $s['entry_volume'] = $vol;
                     $s['entry_price'] = $entryP;
                     $s['entry_amount_krw'] = $amount;
+                    $claimedCurrencies[$currency] = $slotId; // 코인 점유 확정
                     // DB에도 자동 갱신
                     $pdo->prepare("UPDATE nurioh_slots SET position_status = 'IN_POSITION', entry_price = ?, entry_volume = ?, entry_amount_krw = ?, highest_price = COALESCE(highest_price, ?) WHERE id = ?")
                         ->execute([$entryP, $vol, $amount, $entryP, $s['id']]);
+                } else {
+                    $claimedCurrencies[$currency] = $slotId;
                 }
-            } else if (empty($accountError) && is_array($accounts) && count($accounts) > 0) {
-                // 🛡️ [역방향 자동 청산 동기화] 업비트 실계좌 조회가 성공했는데 실계좌에 코인이 없으면 슬롯도 즉시 IDLE로 자동 청산!
-                if ($s['position_status'] === 'IN_POSITION' || $s['position_status'] === 'HOLDING' || $s['position_status'] === 'TRAILING_ACTIVE') {
+            } else {
+                // 🛡️ [비정상 슬롯 자동 정화]
+                // 1) 다른 슬롯이 이미 가진 코인을 내가 갖고 있거나 (중복)
+                // 2) 슬롯이 OFF 상태인데 IN_POSITION이거나
+                // 3) 실계좌에 코인이 없는데 IN_POSITION으로 표시된 경우
+                $isDuplicateClaim = $isAlreadyClaimedByOther && ($s['position_status'] === 'IN_POSITION' || $s['position_status'] === 'HOLDING');
+                $isOffHolding = !$isEnabled && ($s['position_status'] === 'IN_POSITION' || $s['position_status'] === 'HOLDING');
+                $hasNoRealCoin = empty($accountError) && is_array($accounts) && count($accounts) > 0 && !$matchedAccount && ($s['position_status'] === 'IN_POSITION' || $s['position_status'] === 'HOLDING' || $s['position_status'] === 'TRAILING_ACTIVE');
+
+                if ($isDuplicateClaim || $isOffHolding || $hasNoRealCoin) {
                     $s['position_status'] = 'IDLE';
                     $s['entry_volume'] = null;
                     $s['entry_price'] = null;
                     $s['entry_amount_krw'] = null;
+                    $s['target_market'] = $defMkt;
                     $vol = 0;
                     $entryP = 0;
                     $amount = 0;
-                    $pdo->prepare("UPDATE nurioh_slots SET position_status = 'IDLE', entry_price = NULL, entry_volume = NULL, entry_amount_krw = NULL, highest_price = NULL WHERE id = ?")
-                        ->execute([$s['id']]);
+                    $pdo->prepare("UPDATE nurioh_slots SET position_status = 'IDLE', target_market = ?, entry_price = NULL, entry_volume = NULL, entry_amount_krw = NULL, highest_price = NULL WHERE id = ?")
+                        ->execute([$defMkt, $s['id']]);
                 }
             }
 
             $amount = (float)($s['entry_amount_krw'] ?? ($vol * $entryP));
             $hasPos = ($s['position_status'] === 'IN_POSITION' || $s['position_status'] === 'HOLDING' || $s['position_status'] === 'TRAILING_ACTIVE') && ($vol > 0.0000001 && $entryP > 0);
 
-            return [
+            $formattedSlots[] = [
                 'id' => (int)$s['id'],
                 'slotId' => (int)$s['slot_id'],
                 'slotName' => $s['slot_name'],
@@ -999,18 +1035,18 @@ try {
                 'targetProfitPct' => (float)($s['target_profit_pct'] ?? 3.0),
                 'trailingCallbackPct' => (float)($s['trailing_callback_pct'] ?? 1.0),
                 'stopLossPct' => (float)($s['stop_loss_pct'] ?? 2.0),
-                'useAtrStopLoss' => (bool)($s['use_atr_stop_loss'] ?? 0),
-                'positionStatus' => $hasPos ? 'IN_POSITION' : 'IDLE',
+                'useAtrStopLoss' => (bool)($s['use_atr_stop_loss'] ?? false),
+                'positionStatus' => $s['position_status'] ?: 'IDLE',
                 'entryPrice' => $hasPos ? $entryP : null,
                 'entryVolume' => $hasPos ? $vol : null,
                 'entryAmountKrw' => $hasPos ? $amount : null,
-                'highestPrice' => $s['highest_price'] ? (float)$s['highest_price'] : ($hasPos ? $entryP : null),
-                'highestProfitPct' => (float)($s['highest_profit_pct'] ?? 0),
+                'highestPrice' => $hasPos ? (float)($s['highest_price'] ?? $entryP) : null,
+                'highestProfitPct' => $hasPos ? (float)($s['highest_profit_pct'] ?? 0) : 0,
                 'totalTrades' => (int)($s['total_trades'] ?? 0),
                 'winTrades' => (int)($s['win_trades'] ?? 0),
                 'totalRealizedProfitKrw' => $realizedProfit
             ];
-        }, $slots);
+        }
 
         // 제외 코인 목록 파싱
         $excludedMarkets = [];
@@ -1922,8 +1958,12 @@ try {
         $isProfit = $profitPct >= 0;
 
         // 슬롯 초기화 및 실현 손익 통계 누적
+        $defaultMarkets = [1 => 'KRW-BTC', 2 => 'KRW-ETH', 3 => 'KRW-SOL', 4 => 'KRW-XRP', 5 => 'KRW-DOGE', 6 => 'KRW-ADA', 7 => 'KRW-AVAX', 8 => 'KRW-DOT', 9 => 'KRW-NEAR'];
+        $defMkt = $defaultMarkets[$slotId] ?? 'KRW-BTC';
+
         $pdo->prepare("UPDATE nurioh_slots SET 
             position_status = 'IDLE', 
+            target_market = ?,
             entry_price = NULL, 
             entry_volume = NULL, 
             entry_amount_krw = NULL,
@@ -1933,7 +1973,7 @@ try {
             win_trades = win_trades + ?,
             total_realized_profit_krw = total_realized_profit_krw + ?
             WHERE user_id = ? AND slot_id = ?")
-            ->execute([$isProfit ? 1 : 0, $profitKrw, $userId, $slotId]);
+            ->execute([$defMkt, $isProfit ? 1 : 0, $profitKrw, $userId, $slotId]);
 
         // 📢 텔레그램 실현 손익 정산 알림 발송
         $slotName = $slot['slot_name'] ?? "{$slotId}번 슬롯";

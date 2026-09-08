@@ -258,7 +258,9 @@ export default function SlotManager({
           const matchedAcc = Array.isArray(accounts) 
             ? accounts.find(a => a.currency === rawSymbol || `KRW-${a.currency}` === slot.targetMarket)
             : null;
-          const hasPosition = (slot.positionStatus === 'IN_POSITION' || slot.positionStatus === 'HOLDING' || slot.positionStatus === 'TRAILING_ACTIVE') || Boolean(slot.entryPrice && slot.entryPrice > 0) || Boolean(matchedAcc && parseFloat(matchedAcc.balance || 0) > 0.0000001);
+          const isDbInPosition = (slot.positionStatus === 'IN_POSITION' || slot.positionStatus === 'HOLDING' || slot.positionStatus === 'TRAILING_ACTIVE');
+          // 🛡️ [버그 완벽 차단] 실제 슬롯 상태가 IN_POSITION일 때만 포지션 보유로 판정! IDLE 슬롯이 계좌 잔고를 가상으로 중복 가로채는 현상 원천 방지
+          const hasPosition = isDbInPosition && (Boolean(slot.entryPrice && slot.entryPrice > 0) || Boolean(matchedAcc && parseFloat(matchedAcc.balance || 0) > 0.0000001));
           
           // ⚡ 각 슬롯별 독립적인 카운트다운 상태 매핑
           const slotCountdown = (pendingSurgeCountdowns && pendingSurgeCountdowns[slot.slotId]) || 
