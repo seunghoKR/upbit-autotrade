@@ -24,6 +24,9 @@ import DeveloperDashboardModal from './components/DeveloperDashboardModal';
 import SettingsModal from './components/SettingsModal';
 import MyPageModal from './components/MyPageModal';
 import ManualModal from './components/ManualModal';
+import NoticeBoardModal from './components/NoticeBoardModal';
+import TodayListingPopupModal from './components/TodayListingPopupModal';
+import { COIN_NOTICES } from './data/coinNotices';
 import { soundService } from './services/soundService';
 
 import {
@@ -115,6 +118,8 @@ export default function App() {
   const [isDevDashboardOpen, setIsDevDashboardOpen] = useState(false);
   const [is2FAModalOpen, setIs2FAModalOpen] = useState(false);
   const [is2FAActive, setIs2FAActive] = useState(false);
+  const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
+  const [isTodayPopupOpen, setIsTodayPopupOpen] = useState(false);
 
   // 🛠️ 선택된 슬롯 ID (차트 연동용, 기본 1번 슬롯)
   const [selectedSlotId, setSelectedSlotId] = useState(1);
@@ -473,6 +478,23 @@ export default function App() {
       }).catch(() => {});
     }
   }, [activeMarket, selectedSlotId]);
+
+  // 📢 당일 상장 코인 감지 시 로그인 사용자에게 1일 1회 자동 팝업
+  useEffect(() => {
+    if (currentUser) {
+      const todayNotice = COIN_NOTICES.find(n => n.isToday);
+      if (todayNotice) {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const isHidden = localStorage.getItem(`hide_today_listing_popup_${todayStr}`) === 'true';
+        if (!isHidden) {
+          const timer = setTimeout(() => {
+            setIsTodayPopupOpen(true);
+          }, 1200);
+          return () => clearTimeout(timer);
+        }
+      }
+    }
+  }, [currentUser]);
 
   // ⚡ 실시간 업비트 웹소켓 및 급등 감지 연동 레퍼런스
   const slotsRef = useRef(slots);
@@ -1580,6 +1602,7 @@ export default function App() {
         onOpenAdmin={() => setIsAdminUsersOpen(true)}
         onOpenMyPage={() => setIsMyPageOpen(true)}
         onOpenManual={() => setIsManualOpen(true)}
+        onOpenNotice={() => setIsNoticeModalOpen(true)}
         onLogout={handleLogout}
         onRefresh={handleHardRefresh}
         marketCount={marketCount}
@@ -1751,6 +1774,23 @@ export default function App() {
         user={currentUser}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenMyPage={() => setIsMyPageOpen(true)}
+      />
+
+      {/* 📢 업비트 거래소 공지 & 신규 상장/상폐 현황판 모달 */}
+      <NoticeBoardModal
+        isOpen={isNoticeModalOpen}
+        onClose={() => setIsNoticeModalOpen(false)}
+      />
+
+      {/* ⚡ 오늘 신규 상장 감지 팝업 모달 */}
+      <TodayListingPopupModal
+        isOpen={isTodayPopupOpen}
+        todayNotice={COIN_NOTICES.find(n => n.isToday)}
+        onClose={() => setIsTodayPopupOpen(false)}
+        onOpenNoticeBoard={() => {
+          setIsTodayPopupOpen(false);
+          setIsNoticeModalOpen(true);
+        }}
       />
 
       {/* 2FA OTP 인증 모달 */}

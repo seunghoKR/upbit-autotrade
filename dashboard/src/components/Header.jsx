@@ -6,6 +6,7 @@ import {
   ShieldAlert, 
   BarChart3, 
   BookOpen, 
+  Bell,
   Users, 
   User, 
   LogOut, 
@@ -27,6 +28,7 @@ export default function Header({
   onOpenAdmin,
   onOpenMyPage,
   onOpenManual,
+  onOpenNotice,
   onLogout,
   marketCount = 134,
   btcProtection = null
@@ -255,6 +257,18 @@ export default function Header({
               <span className="sm:hidden text-[11px]">전략</span>
             </button>
           )}
+
+          {/* 📢 거래소 공지 & 신규 상장/상폐 현황판 버튼 */}
+          <button
+            onClick={onOpenNotice}
+            className="relative p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-cyan-950/60 hover:bg-cyan-900/70 border border-cyan-500/40 text-cyan-200 text-xs font-bold transition cursor-pointer flex items-center gap-1 shrink-0 active:scale-95"
+            title="업비트 공지 & 상장/폐지 종목 현황판"
+          >
+            <Bell className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden md:inline">공지</span>
+            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping absolute -top-0.5 -right-0.5"></span>
+            <span className="w-2 h-2 rounded-full bg-cyan-400 absolute -top-0.5 -right-0.5"></span>
+          </button>
 
           {/* 📖 매뉴얼 버튼 */}
           <button
