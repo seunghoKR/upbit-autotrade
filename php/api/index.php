@@ -934,7 +934,27 @@ try {
             if ($matchedAccount && (float)($matchedAccount['balance'] ?? 0) > 0.0000001) {
                 $accVol = (float)$matchedAccount['balance'];
                 $accAvgPrice = (float)($matchedAccount['avg_buy_price'] ?? 0);
-                if ($vol <= 0 || $entryP <= 0 || $s['position_status'] === 'IDLE') {
+                $accEvalKrw = $accVol * ($accAvgPrice > 0 ? $accAvgPrice : 1);
+
+                // 🛡️ [업비트 최소 주문 기준 5,000원 가드]
+                // 5,000원 미만의 잔여 자투리(Dust) 코인은 업비트에서 매매가 불가능하므로 슬롯 자동 등록 대상에서 원천 배제!
+                if ($accEvalKrw < 5000) {
+                    // 이미 슬롯에 먼지 코인으로 비정상 등록되어 있는 경우 IDLE로 즉각 자동 정화
+                    if ($s['position_status'] === 'IN_POSITION' || $s['position_status'] === 'HOLDING' || $s['position_status'] === 'TRAILING_ACTIVE') {
+                        $defaultMarkets = [1 => 'KRW-BTC', 2 => 'KRW-ETH', 3 => 'KRW-SOL', 4 => 'KRW-XRP', 5 => 'KRW-DOGE', 6 => 'KRW-ADA', 7 => 'KRW-AVAX', 8 => 'KRW-DOT', 9 => 'KRW-NEAR'];
+                        $defMkt = $defaultMarkets[$s['slot_id']] ?? 'KRW-BTC';
+                        $s['position_status'] = 'IDLE';
+                        $s['entry_volume'] = null;
+                        $s['entry_price'] = null;
+                        $s['entry_amount_krw'] = null;
+                        $s['target_market'] = $defMkt;
+                        $vol = 0;
+                        $entryP = 0;
+                        $amount = 0;
+                        $pdo->prepare("UPDATE nurioh_slots SET position_status = 'IDLE', target_market = ?, entry_price = NULL, entry_volume = NULL, entry_amount_krw = NULL, highest_price = NULL WHERE id = ?")
+                            ->execute([$defMkt, $s['id']]);
+                    }
+                } else if ($vol <= 0 || $entryP <= 0 || $s['position_status'] === 'IDLE') {
                     $vol = $accVol;
                     $entryP = $accAvgPrice > 0 ? $accAvgPrice : ($entryP > 0 ? $entryP : 1);
                     $amount = $vol * $entryP;
@@ -1809,6 +1829,37 @@ try {
         $orderRes = null;
         $orderErr = null;
         $unlinkOnly = !empty($input['unlinkOnly']);
+
+        // 🛡️ [거래소 주문 없이 슬롯 연동만 해제(비우기)]
+        if ($unlinkOnly) {
+            $defaultMarkets = [
+                1 => 'KRW-BTC', 2 => 'KRW-ETH', 3 => 'KRW-SOL',
+                4 => 'KRW-XRP', 5 => 'KRW-DOGE', 6 => 'KRW-ADA',
+                7 => 'KRW-AVAX', 8 => 'KRW-DOT', 9 => 'KRW-NEAR'
+            ];
+            $defMkt = $defaultMarkets[$slotId] ?? 'KRW-BTC';
+
+            $pdo->prepare("UPDATE nurioh_slots SET 
+                position_status = 'IDLE', 
+                target_market = ?,
+                entry_price = NULL, 
+                entry_volume = NULL, 
+                entry_amount_krw = NULL,
+                highest_price = NULL, 
+                highest_profit_pct = 0
+                WHERE user_id = ? AND slot_id = ?")
+                ->execute([$defMkt, $userId, $slotId]);
+
+            echo json_encode([
+                'success' => true,
+                'message' => "슬롯 {$slotId}번 ({$mkt}) 연동이 해제되고 비워졌습니다. (기본 코인 {$defMkt} 재배정)",
+                'profitPct' => 0,
+                'profitKrw' => 0,
+                'isProfit' => false,
+                'order' => null
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
 
         if (!$unlinkOnly && $keyInfo && $keyInfo['access_key_enc'] && $keyInfo['secret_key_enc']) {
             $accessKey = base64_decode($keyInfo['access_key_enc']);

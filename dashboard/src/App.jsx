@@ -536,6 +536,14 @@ export default function App() {
         // 포지션이 실제로 없으면 감시 즉시 스킵
         if (!hasPosition) continue;
 
+        // 🛡️ 업비트 최소 주문 가능 금액(5,000원) 미만 잔여 자투리(Dust) 코인은 자동 감시/손절 트리거에서 즉시 제외!
+        const totalPositionKrw = Math.max(
+          Number(slot.entryAmountKrw || 0),
+          (accBalance * (tickPrice || slotEntryPrice)),
+          Number(slot.entryVolume || 0) * (tickPrice || slotEntryPrice)
+        );
+        if (totalPositionKrw < 5000) continue;
+
         // 진입가: 실계좌 평균단가 → 슬롯 DB 진입가 순으로 폴백
         const accAvgBuyPrice = matchedAcc ? parseFloat(matchedAcc.avg_buy_price || 0) : 0;
         const entryPrice = (accAvgBuyPrice > 0) ? accAvgBuyPrice : slotEntryPrice;
@@ -1177,6 +1185,27 @@ export default function App() {
 
       try {
         const res = await sellSlotPosition(slotId, { userId, currentPrice, unlinkOnly: true });
+
+        // ⚡ 슬롯 0초 즉각 비우기 및 기본 코인 재설정 (Optimistic Instant Clear)
+        const defaultMarkets = { 1: 'KRW-BTC', 2: 'KRW-ETH', 3: 'KRW-SOL', 4: 'KRW-XRP', 5: 'KRW-DOGE', 6: 'KRW-ADA', 7: 'KRW-AVAX', 8: 'KRW-DOT', 9: 'KRW-NEAR' };
+        setSlots(prev => {
+          const updated = prev.map(s => s.slotId === slotId ? {
+            ...s,
+            positionStatus: 'IDLE',
+            targetMarket: defaultMarkets[slotId] || 'KRW-BTC',
+            entryPrice: null,
+            entryVolume: null,
+            entryAmountKrw: null,
+            highestPrice: null,
+            highestProfitPct: 0
+          } : s);
+          try { localStorage.setItem('nurioh_cached_slots', JSON.stringify(updated)); } catch (e) {}
+          return updated;
+        });
+
+        delete slotTrackersRef.current[slotId];
+        lastSlotUpdatesRef.current[slotId] = Date.now();
+
         alert(`✅ ${res?.message || '슬롯 연동이 정상적으로 해제되었습니다.'}`);
       } catch (err) {
         alert('연동 해제 중 오류가 발생했습니다: ' + (err.response?.data?.error || err.message));
