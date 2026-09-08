@@ -479,14 +479,14 @@ export default function App() {
     }
   }, [activeMarket, selectedSlotId]);
 
-  // 📢 당일 상장 코인 감지 시 로그인 사용자에게 1일 1회 자동 팝업
+  // 📢 당일 상장 코인 감지 시 로그인 사용자에게 팝업 ('다시 열지 않기' 설정 시 영구 미노출)
   useEffect(() => {
     if (currentUser) {
       const todayNotice = COIN_NOTICES.find(n => n.isToday);
       if (todayNotice) {
-        const todayStr = new Date().toISOString().split('T')[0];
-        const isHidden = localStorage.getItem(`hide_today_listing_popup_${todayStr}`) === 'true';
-        if (!isHidden) {
+        const isHiddenPermanently = localStorage.getItem('hide_today_listing_popup_never') === 'true';
+        const isNoticeHidden = todayNotice.id && localStorage.getItem(`hide_listing_notice_${todayNotice.id}`) === 'true';
+        if (!isHiddenPermanently && !isNoticeHidden) {
           const timer = setTimeout(() => {
             setIsTodayPopupOpen(true);
           }, 1200);

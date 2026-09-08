@@ -3,9 +3,15 @@ import React from 'react';
 export default function TodayListingPopupModal({ isOpen, todayNotice, onClose, onOpenNoticeBoard }) {
   if (!isOpen || !todayNotice) return null;
 
-  const handleDoNotShowToday = () => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    localStorage.setItem(`hide_today_listing_popup_${todayStr}`, 'true');
+  const handleDoNotShowAgain = () => {
+    try {
+      localStorage.setItem('hide_today_listing_popup_never', 'true');
+      if (todayNotice?.id) {
+        localStorage.setItem(`hide_listing_notice_${todayNotice.id}`, 'true');
+      }
+    } catch (e) {
+      console.warn('LocalStorage error:', e);
+    }
     onClose();
   };
 
@@ -76,10 +82,10 @@ export default function TodayListingPopupModal({ isOpen, todayNotice, onClose, o
 
             <div className="flex items-center justify-between text-xs pt-1 px-1 text-slate-400">
               <button
-                onClick={handleDoNotShowToday}
+                onClick={handleDoNotShowAgain}
                 className="hover:text-slate-200 transition-colors underline underline-offset-4"
               >
-                오늘 하루 이 창 열지 않기
+                다시 열지 않기
               </button>
               <button
                 onClick={onClose}

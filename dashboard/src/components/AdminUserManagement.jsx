@@ -74,8 +74,6 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
     }
   }, [isOpen]);
 
-  if (!isOpen) return null;
-
   // 플랜/역할/승인 통합 변경 핸들러
   const handleUpdateUser = async (userId, updatePayload, successMsg) => {
     try {
@@ -228,6 +226,8 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
   };
 
   const isFilterActive = searchTerm.trim() !== '' || searchTarget !== 'ALL' || selectedFilter !== 'ALL' || telegramFilter !== 'ALL' || sortBy !== 'LATEST';
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-2 sm:p-4 animate-in fade-in">
