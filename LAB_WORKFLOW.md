@@ -1,34 +1,37 @@
-# 🧪 누리오(NURIOH) 연구실 개발 & 실서버 안전 배포 가이드 (LAB_WORKFLOW.md)
+# 🧪 누리오(NURIOH) 3단계 개발·검증 파이프라인 가이드 (LAB_WORKFLOW.md)
 
-> **문서 버전:** `v1.0.0`  
+> **문서 버전:** `v2.1.0`  
 > **최초 작성일:** 2026-09-08  
 > **작성자:** 누리오 AI 디자인실장 & 마스터 개발자 이승호 대표님  
-> **목적:** 실운영 중인 상용 서버(`main`)의 안정성을 100% 보장하고, 연구실(`dev`)에서 충분한 검증 후 안전하게 실서버에 배포하는 표준 프로세스 확립. 다른 PC에서도 즉시 작업을 이어받을 수 있는 동기화 가이드 제공.
+> **3대 운영 공간 정의:**
+> 1. **연구실 (Local LAB):** 개발자(대표님) 전용 로컬 개발 & 디버깅 공간 (`localhost:3000`, `dev` 브랜치)
+> 2. **실험실 (Staging LAB):** 운영자 실전 검증 & 사전 체험 호스팅 공간 (`nuriohtrade.iwinv.net/lab`, `staging` 브랜치)
+> 3. **실서버 (Production Live):** 모든 회원과 운영자가 실제 자산을 운용하는 상용 공간 (`nuriohtrade.iwinv.net`, `main` 브랜치)
 
 ---
 
-## 🏛️ 1. 연구실 2대 원칙 (Rule of Thumb)
+## 🏛️ 1. 3단계 핵심 원칙 (Rule of Thumb)
 
-1. **`main` 브랜치 직접 수정 절대 금지!**  
-   - `main` 브랜치는 실제 운영자/사용자들이 거래 중인 **상용 실서버 전용**입니다.
-   - 모든 새로운 기능 개발, 알고리즘 실험, UI 개선은 무조건 **연구실(`dev` 브랜치)**에서만 진행합니다.
-2. **검증 완료 후 배포 (Verify Before Deploy):**  
-   - 연구실(`dev`)에서 로컬 테스트 및 모의 검증을 완료한 후, 검증된 코드만 `main`으로 병합하여 실서버에 배포합니다.
+1. **`실서버(main)` 직접 수정 절대 금지!**  
+   - 모든 새로운 기능 개발과 디자인 수정은 무조건 **연구실(`dev` 브랜치)**에서 시작합니다.
+2. **반드시 `실험실`을 거치는 2중 승인 (Verify Through Staging):**  
+   - 연구실(로컬)에서 통과된 코드는 **실험실(실서버 웹)**에 먼저 배포하여 운영자가 직접 사용해 보고 승인한 뒤에만 실서버로 승격합니다.
 
 ---
 
-## 🔄 2. 3단계 연구실 & 안전 배포 워크플로우 (SOP)
+## 🔄 2. 3단계 파이프라인 워크플로우 (SOP)
 
 ```mermaid
 graph LR
-    A["🧪 1단계: 로컬 연구실(dev)<br/>localhost:3000 / 4000"] -->|"개발자 1차 검증"| B["📦 발자취 저장 & 푸시<br/>git push origin dev"]
-    B -->|"staging 병합 & 배포"| C["🔬 2단계: 실서버 연구실(staging)<br/>nuriohtrade.iwinv.net/lab<br/>npm run deploy:staging"]
-    C -->|"운영자 실전 테스트 & 승인"| D["🔀 3단계: 상용 실서버(main)<br/>git checkout main<br/>git merge staging"]
+    A["🧪 1단계: 연구실 (로컬)<br/>localhost:3000 / 4000<br/>Branch: dev"] -->|"개발자 1차 승인"| B["📦 발자취 저장 & 푸시<br/>git push origin dev"]
+    B -->|"staging 병합 & 배포"| C["🔬 2단계: 실험실 (실서버 연구용)<br/>nuriohtrade.iwinv.net/lab<br/>npm run deploy:staging"]
+    C -->|"운영자 실전 체험 & 승인"| D["🔀 3단계: 실서버 (상용 본진)<br/>git checkout main<br/>git merge staging"]
     D -->|"원클릭 안전 배포"| E["🚀 실서버 배포 완료<br/>npm run deploy:prod"]
 ```
 
-### [1단계] 로컬 연구실 (Dev LAB)
+### [1단계] 연구실 (Local LAB - 대표님 공간)
 - **목적:** 내 PC에서 기능 개발, UI 디자인, 로직 개선 및 시뮬레이션 테스트
+- **접속 주소:** `http://localhost:3000` (백엔드: `localhost:4000`)
 - **브랜치:** `dev`
 - **구동 명령어:**
   ```bash
@@ -43,8 +46,9 @@ graph LR
 
 ---
 
-### [2단계] 실서버 연구실 배포 (Staging LAB - 운영자 검증용)
-- **목적:** 호스팅 서버 환경(`nuriohtrade.iwinv.net/lab`)에서 운영자가 실전 기능을 직접 만져보고 검증
+### [2단계] 실험실 (Staging LAB - 운영자 검증 공간)
+- **목적:** 실제 호스팅 환경에서 운영자가 제안 기능 및 UX를 직접 조작하며 검증
+- **접속 주소:** `http://nuriohtrade.iwinv.net/lab`
 - **브랜치:** `staging`
 - **실행 절차:**
   ```bash
@@ -53,17 +57,16 @@ graph LR
   git merge dev
   git push origin staging
 
-  # 2. 실서버 연구실 원클릭 배포 (/public_html/lab)
+  # 2. 실험실 원클릭 배포 (/public_html/lab)
   npm run deploy:staging
 
-  # 3. 작업 브랜치 dev로 다시 복귀
+  # 3. 작업 브랜치 dev(연구실)로 다시 복귀
   git checkout dev
   ```
-- **운영자 검증 URL:** `http://nuriohtrade.iwinv.net/lab`
 
 ---
 
-### [3단계] 상용 실서버 배포 (Production - 전체 회원 서비스)
+### [3단계] 실서버 (Production Live - 전체 회원 상용 공간)
 - **목적:** 운영자와 대표님의 상호 승인이 완료된 무결점 코드를 전체 상용 서버에 적용
 - **브랜치:** `main`
 - **실행 절차:**
