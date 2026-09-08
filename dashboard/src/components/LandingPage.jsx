@@ -29,6 +29,7 @@ export default function LandingPage({ onOpenKakaoLogin, onLabDevLogin }) {
     window.location.pathname.startsWith('/lab') ||
     window.location.hostname.includes('lab')
   );
+  const isLabMode = isLocalLab || isStagingLab;
 
   return (
     <div className="min-h-screen bg-[#07090E] text-slate-100 selection:bg-purple-500 selection:text-white flex flex-col font-sans">
