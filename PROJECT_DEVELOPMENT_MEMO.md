@@ -1,10 +1,10 @@
 # 📝 누리오(NURIOH) AI 트레이더 종합 개발 메모 & 시스템 가이드
 
-> **버전 (Version):** `v3.0.0 (4-Stage Advanced Algo Engine & Whale/BTC Guard Release)`  
-> **최종 갱신일시:** 2026-09-07 22:30 (KST)  
+> **버전 (Version):** `v3.2.3 (Slot Setting Rollback Fix & Dev Lab Environment Opening)`  
+> **최종 갱신일시:** 2026-09-08 09:45 (KST)  
 > **작성자:** AI 디자인실장 영자 & 마스터 개발자 이승호 대표님  
 > **프로젝트 위치:** `y:\SynologyDrive\00.withAI\자동매매프로그램`  
-> **GitHub 저장소:** `https://github.com/seunghoKR/upbit-autotrade.git` (`main` 브랜치)
+> **GitHub 저장소:** `https://github.com/seunghoKR/upbit-autotrade.git` (`main`: 상용 실서버, `dev`: 연구실 실험실)
 
 ---
 
@@ -126,6 +126,20 @@
   - `dashboard/src/components/Header.jsx`: **[🛡️ BTC 하락 감지: 매수 보호 가동 중]** 로즈 톤 펄스 라이브 배지 연동.
   - `dashboard/src/components/SlotManager.jsx`: 편집 모달에 **[⚙️ AI 동적 변동성 손절 모드 ON/OFF]** 토글 스위치 및 슬롯 스펙 표에 **[⚡ AI ATR (동적)]** 뱃지 표출.
   - `dashboard/src/App.jsx`: `btcProtection` 실시간 상태 연동 및 Vite 프로덕션 빌드 완료.
+
+### ⚠️ [이슈 15] 슬롯 자동 ON 및 추천전략/셀프전략 롤백 버그 해결 (v3.2.3)
+- **현상:** 슬롯을 OFF로 꺼두어도 자꾸 자동으로 ON 상태로 바뀌고, 추천전략으로 변경하면 곧바로 셀프전략으로 원복된 뒤 잠시 후 다시 ON으로 복귀하는 현상.
+- **원인:**
+  1. MySQL `nurioh_slots` 테이블에 `use_atr_stop_loss` 컬럼이 누락되어 슬롯 설정 수정 API(`POST /api/slots/{id}`) 호출 시 백엔드 500 에러(Unknown column 'use_atr_stop_loss')가 발생하여 DB에 전혀 저장되지 않음.
+  2. 프론트엔드가 낙관적 UI로 즉시 화면을 바꿨으나, 5초 주기의 `loadData()` 폴링이 실행될 때 `strategyType` 로컬 보존 로직이 누락되어 서버의 이전 상태('SELF')로 즉시 덮어씌워지고, 15초 보호 시간이 지나면 ON 상태로 롤백됨.
+- **해결:**
+  1. `php/api/index.php` 상단 DB 연결부에 `use_atr_stop_loss` 컬럼 자동 생성(`ALTER TABLE nurioh_slots ADD COLUMN use_atr_stop_loss TINYINT(1) DEFAULT 0`) 방어 로직 추가.
+  2. `dashboard/src/components/SlotManager.jsx`의 `handleSaveEdit`에서 현재 슬롯의 `isEnabled` 상태 유지 명시 전달.
+  3. `dashboard/src/App.jsx`의 `loadData()`에서 `strategyType`, `tradeAmountKrw`, `useAtrStopLoss` 항목도 `isRecentlyUpdated` 유예 기간 동안 로컬 낙관적 상태를 최우선 보존하도록 보강.
+
+### 🧪 [안내 16] 누리오 연구실(Lab) 개설 및 안전 배포 프로세스 확립
+- **배경:** 상용 실서버(`main` 브랜치 및 `nuriohtrade.iwinv.net`)에 운영자 그룹 실사용자가 물려있으므로, 업데이트 시 장애를 방지하기 위해 별도의 연구실(`dev` 브랜치) 환경 구축.
+- **가이드 문서:** `LAB_WORKFLOW.md` 신설 완료 (연구실 개발 ➔ 검증 ➔ 실서버 배포 5단계 SOP 및 다른 컴퓨터 작업 동기화 30초 체크리스트 수록).
 
 ---
 
