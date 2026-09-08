@@ -137,16 +137,6 @@ export default function Header({
                 </span>
               )}
 
-              {/* 🟢 실시간 레이더 가동 중 라이브 뱃지 (PC 전용 확장 뷰) */}
-              <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-[11px] font-medium shadow-inner shrink-0">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                <span className="text-emerald-300 font-bold whitespace-nowrap">레이더 가동 중</span>
-                <span className="text-emerald-400/80 font-mono text-[10px] whitespace-nowrap">({marketCount || 134}개 전종목)</span>
-              </div>
-
               {/* 🛡️ [알고리즘 2번] BTC 하락 감지 매수 보호 가동 상태 배지 */}
               {btcProtection?.active ? (
                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-950/90 border border-rose-500/80 text-[11px] font-black text-rose-200 shadow-lg shadow-rose-950/60 animate-pulse shrink-0">
