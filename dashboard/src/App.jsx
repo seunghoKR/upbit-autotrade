@@ -63,6 +63,34 @@ const DEFAULT_SLOTS = [
   { id: 9, slotId: 9, slotName: '9번 슬롯', isEnabled: true, targetMarket: 'KRW-NEAR', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
 ];
 
+// 🧪 연구실(LAB) 기본 최고 개발자 마스터 계정 템플릿
+const LAB_DEV_USER = {
+  id: 1,
+  kakaoId: 'lab_dev_master',
+  name: '누리오 마스터',
+  nickname: '누리오 마스터 대표님',
+  phone: '010-9999-8888',
+  email: 'ceo@nurioh.com',
+  birthyear: '1985',
+  profileImage: 'https://raw.githubusercontent.com/wonseokjung/solopreneur-ai-agents/main/agents/youngja/assets/youngja_thumbsup.png',
+  role: 'DEVELOPER',
+  tier: 'VIP',
+  subscriptionExpiresAt: '2099-12-31T23:59:59Z',
+  maxSlots: 9,
+  telegramChatId: '5618137472',
+  isActive: true,
+  hasApiKey: true,
+  approvalStatus: 'APPROVED'
+};
+
+// 🧪 연구실(Lab) 환경 감지 플래그
+const isLabEnvironment = typeof window !== 'undefined' && (
+  window.location.hostname === 'localhost' ||
+  window.location.hostname === '127.0.0.1' ||
+  window.location.hostname.includes('lab') ||
+  Boolean(import.meta.env?.DEV)
+);
+
 export default function App() {
   const [botRunning, setBotRunning] = useState(false);
   const [serverIp, setServerIp] = useState('115.68.168.243');
@@ -97,7 +125,6 @@ export default function App() {
   const SESSION_MAX_AGE_MS = SESSION_MAX_HOURS * 60 * 60 * 1000;
 
   // 회원 상태 (sessionStorage 우선 -> 자동로그인 체크된 localStorage 확인 + 12시간 세션 만료 검증)
-  // 회원 상태 (sessionStorage 우선 -> 자동로그인 체크된 localStorage 확인 + 12시간 세션 만료 검증)
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       // 1. 현재 브라우저 탭 세션 확인
@@ -130,6 +157,13 @@ export default function App() {
         localStorage.removeItem('nurioh_user_profile');
         localStorage.removeItem('nurioh_remember_me');
         localStorage.removeItem('nurioh_login_timestamp');
+      }
+
+      // 🧪 3. 연구실(localhost) 환경이고 사용자가 명시적으로 로그아웃한 상태가 아니라면 기본으로 개발자 마스터 계정 자동 로그인!
+      if (isLabEnvironment && sessionStorage.getItem('nurioh_lab_explicit_logout') !== 'true') {
+        sessionStorage.setItem('nurioh_user_id', String(LAB_DEV_USER.id));
+        sessionStorage.setItem('nurioh_user_profile', JSON.stringify(LAB_DEV_USER));
+        return LAB_DEV_USER;
       }
     } catch (e) {}
     return null;
@@ -221,6 +255,10 @@ export default function App() {
       if (isRemembered) {
         const localUserId = localStorage.getItem('nurioh_user_id');
         if (localUserId) return localUserId;
+      }
+      // 🧪 연구실(LAB) 모드일 때는 기본 1번(대표님 마스터 계정) 허용!
+      if (isLabEnvironment && sessionStorage.getItem('nurioh_lab_explicit_logout') !== 'true') {
+        return '1';
       }
     } catch (e) {}
     return null;
@@ -1096,6 +1134,20 @@ export default function App() {
     }
   };
 
+  // 🧪 연구실(LAB) 원클릭 최고 개발자 로그인 핸들러
+  const handleLabDevLogin = () => {
+    try {
+      sessionStorage.removeItem('nurioh_lab_explicit_logout');
+      sessionStorage.setItem('nurioh_user_id', '1');
+      sessionStorage.setItem('nurioh_user_profile', JSON.stringify(LAB_DEV_USER));
+    } catch (e) {}
+    setCurrentUser(LAB_DEV_USER);
+    setDevModeOverride({ tier: 'VIP', role: 'DEVELOPER', maxSlots: 9 });
+    devModeRef.current = { tier: 'VIP', role: 'DEVELOPER', maxSlots: 9 };
+    setIsKakaoModalOpen(false);
+    loadData();
+  };
+
   // 🚪 철저한 보안 로그아웃: 모든 스토리지 데이터 및 타이머 파기 후 안전하게 메인 랜딩으로 리셋
   const handleLogout = () => {
     setDevModeOverride(null);
@@ -1109,6 +1161,10 @@ export default function App() {
       sessionStorage.removeItem('nurioh_user_profile');
       sessionStorage.removeItem('nurioh_login_timestamp');
       sessionStorage.clear();
+      // 🧪 연구실에서 명시적 로그아웃 시 랜딩페이지를 볼 수 있도록 플래그 설정
+      if (isLabEnvironment) {
+        sessionStorage.setItem('nurioh_lab_explicit_logout', 'true');
+      }
     } catch (e) {}
     setCurrentUser(null);
     // ⚡ 브라우저 페이지 전체 리셋으로 메모리 잔여 데이터 및 웹소켓 완전 종료
@@ -1439,12 +1495,13 @@ export default function App() {
   // 🌟 로그인 전: 서비스 소개 랜딩페이지 표출
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-dark-bg text-slate-100 selection:bg-emerald-500 selection:text-black">
+      <div className="min-h-screen bg-dark-bg text-slate-100 selection:bg-purple-500 selection:text-white">
         <LandingPage 
           onOpenKakaoLogin={(mode = 'login') => {
             setAuthModalMode(mode);
             setIsKakaoModalOpen(true);
           }} 
+          onLabDevLogin={handleLabDevLogin}
         />
 
         {/* 🟡 카카오톡 간편 로그인 / 회원가입 모달 */}
@@ -1453,6 +1510,7 @@ export default function App() {
           initialMode={authModalMode}
           onClose={() => setIsKakaoModalOpen(false)}
           onLoginSuccess={handleKakaoLoginSuccess}
+          onLabDevLogin={handleLabDevLogin}
         />
 
         {/* 📖 업비트 API 발급방법 가이드 모달 */}
@@ -1588,6 +1646,7 @@ export default function App() {
         isOpen={isKakaoModalOpen}
         onClose={() => setIsKakaoModalOpen(false)}
         onLoginSuccess={handleKakaoLoginSuccess}
+        onLabDevLogin={handleLabDevLogin}
       />
 
       {/* 🔑 업비트 API 키 등록 모달 */}

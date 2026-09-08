@@ -3,7 +3,7 @@
 > **Version:** `v3.0.0 (4-Stage Advanced Algo Engine & Whale/BTC Guard Release)`  
 > **Live Service:** [https://nuriohtrade.iwinv.net](https://nuriohtrade.iwinv.net)  
 > **Server IP:** `115.68.168.243`  
-> **Design & Built by:** AI 디자인실장 영자 🎨✨ & 마스터 개발자 이승호 대표님 👑
+> **Design & Built by:** 누리오 AI 디자인실장 🎨✨ & 마스터 개발자 이승호 대표님 👑
 
 ---
 
@@ -59,4 +59,4 @@ npm run dev
 - **파이 노드 PC 가이드:** [`PI_NODE_SERVER_SETUP_GUIDE.md`](./PI_NODE_SERVER_SETUP_GUIDE.md)
 
 ---
-*© 2026 NURIOH TRADER. All rights reserved. Created with Youngja 💖*
+*© 2026 NURIOH TRADER. All rights reserved. Created with NURIOH AI 💖*

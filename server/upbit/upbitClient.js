@@ -185,6 +185,24 @@ class UpbitClient {
   }
 
   /**
+   * 개별 주문 조회 (체결 여부 state 및 trades 내역 조회)
+   */
+  async getOrder(uuid) {
+    try {
+      const params = { uuid };
+      const token = this.getAuthToken(params);
+      const response = await axios.get(`${this.serverUrl}/order`, {
+        params,
+        headers: { Authorization: token }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Upbit getOrder Error:', error.response?.data || error.message);
+      throw error.response?.data || error;
+    }
+  }
+
+  /**
    * 개별 주문 취소
    */
   async cancelOrder(uuid) {

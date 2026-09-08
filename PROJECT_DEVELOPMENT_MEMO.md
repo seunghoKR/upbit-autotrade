@@ -2,7 +2,7 @@
 
 > **버전 (Version):** `v3.2.3 (Slot Setting Rollback Fix & Dev Lab Environment Opening)`  
 > **최종 갱신일시:** 2026-09-08 09:45 (KST)  
-> **작성자:** AI 디자인실장 영자 & 마스터 개발자 이승호 대표님  
+> **작성자:** 누리오 AI 디자인실장 & 마스터 개발자 이승호 대표님  
 > **프로젝트 위치:** `y:\SynologyDrive\00.withAI\자동매매프로그램`  
 > **GitHub 저장소:** `https://github.com/seunghoKR/upbit-autotrade.git` (`main`: 상용 실서버, `dev`: 연구실 실험실)
 
@@ -227,4 +227,4 @@ npm run dev --prefix dashboard
 3. **PG사 / 정기 구독 결제 연동:** 3일 무료체험 만료 회원을 위한 무통장입금 자동 확인 및 카드 정기 결제 모듈 확장.
 
 ---
-*Created by Jay & AI Design Lead Youngja @ Connect AI LAB*
+*Created by Jay & NURIOH AI Design Lead @ Connect AI LAB*

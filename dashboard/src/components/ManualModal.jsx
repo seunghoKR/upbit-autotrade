@@ -19,7 +19,11 @@ import {
   Clock,
   Coins,
   Lock,
-  ArrowRight
+  ArrowRight,
+  Shield,
+  RefreshCw,
+  AlertTriangle,
+  Crown
 } from 'lucide-react';
 
 export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onOpenMyPage }) {
@@ -72,25 +76,25 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-5 animate-in fade-in overflow-y-auto">
-      <div className="bg-slate-900 border-2 border-indigo-500/60 rounded-3xl max-w-4xl w-full p-5 sm:p-7 shadow-2xl shadow-black/90 relative space-y-6 my-auto max-h-[95vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-4 animate-in fade-in overflow-y-auto">
+      <div className="bg-slate-900 border-2 border-indigo-500/60 rounded-3xl max-w-4xl w-full p-4 sm:p-6 shadow-2xl shadow-black/90 relative my-auto h-[700px] sm:h-[740px] max-h-[92vh] flex flex-col overflow-hidden">
         
         {/* 1. 상단 타이틀 헤더 */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-3.5">
-            <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/40 text-indigo-300 shrink-0">
-              <BookOpen className="w-7 h-7" />
+            <div className="p-2.5 sm:p-3 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/40 text-indigo-300 shrink-0">
+              <BookOpen className="w-6 h-6 sm:w-7 sm:h-7" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-lg sm:text-xl font-black text-slate-100">
+                <h3 className="text-base sm:text-xl font-black text-slate-100">
                   누리오 트레이더 (NURIOH TRADER) 통합 매뉴얼 & 의견 수렴 센터
                 </h3>
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40 hidden sm:inline">
                   v2.5 정식판
                 </span>
               </div>
-              <p className="text-sm text-slate-300 mt-1">
+              <p className="text-xs sm:text-sm text-slate-300 mt-0.5 sm:mt-1">
                 전종목 실시간 급등 레이더 스캘핑 매뉴얼 및 운영자 기능 개선 의견 제안 창구
               </p>
             </div>
@@ -100,15 +104,15 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
             onClick={onClose}
             className="p-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition cursor-pointer"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         </div>
 
         {/* 2. 탭 네비게이션 */}
-        <div className="flex items-center gap-2.5 border-b border-slate-800 pb-2.5 text-sm font-bold flex-wrap sm:flex-nowrap">
+        <div className="flex items-center gap-2.5 border-b border-slate-800 pb-2.5 pt-2 text-xs sm:text-sm font-bold flex-wrap sm:flex-nowrap shrink-0">
           <button
             onClick={() => setActiveTab('MANUAL')}
-            className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 cursor-pointer ${
+            className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl transition flex items-center gap-1.5 sm:gap-2 cursor-pointer ${
               activeTab === 'MANUAL'
                 ? 'bg-indigo-600 text-white shadow-md'
                 : 'text-slate-300 hover:text-white hover:bg-slate-800'
@@ -120,7 +124,7 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
 
           <button
             onClick={() => setActiveTab('OPERATOR_GUIDE')}
-            className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 cursor-pointer ${
+            className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl transition flex items-center gap-1.5 sm:gap-2 cursor-pointer ${
               activeTab === 'OPERATOR_GUIDE'
                 ? 'bg-indigo-600 text-white shadow-md'
                 : 'text-slate-300 hover:text-white hover:bg-slate-800'
@@ -132,7 +136,7 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
 
           <button
             onClick={() => setActiveTab('FEEDBACK')}
-            className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 cursor-pointer ${
+            className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl transition flex items-center gap-1.5 sm:gap-2 cursor-pointer ${
               activeTab === 'FEEDBACK'
                 ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-black font-extrabold shadow-md'
                 : 'text-amber-300 hover:text-amber-200 hover:bg-slate-800'
@@ -143,11 +147,12 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
           </button>
         </div>
 
-        {/* 3. 탭별 상세 내용 */}
+        {/* 3. 탭별 상세 내용 (고정 높이 & 내부 스크롤) */}
+        <div className="flex-1 overflow-y-auto pt-3 pb-2 pr-1 sm:pr-2 min-h-0 flex flex-col justify-start custom-scrollbar">
 
-        {/* 탭 1: 핵심 자동매매 기능 매뉴얼 */}
-        {activeTab === 'MANUAL' && (
-          <div className="space-y-5 animate-in fade-in text-sm text-slate-200">
+          {/* 탭 1: 핵심 자동매매 기능 매뉴얼 */}
+          {activeTab === 'MANUAL' && (
+            <div className="space-y-5 animate-in fade-in text-sm text-slate-200">
             {/* 1. 자동매매 전체 워크플로우 한눈에 보기 */}
             <div className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800 space-y-4">
               <h4 className="text-base font-black text-slate-100 flex items-center gap-2">
@@ -202,11 +207,87 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
               </div>
             </div>
 
-            {/* 2. 주요 제어 버튼 기능 안내 */}
+            {/* 2. 🛡️ 6대 손실 방어 및 수익 보존 락(Profit Lock) 시스템 */}
+            <div className="bg-slate-950/80 p-5 rounded-2xl border border-indigo-500/30 space-y-4">
+              <h4 className="text-base font-black text-indigo-300 flex items-center gap-2">
+                <Shield className="w-5 h-5 text-indigo-400" />
+                2. 🛡️ 6대 손실 방어 및 무손실 탈출 안전장치 (2026 고도화)
+              </h4>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs sm:text-[13px]">
+                {/* 1. 수수료 순수익 차감 */}
+                <div className="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 space-y-1">
+                  <div className="font-bold text-emerald-300 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>1) 수수료 0.1% 차감 '순수익률(Net PnL)' 기준</span>
+                  </div>
+                  <p className="text-slate-300 leading-relaxed">
+                    업비트 매수/매도 수수료(0.10%)를 미리 차감한 '내 통장에 꽂히는 진짜 순이익'을 기준으로 익절/손절을 판정합니다.
+                  </p>
+                </div>
+
+                {/* 2. 실체결가 동기화 */}
+                <div className="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 space-y-1">
+                  <div className="font-bold text-cyan-300 flex items-center gap-1.5">
+                    <RefreshCw className="w-4 h-4 text-cyan-400 shrink-0" />
+                    <span>2) 실체결 평단가 동기화 (부분 체결 예외 처리)</span>
+                  </div>
+                  <p className="text-slate-300 leading-relaxed">
+                    시장가 매수 시 주문이 완전히 체결(done)될 때까지 대기 후, 슬리피지가 반영된 1원 단위 실제 평균단가로 100% 덮어씁니다.
+                  </p>
+                </div>
+
+                {/* 3. 호가 스프레드 차단 */}
+                <div className="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 space-y-1">
+                  <div className="font-bold text-rose-300 flex items-center gap-1.5">
+                    <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                    <span>3) 호가 갭(스프레드 0.4%) 초과 매수 차단</span>
+                  </div>
+                  <p className="text-slate-300 leading-relaxed">
+                    최우선 매도호가와 매수호가 간격이 0.4%를 초과하는 얇은 호가창은 매수 즉시 손실을 보므로 사전에 진입을 차단합니다.
+                  </p>
+                </div>
+
+                {/* 4. 수익 보존 락 */}
+                <div className="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 space-y-1">
+                  <div className="font-bold text-amber-300 flex items-center gap-1.5">
+                    <Crown className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span>4) 수익 보존 락 (+0.5% 안전 방어선)</span>
+                  </div>
+                  <p className="text-slate-300 leading-relaxed">
+                    순수익 +1.2% 도달 시 안전핀을 +0.5%로 고정(슬리피지 완충), +2.2% 도달 시 +1.2%로 상향하여 무조건 수익을 지키고 탈출합니다.
+                  </p>
+                </div>
+
+                {/* 5. 2단계 타임아웃 */}
+                <div className="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 space-y-1">
+                  <div className="font-bold text-purple-300 flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-purple-400 shrink-0" />
+                    <span>5) 정체 코인 2단계 타임아웃 청산</span>
+                  </div>
+                  <p className="text-slate-300 leading-relaxed">
+                    14분간 보합 시 본전 지정가 매도(1단계) 1분간 대기 ➔ 15분 차 미체결 시 시장가 즉시 청산(2단계)으로 자금을 회전시킵니다.
+                  </p>
+                </div>
+
+                {/* 6. 원화 잔고 버퍼 */}
+                <div className="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 space-y-1">
+                  <div className="font-bold text-yellow-300 flex items-center gap-1.5">
+                    <Zap className="w-4 h-4 text-yellow-400 shrink-0" />
+                    <span>6) 비상 원화 잔고(20,000원) 고갈 방어</span>
+                  </div>
+                  <p className="text-slate-300 leading-relaxed">
+                    계좌의 KRW 잔고가 최소 20,000원 이하로 떨어지면 신규 매수를 멈추어 원화 고갈로 봇이 마비되는 사태를 원천 차단합니다.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. 주요 제어 버튼 기능 안내 */}
             <div className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800 space-y-4">
               <h4 className="text-base font-black text-slate-100 flex items-center gap-2">
                 <Sliders className="w-5 h-5 text-indigo-400" />
-                2. 핵심 화면 제어 버튼 가이드
+                3. 핵심 화면 제어 버튼 가이드
               </h4>
 
               <div className="space-y-3">
@@ -215,7 +296,7 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
                     [ 슬롯 원클릭 선택 ]
                   </span>
                   <p className="text-slate-200 text-xs sm:text-sm leading-relaxed">
-                    1~5번 슬롯 중 확인하고 싶은 슬롯을 콕 누르면, <strong>해당 코인의 실시간 원화(KRW) 전용 차트 그래프</strong>로 즉각 전환됩니다.
+                    1~9번 슬롯 중 확인하고 싶은 슬롯을 콕 누르면, <strong>해당 코인의 실시간 원화(KRW) 전용 차트 그래프</strong>로 즉각 전환됩니다.
                   </p>
                 </div>
 
@@ -364,7 +445,7 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
                 <span className="text-xs sm:text-sm text-slate-400">
                   {isSubmitted && (
                     <span className="text-emerald-400 font-bold flex items-center gap-1.5 animate-bounce">
-                      <CheckCircle2 className="w-4 h-4" /> 소중한 의견이 영자에게 성공적으로 전달되었습니다! 💖
+                      <CheckCircle2 className="w-4 h-4" /> 소중한 의견이 누리오 AI 디자인실장에게 성공적으로 전달되었습니다! 💖
                     </span>
                   )}
                 </span>
@@ -411,11 +492,12 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
             </div>
           </div>
         )}
+        </div>
 
         {/* 4. 하단 닫기 바 */}
-        <div className="flex items-center justify-between gap-3 pt-3 border-t border-slate-800 text-xs sm:text-sm">
+        <div className="flex items-center justify-between gap-3 pt-3 mt-1 border-t border-slate-800 text-xs sm:text-sm shrink-0">
           <div className="flex items-center gap-2 text-slate-300">
-            <span>빠른 이동:</span>
+            <span className="hidden sm:inline">빠른 이동:</span>
             <button
               onClick={() => {
                 onClose();
@@ -439,7 +521,7 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
 
           <button
             onClick={onClose}
-            className="px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold text-xs sm:text-sm transition cursor-pointer"
+            className="px-5 sm:px-6 py-2 sm:py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold text-xs sm:text-sm transition cursor-pointer"
           >
             매뉴얼 닫기
           </button>

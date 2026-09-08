@@ -9,13 +9,21 @@ import {
 
 const KAKAO_JAVASCRIPT_KEY = '7fcb09e57eb4033e66e3edebf52c2c72';
 
-export default function KakaoAuthModal({ isOpen, onClose, onLoginSuccess }) {
+export default function KakaoAuthModal({ isOpen, onClose, onLoginSuccess, onLabDevLogin }) {
   const [isDirectInputMode, setIsDirectInputMode] = useState(false);
   const [directEmail, setDirectEmail] = useState('');
   const [directName, setDirectName] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  // 🧪 연구실(Lab) 모드 감지
+  const isLabMode = typeof window !== 'undefined' && (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname.includes('lab') ||
+    Boolean(import.meta.env?.DEV)
+  );
 
   useEffect(() => {
     if (isOpen) {
@@ -166,6 +174,35 @@ export default function KakaoAuthModal({ isOpen, onClose, onLoginSuccess }) {
             <strong>3일 무료체험 안내:</strong> 로그인 후 대시보드 상단 <strong>[3일 무료 사용 신청]</strong>에서 간편하게 신청하실 수 있습니다.
           </span>
         </div>
+
+        {/* 🧪 연구실(로컬) 전용: 카카오 인증 우회 개발자 즉시 접속 배너 */}
+        {isLabMode && (
+          <div className="p-3.5 rounded-2xl bg-purple-950/70 border border-purple-500/60 shadow-lg shadow-purple-900/30 text-left space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-purple-300 font-black text-xs flex items-center gap-1.5">
+                <span className="inline-block w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
+                🧪 연구실(LAB) 로컬 감지됨
+              </span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold">
+                카톡 인증 불필요
+              </span>
+            </div>
+            <p className="text-[11px] text-purple-200/80 leading-snug">
+              로컬 개발 환경에서는 카톡 오류 없이 즉시 최고 권한(개발자/대표님)으로 입장하실 수 있습니다.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                if (onLabDevLogin) onLabDevLogin();
+                onClose();
+              }}
+              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs sm:text-sm transition shadow-md shadow-purple-900/50 border border-purple-400/50 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <span>👑</span>
+              <span>연구실 최고 개발자(대표님)로 바로 입장</span>
+            </button>
+          </div>
+        )}
 
         {/* 에러 메시지 */}
         {error && (

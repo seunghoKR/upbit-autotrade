@@ -1,14 +1,14 @@
 {
-  "id": "/",
-  "name": "NURIOH AI 트레이더",
-  "short_name": "NURIOH",
-  "description": "업비트 AI 자동매매 스마트 트레이딩 시스템",
+  "id": "/lab",
+  "name": "NURIOH LAB (누리오 연구실)",
+  "short_name": "NURIOH LAB",
+  "description": "🧪 누리오 AI 자동매매 연구실 (LAB) - 안전 테스트 및 전략 검증 시스템",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#090D16",
-  "theme_color": "#10B981",
+  "background_color": "#0B0E14",
+  "theme_color": "#7C3AED",
   "icons": [
     {
       "src": "/icon-192.png",

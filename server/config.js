@@ -55,6 +55,27 @@ module.exports = {
     ATR_MIN_STOP_PCT: 1.2, // ATR 동적 손절 최소선 (1.2%)
     ATR_MAX_STOP_PCT: 4.5, // ATR 동적 손절 최대선 (4.5%)
 
+    // 🛡️ [수수료 차감 순수익 산출] 업비트 매수(0.05%) + 매도(0.05%) = 총 0.10% 차감
+    FEE_RATE_TOTAL_PCT: 0.10,
+
+    // 🛡️ [호가 갭 방어] 최우선 매도호가와 매수호가 간격(스프레드) 상한 (0.4% 초과 시 매수 차단)
+    ORDERBOOK_MAX_SPREAD_PCT: 0.40,
+
+    // 🔒 [수익 보존 락 (Trailing Profit Lock)] 단계별 안전 방어선 설정
+    PROFIT_LOCK_ENABLED: true,
+    PROFIT_LOCK_TIER1_TRIGGER: 1.2, // 1단계: 순수익 +1.2% 도달 시
+    PROFIT_LOCK_TIER1_FLOOR: 0.5,   // 1단계 방어선: +0.5% 확보 (운영자 피드백 반영: 슬리피지 방어)
+    PROFIT_LOCK_TIER2_TRIGGER: 2.2, // 2단계: 순수익 +2.2% 도달 시
+    PROFIT_LOCK_TIER2_FLOOR: 1.2,   // 2단계 방어선: +1.2% 확보
+
+    // ⏳ [정체 코인 타임아웃 2단계 청산] 자금 묶임 방지 및 무손실 회수
+    TIMEOUT_STAGNANT_ENABLED: true,
+    TIMEOUT_LIMIT_MINUTES: 14,      // 1단계 (14분): 본전 지정가 매도 주문 접수
+    TIMEOUT_MARKET_MINUTES: 15,     // 2단계 (15분): 미체결 취소 후 시장가 즉시 청산
+
+    // 💰 [원화 고갈 방어 버퍼] 최소 비상 원화 잔고 (20,000원) 유지
+    MIN_KRW_RESERVE_BUFFER: 20000,
+
     // 트레일링 스탑 파라미터
     TRAILING_TARGET_PROFIT_PCT: 3.0, // 트레일링 감시 시작 목표 수익률 (%)
     TRAILING_CALLBACK_PCT: 1.0, // 최고점 대비 하락 폭 이익실현 매도 (%)

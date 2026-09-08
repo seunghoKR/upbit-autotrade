@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   X, 
   Users, 
@@ -21,7 +21,15 @@ import {
   XCircle,
   UserCog,
   Send,
-  Plus
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  RotateCcw,
+  SlidersHorizontal,
+  Filter,
+  ArrowUpDown
 } from 'lucide-react';
 import { getAdminUsers, updateAdminUser, sendTelegramTestMessage, confirmUserDeposit } from '../services/api';
 
@@ -31,7 +39,12 @@ let cachedAdminUsers = [];
 export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
   const [users, setUsers] = useState(cachedAdminUsers);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState('ALL'); // ALL | OPERATOR | VIP | PRO | FREE | PENDING
+  const [searchTarget, setSearchTarget] = useState('ALL'); // ALL | NAME | PHONE | EMAIL | TELEGRAM | KAKAO
+  const [selectedFilter, setSelectedFilter] = useState('ALL'); // ALL | OPERATOR | VIP | PRO | FREE | PENDING | EXPIRED
+  const [telegramFilter, setTelegramFilter] = useState('ALL'); // ALL | LINKED | UNLINKED
+  const [sortBy, setSortBy] = useState('LATEST'); // LATEST | NAME_ASC | EXPIRY_ASC | EXPIRY_DESC | ID_ASC
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(cachedAdminUsers.length === 0);
   const [actionSuccess, setActionSuccess] = useState('');
   const [testingTelegramUserId, setTestingTelegramUserId] = useState(null);
@@ -107,30 +120,120 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
     }
   };
 
-  // 필터링된 유저 목록
-  const filteredUsers = users.filter(u => {
-    const matchSearch = 
-      (u.name && u.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (u.nickname && u.nickname.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (u.phone && u.phone.includes(searchTerm)) ||
-      (u.email && u.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (u.kakaoId && u.kakaoId.toLowerCase().includes(searchTerm.toLowerCase()));
+  // 필터 초기화 핸들러
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setSearchTarget('ALL');
+    setSelectedFilter('ALL');
+    setTelegramFilter('ALL');
+    setSortBy('LATEST');
+    setCurrentPage(1);
+  };
 
-    if (!matchSearch) return false;
+  // 1. 다각도 검색 및 상태 필터링
+  const filteredUsers = useMemo(() => {
+    return users.filter(u => {
+      const isOperator = u.role === 'OPERATOR';
+      const isExpired = u.approvalStatus === 'EXPIRED' || (!isOperator && u.role !== 'DEVELOPER' && u.remainingDays <= 0 && Boolean(u.subscriptionExpiresAt && new Date(u.subscriptionExpiresAt) < new Date()));
 
-    if (selectedFilter === 'OPERATOR') return u.role === 'OPERATOR';
-    if (selectedFilter === 'VIP') return u.tier === 'VIP' && u.role !== 'OPERATOR';
-    if (selectedFilter === 'PRO') return u.tier === 'PRO' && u.role !== 'OPERATOR';
-    if (selectedFilter === 'FREE') return u.tier === 'FREE_TRIAL' && u.role !== 'OPERATOR';
-    if (selectedFilter === 'PENDING') return u.approvalStatus === 'PENDING';
-    return true;
-  });
+      // 등급/상태 탭 필터
+      if (selectedFilter === 'OPERATOR' && !isOperator) return false;
+      if (selectedFilter === 'VIP' && (u.tier !== 'VIP' || isOperator)) return false;
+      if (selectedFilter === 'PRO' && (u.tier !== 'PRO' || isOperator)) return false;
+      if (selectedFilter === 'FREE' && (u.tier !== 'FREE_TRIAL' || isOperator)) return false;
+      if (selectedFilter === 'PENDING' && u.approvalStatus !== 'PENDING') return false;
+      if (selectedFilter === 'EXPIRED' && !isExpired) return false;
+
+      // 텔레그램 연동 필터
+      if (telegramFilter === 'LINKED' && !u.hasTelegram) return false;
+      if (telegramFilter === 'UNLINKED' && u.hasTelegram) return false;
+
+      // 다각도 검색 필터
+      if (searchTerm.trim()) {
+        const term = searchTerm.trim().toLowerCase();
+        if (searchTarget === 'NAME') {
+          const nameMatch = (u.name && u.name.toLowerCase().includes(term)) || (u.nickname && u.nickname.toLowerCase().includes(term));
+          if (!nameMatch) return false;
+        } else if (searchTarget === 'PHONE') {
+          if (!u.phone || !u.phone.includes(term)) return false;
+        } else if (searchTarget === 'EMAIL') {
+          if (!u.email || !u.email.toLowerCase().includes(term)) return false;
+        } else if (searchTarget === 'TELEGRAM') {
+          if (!u.telegramId || !String(u.telegramId).toLowerCase().includes(term)) return false;
+        } else if (searchTarget === 'KAKAO') {
+          if (!u.kakaoId || !String(u.kakaoId).toLowerCase().includes(term)) return false;
+        } else {
+          // 통합 검색 (ALL)
+          const match = 
+            (u.name && u.name.toLowerCase().includes(term)) ||
+            (u.nickname && u.nickname.toLowerCase().includes(term)) ||
+            (u.phone && u.phone.includes(term)) ||
+            (u.email && u.email.toLowerCase().includes(term)) ||
+            (u.kakaoId && String(u.kakaoId).toLowerCase().includes(term)) ||
+            (u.telegramId && String(u.telegramId).toLowerCase().includes(term));
+          if (!match) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [users, selectedFilter, telegramFilter, searchTerm, searchTarget]);
+
+  // 2. 다각도 정렬
+  const sortedUsers = useMemo(() => {
+    return [...filteredUsers].sort((a, b) => {
+      if (sortBy === 'NAME_ASC') {
+        const nameA = a.name || a.nickname || '';
+        const nameB = b.name || b.nickname || '';
+        return nameA.localeCompare(nameB, 'ko');
+      }
+      if (sortBy === 'EXPIRY_ASC') {
+        const expA = a.subscriptionExpiresAt ? new Date(a.subscriptionExpiresAt).getTime() : 9999999999999;
+        const expB = b.subscriptionExpiresAt ? new Date(b.subscriptionExpiresAt).getTime() : 9999999999999;
+        return expA - expB;
+      }
+      if (sortBy === 'EXPIRY_DESC') {
+        const expA = a.subscriptionExpiresAt ? new Date(a.subscriptionExpiresAt).getTime() : 0;
+        const expB = b.subscriptionExpiresAt ? new Date(b.subscriptionExpiresAt).getTime() : 0;
+        return expB - expA;
+      }
+      if (sortBy === 'ID_ASC') {
+        return a.id - b.id;
+      }
+      // 기본: LATEST (최신 등록 / ID 역순)
+      return b.id - a.id;
+    });
+  }, [filteredUsers, sortBy]);
+
+  // 3. 페이지네이션 계산
+  const totalItems = sortedUsers.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (validCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+  const paginatedUsers = sortedUsers.slice(startIndex, endIndex);
+
+  // 페이지 번호 배열 생성 (최대 5개)
+  const getPageNumbers = () => {
+    const pages = [];
+    let start = Math.max(1, validCurrentPage - 2);
+    let end = Math.min(totalPages, start + 4);
+    if (end - start < 4) {
+      start = Math.max(1, end - 4);
+    }
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    return pages;
+  };
+
+  const isFilterActive = searchTerm.trim() !== '' || searchTarget !== 'ALL' || selectedFilter !== 'ALL' || telegramFilter !== 'ALL' || sortBy !== 'LATEST';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-2 sm:p-4 animate-in fade-in">
-      <div className="bg-slate-900 border border-indigo-500/50 rounded-2xl max-w-[1360px] w-full p-4 sm:p-6 shadow-2xl relative overflow-hidden max-h-[92vh] flex flex-col">
+      <div className="bg-slate-900 border border-indigo-500/50 rounded-2xl max-w-[1400px] w-full p-4 sm:p-6 shadow-2xl relative overflow-hidden max-h-[94vh] flex flex-col">
         {/* 상단 헤더 */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-800 shrink-0">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2.5 sm:p-3 bg-gradient-to-tr from-amber-500/20 via-indigo-500/20 to-purple-500/20 border border-indigo-500/40 text-amber-400 rounded-xl">
               <Crown className="w-6 h-6" />
@@ -156,11 +259,12 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={loadUsers}
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer"
+              onClick={() => loadUsers(false)}
+              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
               title="새로고침"
             >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-indigo-400' : ''}`} />
+              <span className="hidden sm:inline">새로고침</span>
             </button>
             <button
               onClick={onClose}
@@ -171,99 +275,202 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
           </div>
         </div>
 
-        {/* 안내 및 검색 & 필터 바 */}
-        <div className="py-3 space-y-3 shrink-0">
-          {actionSuccess && (
-            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
-              <Check className="w-4 h-4 shrink-0" />
-              <span>{actionSuccess}</span>
-            </div>
+        {/* 알림 배너 */}
+        {actionSuccess && (
+          <div className="mt-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2 shrink-0 animate-in fade-in">
+            <Check className="w-4 h-4 shrink-0" />
+            <span>{actionSuccess}</span>
+          </div>
+        )}
+
+        {/* 1행: 등급 / 상태별 필터 탭 */}
+        <div className="pt-3 pb-2 flex items-center justify-between gap-2 overflow-x-auto shrink-0 border-b border-slate-800/60 custom-scrollbar text-xs">
+          <div className="flex items-center gap-1.5 flex-nowrap">
+            <button
+              onClick={() => { setSelectedFilter('ALL'); setCurrentPage(1); }}
+              className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap cursor-pointer ${
+                selectedFilter === 'ALL'
+                  ? 'bg-slate-200 text-slate-900 shadow'
+                  : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white'
+              }`}
+            >
+              전체 ({users.length})
+            </button>
+
+            <button
+              onClick={() => { setSelectedFilter('OPERATOR'); setCurrentPage(1); }}
+              className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1 ${
+                selectedFilter === 'OPERATOR'
+                  ? 'bg-purple-600 text-white shadow'
+                  : 'bg-slate-950 text-purple-400 border border-slate-800 hover:bg-purple-950/30'
+              }`}
+            >
+              <Shield className="w-3.5 h-3.5" />
+              <span>운영자 ({users.filter(u => u.role === 'OPERATOR').length})</span>
+            </button>
+
+            <button
+              onClick={() => { setSelectedFilter('VIP'); setCurrentPage(1); }}
+              className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1 ${
+                selectedFilter === 'VIP'
+                  ? 'bg-amber-500 text-black shadow'
+                  : 'bg-slate-950 text-amber-400 border border-slate-800 hover:bg-amber-950/30'
+              }`}
+            >
+              <Crown className="w-3.5 h-3.5" />
+              <span>VIP 플랜 ({users.filter(u => u.tier === 'VIP' && u.role !== 'OPERATOR').length})</span>
+            </button>
+
+            <button
+              onClick={() => { setSelectedFilter('PRO'); setCurrentPage(1); }}
+              className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1 ${
+                selectedFilter === 'PRO'
+                  ? 'bg-indigo-600 text-white shadow'
+                  : 'bg-slate-950 text-indigo-400 border border-slate-800 hover:bg-indigo-950/30'
+              }`}
+            >
+              <Zap className="w-3.5 h-3.5" />
+              <span>PRO 플랜 ({users.filter(u => u.tier === 'PRO' && u.role !== 'OPERATOR').length})</span>
+            </button>
+
+            <button
+              onClick={() => { setSelectedFilter('FREE'); setCurrentPage(1); }}
+              className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap cursor-pointer ${
+                selectedFilter === 'FREE'
+                  ? 'bg-emerald-600 text-white shadow'
+                  : 'bg-slate-950 text-emerald-400 border border-slate-800 hover:bg-emerald-950/30'
+              }`}
+            >
+              무료회원 ({users.filter(u => u.tier === 'FREE_TRIAL' && u.role !== 'OPERATOR').length})
+            </button>
+
+            <button
+              onClick={() => { setSelectedFilter('PENDING'); setCurrentPage(1); }}
+              className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1 ${
+                selectedFilter === 'PENDING'
+                  ? 'bg-rose-600 text-white shadow animate-pulse'
+                  : 'bg-slate-950 text-rose-400 border border-slate-800 hover:bg-rose-950/30'
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>승인 대기 ({users.filter(u => u.approvalStatus === 'PENDING').length})</span>
+            </button>
+
+            <button
+              onClick={() => { setSelectedFilter('EXPIRED'); setCurrentPage(1); }}
+              className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1 ${
+                selectedFilter === 'EXPIRED'
+                  ? 'bg-rose-900 text-rose-200 shadow border border-rose-600'
+                  : 'bg-slate-950 text-rose-300/80 border border-slate-800 hover:bg-rose-950/30'
+              }`}
+            >
+              <AlertTriangle className="w-3.5 h-3.5" />
+              <span>만료 ({users.filter(u => u.approvalStatus === 'EXPIRED' || (u.role !== 'OPERATOR' && u.role !== 'DEVELOPER' && u.remainingDays <= 0 && Boolean(u.subscriptionExpiresAt && new Date(u.subscriptionExpiresAt) < new Date()))).length})</span>
+            </button>
+          </div>
+
+          {/* 초기화 버튼 */}
+          {isFilterActive && (
+            <button
+              onClick={handleResetFilters}
+              className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1 transition cursor-pointer shrink-0 border border-slate-700"
+              title="검색 및 필터 조건 초기화"
+            >
+              <RotateCcw className="w-3 h-3 text-amber-400" />
+              <span>초기화</span>
+            </button>
           )}
+        </div>
 
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-3">
-            {/* 🏷️ 등급/상태별 필터 탭 */}
-            <div className="flex items-center gap-1.5 overflow-x-auto w-full lg:w-auto pb-1 lg:pb-0 text-xs">
-              <button
-                onClick={() => setSelectedFilter('ALL')}
-                className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap cursor-pointer ${
-                  selectedFilter === 'ALL'
-                    ? 'bg-slate-200 text-slate-900 shadow'
-                    : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white'
-                }`}
+        {/* 2행: 다각도 검색 및 상세 옵션 바 */}
+        <div className="py-2.5 flex flex-wrap items-center justify-between gap-2.5 shrink-0 text-xs">
+          {/* 다각도 검색 컨트롤 */}
+          <div className="flex items-center gap-1.5 flex-1 min-w-[280px]">
+            {/* 검색 대상 선택 드롭다운 */}
+            <div className="relative shrink-0">
+              <select
+                value={searchTarget}
+                onChange={(e) => { setSearchTarget(e.target.value); setCurrentPage(1); }}
+                className="bg-slate-950 border border-slate-800 text-slate-200 font-semibold rounded-xl px-2.5 py-1.5 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer"
               >
-                전체 ({users.length})
-              </button>
-
-              <button
-                onClick={() => setSelectedFilter('OPERATOR')}
-                className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1 ${
-                  selectedFilter === 'OPERATOR'
-                    ? 'bg-purple-600 text-white shadow'
-                    : 'bg-slate-950 text-purple-400 border border-slate-800 hover:bg-purple-950/30'
-                }`}
-              >
-                <Shield className="w-3.5 h-3.5" />
-                <span>운영자 ({users.filter(u => u.role === 'OPERATOR').length})</span>
-              </button>
-
-              <button
-                onClick={() => setSelectedFilter('VIP')}
-                className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1 ${
-                  selectedFilter === 'VIP'
-                    ? 'bg-amber-500 text-black shadow'
-                    : 'bg-slate-950 text-amber-400 border border-slate-800 hover:bg-amber-950/30'
-                }`}
-              >
-                <Crown className="w-3.5 h-3.5" />
-                <span>VIP 플랜 ({users.filter(u => u.tier === 'VIP' && u.role !== 'OPERATOR').length})</span>
-              </button>
-
-              <button
-                onClick={() => setSelectedFilter('PRO')}
-                className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1 ${
-                  selectedFilter === 'PRO'
-                    ? 'bg-indigo-600 text-white shadow'
-                    : 'bg-slate-950 text-indigo-400 border border-slate-800 hover:bg-indigo-950/30'
-                }`}
-              >
-                <Zap className="w-3.5 h-3.5" />
-                <span>PRO 플랜 ({users.filter(u => u.tier === 'PRO' && u.role !== 'OPERATOR').length})</span>
-              </button>
-
-              <button
-                onClick={() => setSelectedFilter('FREE')}
-                className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap cursor-pointer ${
-                  selectedFilter === 'FREE'
-                    ? 'bg-emerald-600 text-white shadow'
-                    : 'bg-slate-950 text-emerald-400 border border-slate-800 hover:bg-emerald-950/30'
-                }`}
-              >
-                무료방문자 ({users.filter(u => u.tier === 'FREE_TRIAL' && u.role !== 'OPERATOR').length})
-              </button>
-
-              <button
-                onClick={() => setSelectedFilter('PENDING')}
-                className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1 ${
-                  selectedFilter === 'PENDING'
-                    ? 'bg-rose-600 text-white shadow animate-pulse'
-                    : 'bg-slate-950 text-rose-400 border border-slate-800 hover:bg-rose-950/30'
-                }`}
-              >
-                <Clock className="w-3.5 h-3.5" />
-                <span>승인 대기 ({users.filter(u => u.approvalStatus === 'PENDING').length})</span>
-              </button>
+                <option value="ALL">🔍 통합 검색</option>
+                <option value="NAME">👤 실명 / 닉네임</option>
+                <option value="PHONE">📱 연락처</option>
+                <option value="EMAIL">✉️ 이메일</option>
+                <option value="TELEGRAM">✈️ 텔레그램 ID</option>
+                <option value="KAKAO">💬 카카오 계정</option>
+              </select>
             </div>
 
-            {/* 검색창 */}
-            <div className="relative w-full lg:w-72 shrink-0">
-              <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+            {/* 검색어 인풋 */}
+            <div className="relative flex-1">
+              <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5 pointer-events-none" />
               <input
                 type="text"
-                placeholder="이메일, 실명, 닉네임, 연락처 검색"
+                placeholder={
+                  searchTarget === 'NAME' ? '회원 실명 또는 닉네임 입력...' :
+                  searchTarget === 'PHONE' ? '전화번호 검색 (예: 010)...' :
+                  searchTarget === 'EMAIL' ? '이메일 주소 검색...' :
+                  searchTarget === 'TELEGRAM' ? '텔레그램 Chat ID 검색...' :
+                  searchTarget === 'KAKAO' ? '카카오 식별자 검색...' :
+                  '실명, 닉네임, 연락처, 이메일, 텔레그램 통합 검색...'
+                }
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-medium"
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-7 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-medium placeholder:text-slate-600"
               />
+              {searchTerm && (
+                <button
+                  onClick={() => { setSearchTerm(''); setCurrentPage(1); }}
+                  className="absolute right-2.5 top-2 text-slate-500 hover:text-slate-300 transition"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* 우측 옵션: 텔레그램 연동 여부 / 정렬 / 페이지당 건수 */}
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
+            {/* 텔레그램 연동 필터 */}
+            <select
+              value={telegramFilter}
+              onChange={(e) => { setTelegramFilter(e.target.value); setCurrentPage(1); }}
+              className="bg-slate-950 border border-slate-800 text-slate-300 font-medium rounded-xl px-2.5 py-1.5 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer"
+            >
+              <option value="ALL">✈️ 텔레그램 전체</option>
+              <option value="LINKED">🟢 텔레그램 연동 회원</option>
+              <option value="UNLINKED">⚪ 텔레그램 미연동</option>
+            </select>
+
+            {/* 정렬 드롭다운 */}
+            <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded-xl px-2 py-0.5">
+              <ArrowUpDown className="w-3 h-3 text-slate-500 shrink-0" />
+              <select
+                value={sortBy}
+                onChange={(e) => { setSortBy(e.target.value); setCurrentPage(1); }}
+                className="bg-transparent text-slate-300 font-medium py-1 text-xs focus:outline-none cursor-pointer border-0"
+              >
+                <option value="LATEST" className="bg-slate-900">최신 등록순</option>
+                <option value="NAME_ASC" className="bg-slate-900">이름 가나다순</option>
+                <option value="EXPIRY_ASC" className="bg-slate-900">만료 임박순</option>
+                <option value="EXPIRY_DESC" className="bg-slate-900">만료 여유순</option>
+                <option value="ID_ASC" className="bg-slate-900">회원 번호순</option>
+              </select>
+            </div>
+
+            {/* 페이지당 보기 건수 */}
+            <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded-xl px-2 py-0.5">
+              <span className="text-slate-500 text-[11px]">보기:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+                className="bg-transparent text-slate-300 font-bold py-1 text-xs focus:outline-none cursor-pointer border-0"
+              >
+                <option value="10" className="bg-slate-900">10명씩</option>
+                <option value="20" className="bg-slate-900">20명씩</option>
+                <option value="50" className="bg-slate-900">50명씩</option>
+              </select>
             </div>
           </div>
         </div>
@@ -282,14 +489,27 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
-              {filteredUsers.length === 0 ? (
+              {paginatedUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-500">
-                    해당 조건에 일치하는 회원이 없습니다.
+                  <td colSpan={6} className="py-14 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2 text-slate-500">
+                      <Search className="w-8 h-8 text-slate-600 stroke-[1.5]" />
+                      <p className="text-sm font-semibold text-slate-400">조건에 일치하는 회원이 없습니다.</p>
+                      <p className="text-xs text-slate-600">검색어나 선택된 필터 조건을 확인해보세요.</p>
+                      {isFilterActive && (
+                        <button
+                          onClick={handleResetFilters}
+                          className="mt-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border border-slate-700"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+                          <span>검색 및 필터 초기화</span>
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map((user) => {
+                paginatedUsers.map((user) => {
                   const isOperator = user.role === 'OPERATOR';
                   const isVip = user.tier === 'VIP';
                   const isPro = user.tier === 'PRO';
@@ -545,6 +765,115 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* 하단 페이지네이션 컨트롤 바 */}
+        <div className="pt-3 mt-1 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-800 shrink-0 text-xs text-slate-400">
+          {/* 좌측: 총 건수 및 현재 표시 범위 */}
+          <div className="flex items-center gap-2">
+            <span>
+              총 <strong className="text-slate-200 font-bold">{totalItems}</strong>명 중{' '}
+              {totalItems > 0 ? (
+                <>
+                  <span className="text-indigo-400 font-bold">{startIndex + 1}</span>
+                  {' ~ '}
+                  <span className="text-indigo-400 font-bold">{endIndex}</span>명 표시
+                </>
+              ) : (
+                '0명'
+              )}
+            </span>
+            {isFilterActive && (
+              <span className="text-[11px] text-amber-400/90 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full font-medium">
+                (필터 적용 중)
+              </span>
+            )}
+          </div>
+
+          {/* 중앙: 페이지 번호 이동 버튼들 */}
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              {/* 맨 처음 페이지 */}
+              <button
+                onClick={() => setCurrentPage(1)}
+                disabled={validCurrentPage === 1}
+                className={`p-1.5 rounded-lg border transition ${
+                  validCurrentPage === 1
+                    ? 'border-slate-800 text-slate-600 cursor-not-allowed opacity-50'
+                    : 'border-slate-800 bg-slate-950 text-slate-300 hover:bg-slate-800 hover:text-white cursor-pointer'
+                }`}
+                title="맨 처음 페이지"
+              >
+                <ChevronsLeft className="w-4 h-4" />
+              </button>
+
+              {/* 이전 페이지 */}
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={validCurrentPage === 1}
+                className={`p-1.5 rounded-lg border transition ${
+                  validCurrentPage === 1
+                    ? 'border-slate-800 text-slate-600 cursor-not-allowed opacity-50'
+                    : 'border-slate-800 bg-slate-950 text-slate-300 hover:bg-slate-800 hover:text-white cursor-pointer'
+                }`}
+                title="이전 페이지"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              {/* 페이지 번호 목록 */}
+              <div className="flex items-center gap-1 mx-1">
+                {getPageNumbers().map(pageNum => (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`min-w-[32px] h-[30px] rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center ${
+                      pageNum === validCurrentPage
+                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/20 border border-indigo-400/40'
+                        : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-slate-200 hover:bg-slate-800'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                ))}
+              </div>
+
+              {/* 다음 페이지 */}
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={validCurrentPage === totalPages}
+                className={`p-1.5 rounded-lg border transition ${
+                  validCurrentPage === totalPages
+                    ? 'border-slate-800 text-slate-600 cursor-not-allowed opacity-50'
+                    : 'border-slate-800 bg-slate-950 text-slate-300 hover:bg-slate-800 hover:text-white cursor-pointer'
+                }`}
+                title="다음 페이지"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+
+              {/* 맨 마지막 페이지 */}
+              <button
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={validCurrentPage === totalPages}
+                className={`p-1.5 rounded-lg border transition ${
+                  validCurrentPage === totalPages
+                    ? 'border-slate-800 text-slate-600 cursor-not-allowed opacity-50'
+                    : 'border-slate-800 bg-slate-950 text-slate-300 hover:bg-slate-800 hover:text-white cursor-pointer'
+                }`}
+                title="맨 마지막 페이지"
+              >
+                <ChevronsRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* 우측: 현재 페이지 / 전체 페이지 안내 */}
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-slate-400 font-medium">
+              페이지 <strong className="text-slate-200 font-bold">{validCurrentPage}</strong> / {totalPages}
+            </span>
+          </div>
         </div>
       </div>
     </div>

@@ -344,7 +344,7 @@ export default function MyPageModal({
 
   return (
     <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in">
-      <div className="bg-slate-900 border-2 border-indigo-500/50 rounded-3xl max-w-4xl w-full p-4 sm:p-6 shadow-2xl shadow-black/80 relative space-y-4 my-auto max-h-[95vh] overflow-y-auto flex flex-col justify-between min-h-[580px] sm:min-h-[620px]">
+      <div className="bg-slate-900 border-2 border-indigo-500/50 rounded-3xl max-w-4xl w-full p-4 sm:p-6 shadow-2xl shadow-black/80 relative my-auto h-[700px] sm:h-[740px] max-h-[92vh] flex flex-col overflow-hidden">
         
         {/* 1. 상단 헤더 */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-800 shrink-0">
@@ -458,8 +458,8 @@ export default function MyPageModal({
           </div>
         )}
 
-        {/* 3. 탭별 상세 콘텐츠 (모든 탭 동일한 높이 밸런스 유지) */}
-        <div className="flex-1 flex flex-col justify-between">
+        {/* 3. 탭별 상세 콘텐츠 (5개 탭 동일한 고정 높이 밸런스 유지 & 내부 부드러운 스크롤) */}
+        <div className="flex-1 overflow-y-auto pt-3 pb-2 pr-1 sm:pr-2 min-h-0 flex flex-col justify-start">
 
           {/* ========================================================= */}
           {/* TAB 1: 👤 내 정보 & 🔑 API 키 통합 관리 */}
@@ -770,7 +770,7 @@ export default function MyPageModal({
 
                 {/* 고화질 다크 테마 성과 매트릭스 테이블 */}
                 <div className="rounded-2xl border border-slate-800 bg-slate-950/80 overflow-hidden shadow-inner">
-                  <div className="overflow-x-auto max-h-[380px] overflow-y-auto">
+                  <div className="overflow-x-auto">
                     <table className="w-full text-[11px] text-left border-collapse whitespace-nowrap font-mono">
                       {/* 그룹 상단 헤더 */}
                       <thead>
@@ -891,11 +891,11 @@ export default function MyPageModal({
                   </div>
                 </div>
 
-                {/* 💡 영자의 AI 전략 분석 인사이트 */}
+                {/* 💡 누리오 AI 디자인실장의 전략 분석 인사이트 */}
                 <div className="p-3 rounded-2xl bg-indigo-950/30 border border-indigo-500/30 flex items-start gap-2.5 text-xs text-slate-300">
                   <Sparkles className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" />
                   <div className="space-y-0.5">
-                    <strong className="text-yellow-300">💡 AI 디자인실장 영자의 슬롯 분석 브리핑:</strong>
+                    <strong className="text-yellow-300">💡 누리오 AI 디자인실장의 슬롯 분석 브리핑:</strong>
                     <p className="text-[11px] text-slate-400 leading-relaxed">
                       3번 슬롯(15초 / +2.5% / 3,000만원)에서 총 63회의 가장 활발한 돌파가 포착되었습니다.  
                       상승률 조건을 <strong>+0.5% ~ +1.5%</strong>로 완화할 경우 거래 회전율이 대폭 증가하며, 상단 <strong>[📋 엑셀 복사]</strong> 버튼을 누르시면 위 표를 엑셀에 그대로 붙여넣어 보관하실 수 있습니다! ✨

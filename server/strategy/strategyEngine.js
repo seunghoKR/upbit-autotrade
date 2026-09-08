@@ -109,7 +109,7 @@ class StrategyEngine {
           return;
         }
 
-        // 🛡️ [알고리즘 1번] 호가창 불균형 필터 (Orderbook Imbalance: 가짜 펌핑 방어)
+        // 🛡️ [알고리즘 1번] 호가창 불균형 필터 (가짜 펌핑 방어) & 호가 갭(스프레드) 검증
         if (this.settings.ORDERBOOK_FILTER_ENABLED !== false) {
           try {
             const obData = await upbitClient.getOrderbook(surge.market);
@@ -134,11 +134,61 @@ class StrategyEngine {
                 });
                 return;
               }
+
+              // 🛡️ [호가 갭 방어] 최우선 매도호가와 매수호가 간격(스프레드) 상한 검증 (0.4% 초과 시 매수 차단)
+              if (Array.isArray(ob.orderbook_units) && ob.orderbook_units.length > 0) {
+                const topUnit = ob.orderbook_units[0];
+                const askPrice = Number(topUnit.ask_price || 0);
+                const bidPrice = Number(topUnit.bid_price || 0);
+                if (bidPrice > 0 && askPrice > 0) {
+                  const spreadPct = ((askPrice - bidPrice) / bidPrice) * 100;
+                  const maxSpread = Number(this.settings.ORDERBOOK_MAX_SPREAD_PCT) || 0.40;
+                  if (spreadPct > maxSpread) {
+                    console.warn(`🚫 [호가 스프레드 과대 차단] ${surge.market} 호가 갭 ${spreadPct.toFixed(2)}% > 기준 ${maxSpread}% (슬리피지 손실 방어) -> 매수 취소`);
+                    slotManager.clearPosition(availableSlot.slotId);
+                    this.emitSignal({
+                      type: 'SPREAD_FILTER_BLOCKED',
+                      slotId: availableSlot.slotId,
+                      market: surge.market,
+                      spreadPct: Number(spreadPct.toFixed(2)),
+                      maxSpread,
+                      message: `🚫 [호가 갭 방어] ${surge.market} 호가 갭(${spreadPct.toFixed(2)}%)이 기준(${maxSpread}%)을 초과하여 매수를 안전하게 취소했습니다.`
+                    });
+                    return;
+                  }
+                  console.log(`✅ [호가 스프레드 검증 통과] ${surge.market} 스프레드: ${spreadPct.toFixed(2)}% (기준 ${maxSpread}% 이하 정상)`);
+                }
+              }
+
               console.log(`✅ [호가창 검증 통과] ${surge.market} 매수비율: ${bidRatio.toFixed(1)}% (기준 ${minBidRatio}% 이상 확보)`);
             }
           } catch (obErr) {
             console.warn(`⚠️ [호가창 검증 경고] ${surge.market} 호가 조회 지연: ${obErr.message}`);
           }
+        }
+
+        // 💰 [원화 고갈 방어 버퍼] 최소 비상 원화 잔고 (20,000원) 유지 확인
+        try {
+          const accounts = await upbitClient.getAccounts();
+          const krwAcc = accounts.find(a => a.currency === 'KRW');
+          const krwBalance = krwAcc ? Number(krwAcc.balance) : 0;
+          const minReserve = Number(this.settings.MIN_KRW_RESERVE_BUFFER) || 20000;
+          if (krwBalance - minReserve < tradeAmount) {
+            console.warn(`⚠️ [원화 잔고 부족 차단] KRW 잔고(${krwBalance.toLocaleString()}원) - 비상버퍼(${minReserve.toLocaleString()}원) < 주문금액(${tradeAmount.toLocaleString()}원) -> 매수 취소`);
+            slotManager.clearPosition(availableSlot.slotId);
+            this.emitSignal({
+              type: 'INSUFFICIENT_KRW_BUFFER_BLOCKED',
+              slotId: availableSlot.slotId,
+              market: surge.market,
+              krwBalance,
+              minReserve,
+              tradeAmount,
+              message: `⚠️ [원화 잔고 부족] 비상 안전버퍼(${minReserve.toLocaleString()}원) 유지를 위해 [${surge.market}] 매수를 보류했습니다.`
+            });
+            return;
+          }
+        } catch (accErr) {
+          console.warn(`⚠️ [계좌 잔고 조회 경고] ${accErr.message}`);
         }
 
         // ⚙️ [알고리즘 4번] AI 동적 변동성 ATR 손절선 산출 (해당 슬롯이 ON 상태일 때)
@@ -294,33 +344,10 @@ class StrategyEngine {
     // 1. 급등 감지기 틱 피딩
     surgeDetector.processTick(tick, this.settings);
 
-    // 2. 트레일링 스탑 & 손절매 실시간 평가
+    // 2. 트레일링 스탑, 수익 보존 락, 타임아웃 & 손절매 실시간 평가
     const exitSignal = slotManager.evaluatePrice(tick.code, tick.trade_price, this.settings);
     if (exitSignal) {
-      const sellSignal = {
-        id: `SIG-SELL-${Date.now()}`,
-        type: 'SELL',
-        slotId: exitSignal.slotId,
-        slotName: `${exitSignal.slotId}번 슬롯`,
-        market: exitSignal.market,
-        entryPrice: exitSignal.entryPrice,
-        price: exitSignal.currentPrice,
-        volume: exitSignal.volume,
-        profitPct: exitSignal.profitRate,
-        profitKrw: exitSignal.profitKrw,
-        highestProfitPct: exitSignal.highestProfitPct,
-        reason: exitSignal.reason,
-        createdAt: new Date().toISOString()
-      };
-
-      console.log(`🚨 [매도 트리거 발생] 슬롯 ${exitSignal.slotId}번 ${exitSignal.market} (수익률: ${exitSignal.profitRate.toFixed(2)}%) -> 즉시 전량 매도 실행!`);
-      
-      // 익절/손절은 승인 대기 없이 0.1초 만에 즉시 시장가 매도 실행!
-      try {
-        await this.executeTrade(sellSignal, 'AUTO_EXIT_TRIGGER');
-      } catch (err) {
-        console.error(`❌ [매도 실패] ${exitSignal.market}:`, err.message);
-      }
+      await this.handleExitSignal(exitSignal, 'REALTIME_TICK_TRIGGER');
     }
   }
 
@@ -340,27 +367,83 @@ class StrategyEngine {
         const exitSignal = slotManager.evaluatePrice(market, currentPrice, this.settings);
 
         if (exitSignal) {
-          const sellSignal = {
-            id: `SIG-SELL-${Date.now()}`,
-            type: 'SELL',
-            slotId: exitSignal.slotId,
-            slotName: `${exitSignal.slotId}번 슬롯`,
-            market: exitSignal.market,
-            entryPrice: exitSignal.entryPrice,
-            price: currentPrice,
-            volume: exitSignal.volume,
-            profitPct: exitSignal.profitRate,
-            profitKrw: exitSignal.profitKrw,
-            highestProfitPct: exitSignal.highestProfitPct,
-            reason: exitSignal.reason,
-            createdAt: new Date().toISOString()
-          };
-
-          await this.executeTrade(sellSignal, 'POLLING_EXIT_TRIGGER');
+          await this.handleExitSignal(exitSignal, 'POLLING_EXIT_TRIGGER');
         }
       } catch (err) {
         // Quiet
       }
+    }
+  }
+
+  /**
+   * 🚨 종합 청산 신호 처리기 (수익보존락 / 트레일링스탑 / ATR손절 / 2단계 타임아웃)
+   */
+  async handleExitSignal(exitSignal, triggerSource = 'REALTIME_TICK_TRIGGER') {
+    if (!exitSignal) return;
+
+    // ⏳ 1단계: 14분 정체 코인 본전 최우선 지정가 매도 주문 접수 (운영자 피드백 3번)
+    if (exitSignal.action === 'TIMEOUT_LIMIT_EXIT') {
+      try {
+        console.log(`⏳ [정체 코인 1단계 본전 매도 주문 접수] 슬롯 ${exitSignal.slotId}번 ${exitSignal.market} @ ${exitSignal.entryPrice.toLocaleString()} KRW (수량: ${exitSignal.volume})`);
+        const limitOrder = await upbitClient.createOrder({
+          market: exitSignal.market,
+          side: 'ask',
+          volume: exitSignal.volume,
+          price: exitSignal.entryPrice,
+          ord_type: 'limit'
+        });
+        slotManager.updateTimeoutStep(exitSignal.slotId, 'LIMIT_SUBMITTED', limitOrder?.uuid || null);
+        this.emitSignal({
+          type: 'TIMEOUT_LIMIT_ORDER_SUBMITTED',
+          slotId: exitSignal.slotId,
+          market: exitSignal.market,
+          orderUuid: limitOrder?.uuid,
+          entryPrice: exitSignal.entryPrice,
+          message: `⏳ [14분 타임아웃 1단계] ${exitSignal.market} 본전(${exitSignal.entryPrice.toLocaleString()}원) 지정가 매도를 접수했습니다. (1분간 체결 대기)`
+        });
+      } catch (limitErr) {
+        console.warn(`⚠️ [1단계 지정가 주문 실패 -> 시장가 준비]: ${limitErr.message}`);
+        slotManager.updateTimeoutStep(exitSignal.slotId, 'LIMIT_SUBMITTED', null);
+      }
+      return;
+    }
+
+    // ⏳ 2단계: 15분 정체 타임아웃 만료 시 1단계 미체결 지정가 취소 후 시장가 즉시 청산
+    if (exitSignal.action === 'TIMEOUT_MARKET_EXIT') {
+      if (exitSignal.limitOrderUuid) {
+        try {
+          console.log(`⏳ [정체 코인 2단계] 1단계 미체결 지정가 주문(${exitSignal.limitOrderUuid}) 취소 접수...`);
+          await upbitClient.cancelOrder(exitSignal.limitOrderUuid);
+        } catch (cancelErr) {
+          // 이미 체결되었거나 취소된 경우 무시
+        }
+      }
+      slotManager.updateTimeoutStep(exitSignal.slotId, 'MARKET_CLOSED');
+    }
+
+    // 🚨 일반 시장가 매도 신호 생성 및 집행 (수익보존락, 트레일링스탑, ATR손절, 2단계 타임아웃)
+    const sellSignal = {
+      id: `SIG-SELL-${Date.now()}`,
+      type: 'SELL',
+      slotId: exitSignal.slotId,
+      slotName: `${exitSignal.slotId}번 슬롯`,
+      market: exitSignal.market,
+      entryPrice: exitSignal.entryPrice,
+      price: exitSignal.currentPrice,
+      volume: exitSignal.volume,
+      profitPct: exitSignal.profitRate,
+      profitKrw: exitSignal.profitKrw,
+      highestProfitPct: exitSignal.highestProfitPct,
+      reason: exitSignal.reason,
+      createdAt: new Date().toISOString()
+    };
+
+    console.log(`🚨 [매도 실행: ${exitSignal.action}] 슬롯 ${exitSignal.slotId}번 ${exitSignal.market} (순수익률: ${exitSignal.profitRate.toFixed(2)}%) -> 시장가 매도 집행!`);
+
+    try {
+      await this.executeTrade(sellSignal, triggerSource);
+    } catch (err) {
+      console.error(`❌ [매도 실행 실패] ${exitSignal.market}:`, err.message);
     }
   }
 
@@ -411,6 +494,11 @@ class StrategyEngine {
           entryAmountKrw: signal.amount,
           dynamicStopLossPct: signal.dynamicStopLossPct || null
         });
+
+        // 🔄 [운영자 피드백 1번] 주문 완료('done') 대기 후 실제 체결 평균단가/수량 비동기 동기화 (부분 체결 예외 처리)
+        if (orderResult && orderResult.uuid) {
+          this.syncRealOrderAveragePrice(targetSlotId, signal.market, orderResult.uuid, signal.price, estimatedVolume, signal.amount);
+        }
 
       } else if (signal.type === 'SELL') {
         // 시장가 매도 (보유 수량 전량)
@@ -465,6 +553,85 @@ class StrategyEngine {
       this.emitSignal({ type: 'TRADE_FAILED', signal, error: signal.error });
       throw err;
     }
+  }
+
+  /**
+   * 🔄 [운영자 피드백 1번] 주문 완전 체결('done') 대기 후 실제 평단가/수량 동기화 (부분 체결 예외 처리 완비)
+   */
+  async syncRealOrderAveragePrice(slotId, market, orderUuid, fallbackPrice, fallbackVolume, orderAmountKrw) {
+    if (!orderUuid) return;
+
+    const maxAttempts = 10;
+    const intervalMs = 500;
+    let attempts = 0;
+
+    const pollTimer = setInterval(async () => {
+      attempts++;
+      try {
+        const orderData = await upbitClient.getOrder(orderUuid);
+        if (orderData) {
+          // 주문 완료(done) 또는 부분체결 후 취소(cancel) 시 최종 체결가 확정
+          if (orderData.state === 'done' || orderData.state === 'cancel') {
+            clearInterval(pollTimer);
+
+            const executedVolume = Number(orderData.executed_volume || 0);
+            let realAvgPrice = fallbackPrice;
+            let realTotalKrw = orderAmountKrw;
+
+            if (Array.isArray(orderData.trades) && orderData.trades.length > 0) {
+              const totalFunds = orderData.trades.reduce((acc, t) => acc + Number(t.funds || (Number(t.price) * Number(t.volume))), 0);
+              if (executedVolume > 0 && totalFunds > 0) {
+                realAvgPrice = Math.round((totalFunds / executedVolume) * 100) / 100;
+                realTotalKrw = totalFunds;
+              }
+            } else if (executedVolume > 0 && orderAmountKrw > 0) {
+              realAvgPrice = Math.round((orderAmountKrw / executedVolume) * 100) / 100;
+            }
+
+            // 업비트 계좌 avg_buy_price가 유효하면 우선 교차 검증
+            try {
+              const accounts = await upbitClient.getAccounts();
+              const currency = market.replace('KRW-', '');
+              const coinAcc = accounts.find(a => a.currency === currency);
+              if (coinAcc && Number(coinAcc.avg_buy_price) > 0) {
+                realAvgPrice = Number(coinAcc.avg_buy_price);
+              }
+            } catch (accErr) {
+              // Ignore
+            }
+
+            slotManager.syncExecutedPosition(slotId, realAvgPrice, executedVolume || fallbackVolume, realTotalKrw);
+            console.log(`✅ [Slot ${slotId} 체결 완료] 주문(${orderUuid}) state: ${orderData.state} -> 실제 체결가 ${realAvgPrice.toLocaleString()}원, 체결수량 ${executedVolume || fallbackVolume} 동기화 완료!`);
+            return;
+          }
+
+          // 아직 wait(부분 체결 진행 중) 상태일 때는 에러를 발생시키지 않고 다음 주기에 계속 확인
+          if (orderData.state === 'wait') {
+            // 조용히 다음 폴링 대기
+          }
+        }
+      } catch (err) {
+        // 순간 네트워크 오류 시 무시하고 다음 폴링 지속
+      }
+
+      if (attempts >= maxAttempts) {
+        clearInterval(pollTimer);
+        // 타임아웃(5초) 도달 시 계좌 잔고 기반으로 최종 보정
+        try {
+          const accounts = await upbitClient.getAccounts();
+          const currency = market.replace('KRW-', '');
+          const coinAcc = accounts.find(a => a.currency === currency);
+          if (coinAcc && Number(coinAcc.avg_buy_price) > 0) {
+            const realAvgPrice = Number(coinAcc.avg_buy_price);
+            const realVolume = Number(coinAcc.balance);
+            slotManager.syncExecutedPosition(slotId, realAvgPrice, realVolume, realAvgPrice * realVolume);
+            console.log(`⏱️ [Slot ${slotId} 5초 타임아웃 보정] 계좌 잔고 기준 평단가 ${realAvgPrice.toLocaleString()}원 동기화 완료.`);
+          }
+        } catch (e) {
+          // Fallback 유지
+        }
+      }
+    }, intervalMs);
   }
 
   async panicSell(targetSlotId = null) {

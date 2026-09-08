@@ -2,7 +2,7 @@
 
 > **문서 버전:** `v1.0.0`  
 > **최초 작성일:** 2026-09-08  
-> **작성자:** AI 디자인실장 영자 & 마스터 개발자 이승호 대표님  
+> **작성자:** 누리오 AI 디자인실장 & 마스터 개발자 이승호 대표님  
 > **목적:** 실운영 중인 상용 서버(`main`)의 안정성을 100% 보장하고, 연구실(`dev`)에서 충분한 검증 후 안전하게 실서버에 배포하는 표준 프로세스 확립. 다른 PC에서도 즉시 작업을 이어받을 수 있는 동기화 가이드 제공.
 
 ---
@@ -159,4 +159,4 @@ npm run deploy
    - 중요한 구조 변경이나 알고리즘 추가 시 `PROJECT_DEVELOPMENT_MEMO.md`에 날짜와 버전, 해결 내용을 1~2줄 요약 기록합니다.
 
 ---
-*Created by AI Design Lead Youngja & Jay @ Connect AI LAB*
+*Created by NURIOH AI Design Lead & Jay @ Connect AI LAB*
