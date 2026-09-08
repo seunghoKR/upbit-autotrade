@@ -1615,7 +1615,7 @@ export default function App() {
           <div className="max-w-7xl mx-auto flex items-center justify-between text-xs sm:text-sm font-bold">
             <div className="flex items-center gap-2">
               <span className="text-base animate-bounce">🔬</span>
-              <span>[실험실 v3.0.1] 운영자 전용 사전 검증 공간입니다.</span>
+              <span>[실험실 v3.1.0] 운영자 전용 사전 검증 공간입니다.</span>
               <span className="hidden md:inline text-amber-100/90 font-normal text-xs">
                 (실서버 적용 전 신규 기능과 UI를 직접 테스트해 보세요. 개발자/운영자 승인 후 실서버로 배포됩니다.)
               </span>

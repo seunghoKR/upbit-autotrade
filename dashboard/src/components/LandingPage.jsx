@@ -52,7 +52,7 @@ export default function LandingPage({ onOpenKakaoLogin, onLabDevLogin }) {
                   AI TRADER
                 </span>
                 <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-mono font-bold border border-emerald-500/30">
-                  {(isLocalLab || isStagingLab) ? 'v3.0.1' : 'v3.0.0'}
+                  v3.1.0
                 </span>
                 {isLocalLab ? (
                   <span className="text-[9px] px-2 py-0.5 rounded-full bg-purple-950/80 text-purple-300 font-bold border border-purple-500/50 animate-pulse">

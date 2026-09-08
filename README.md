@@ -1,6 +1,6 @@
 # 🚀 NURIOH AI TRADER | 업비트 비수탁형 멀티 슬롯 자동매매 플랫폼
 
-> **Version:** `v3.0.0 (4-Stage Advanced Algo Engine & Whale/BTC Guard Release)`  
+> **Version:** `v3.1.0 (Notice Board, Today Listing Alert, 3-Tier Pipeline Release)`  
 > **Live Service:** [https://nuriohtrade.iwinv.net](https://nuriohtrade.iwinv.net)  
 > **Server IP:** `115.68.168.243`  
 > **Design & Built by:** 누리오 AI 디자인실장 🎨✨ & 마스터 개발자 이승호 대표님 👑

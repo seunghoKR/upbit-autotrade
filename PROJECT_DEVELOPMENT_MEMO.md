@@ -1,7 +1,7 @@
 # 📝 누리오(NURIOH) AI 트레이더 종합 개발 메모 & 시스템 가이드
 
-> **버전 (Version):** `v3.2.3 (Slot Setting Rollback Fix & Dev Lab Environment Opening)`  
-> **최종 갱신일시:** 2026-09-08 09:45 (KST)  
+> **버전 (Version):** `v3.1.0 (Notice Board, Today Listing Alert, 3-Tier Pipeline Release)`  
+> **최종 갱신일시:** 2026-09-08 22:35 (KST)  
 > **작성자:** 누리오 AI 디자인실장 & 마스터 개발자 이승호 대표님  
 > **프로젝트 위치:** `y:\SynologyDrive\00.withAI\자동매매프로그램`  
 > **GitHub 저장소:** `https://github.com/seunghoKR/upbit-autotrade.git` (`main`: 상용 실서버, `dev`: 연구실 실험실)
@@ -140,6 +140,13 @@
 ### 🧪 [안내 16] 누리오 연구실(Lab) 개설 및 안전 배포 프로세스 확립
 - **배경:** 상용 실서버(`main` 브랜치 및 `nuriohtrade.iwinv.net`)에 운영자 그룹 실사용자가 물려있으므로, 업데이트 시 장애를 방지하기 위해 별도의 연구실(`dev` 브랜치) 환경 구축.
 - **가이드 문서:** `LAB_WORKFLOW.md` 신설 완료 (연구실 개발 ➔ 검증 ➔ 실서버 배포 5단계 SOP 및 다른 컴퓨터 작업 동기화 30초 체크리스트 수록).
+
+### 🚀 [릴리즈 17] v3.1.0 정식 릴리즈 (공지사항 게시판, 당일 신규 상장 알림 팝업, 3단계 배포 체계 확립)
+- **주요 반영 내역:**
+  1. **📢 공지사항 게시판 모달 (`NoticeBoardModal`):** 상단 헤더 공지 아이콘 및 거래소 공지 & 상장/상폐 탭별 통합 열람 센터 구축.
+  2. **⚡ 당일 신규 상장 코인 감지 팝업 (`TodayListingPopupModal`):** 원화마켓 신규 상장 코인 감지 시 1회 알림 팝업 제공 및 '다시 열지 않기' 영구 차단 옵션 적용.
+  3. **🏛️ 3대 운영 공간 버전 일원화:** 연구실(`dev`), 실험실(`staging`), 실서버(`main`) 모두 `v3.1.0` 마일스톤으로 승격 및 배포 완료.
+  4. **🛡️ 리액트 훅 안정화:** `AdminUserManagement.jsx` 내 조건부 훅 호출 순서 정상화 (Oxlint 0 에러).
 
 ---
 

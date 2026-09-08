@@ -56,11 +56,11 @@ export default function Header({
 
   useEffect(() => {
     if (isLocalLab) {
-      document.title = "🧪 [연구실 v3.0.1] NURIOH AI TRADER";
+      document.title = "🧪 [연구실 v3.1.0] NURIOH AI TRADER";
     } else if (isStagingLab) {
-      document.title = "🔬 [실험실 v3.0.1] NURIOH AI TRADER";
+      document.title = "🔬 [실험실 v3.1.0] NURIOH AI TRADER";
     } else {
-      document.title = "NURIOH AI TRADER (누리오 AI v3.0.0)";
+      document.title = "NURIOH AI TRADER (누리오 AI v3.1.0)";
     }
   }, [isLocalLab, isStagingLab]);
 
@@ -118,7 +118,7 @@ export default function Header({
                 </span>
               </div>
               <span className="text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-mono font-black border border-emerald-500/30 shrink-0">
-                {(isLocalLab || isStagingLab) ? 'v3.0.1' : 'v3.0.0'}
+                v3.1.0
               </span>
 
               {/* 🏛️ 3단계 시각적 직관 배지: 🧪 연구실 | 🔬 실험실 | 🟢 실서버 */}
