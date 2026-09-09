@@ -949,22 +949,28 @@ export default function App() {
                 soundService.playBuyAlert();
                 setSelectedSlotId(assignedSlotId);
 
-                // 2. 실제 체결 성공 시에만 슬롯 상태를 IN_POSITION으로 업데이트
-                setSlots(prevSlots => prevSlots.map(s => {
-                  if (s.slotId === assignedSlotId) {
-                    return {
-                      ...s,
-                      positionStatus: 'IN_POSITION',
-                      targetMarket: targetMarketCode,
-                      entryPrice: targetPrice,
-                      entryVolume: tradeAmount / targetPrice,
-                      entryAmountKrw: tradeAmount,
-                      highestPrice: targetPrice,
-                      highestProfitPct: 0
-                    };
-                  }
-                  return s;
-                }));
+                // 2. 실제 체결 성공 시에만 슬롯 상태를 IN_POSITION으로 업데이트 및 최근 변경 보호
+                lastSlotUpdatesRef.current[assignedSlotId] = Date.now();
+                setSlots(prevSlots => {
+                  const updated = prevSlots.map(s => {
+                    if (s.slotId === assignedSlotId) {
+                      return {
+                        ...s,
+                        isEnabled: true,
+                        positionStatus: 'IN_POSITION',
+                        targetMarket: targetMarketCode,
+                        entryPrice: targetPrice,
+                        entryVolume: tradeAmount / targetPrice,
+                        entryAmountKrw: tradeAmount,
+                        highestPrice: targetPrice,
+                        highestProfitPct: 0
+                      };
+                    }
+                    return s;
+                  });
+                  slotsRef.current = updated;
+                  return updated;
+                });
 
                 // 3. 브라우저 푸시 알림
                 if ('Notification' in window && Notification.permission === 'granted') {
@@ -1389,12 +1395,14 @@ export default function App() {
           }));
         }
 
-        // 프론트엔드 슬롯 상태 즉시 IN_POSITION으로 업데이트
+        // 프론트엔드 슬롯 상태 즉시 IN_POSITION 및 활성화로 업데이트
+        lastSlotUpdatesRef.current[slotId] = Date.now();
         setSlots(prevSlots => {
           const next = prevSlots.map(s => {
             if (s.slotId === slotId) {
               return {
                 ...s,
+                isEnabled: true,
                 positionStatus: 'IN_POSITION',
                 targetMarket: coinData.market,
                 entryPrice: coinData.entryPrice,

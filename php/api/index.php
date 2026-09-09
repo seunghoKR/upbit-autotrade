@@ -954,17 +954,19 @@ try {
 
             $vol = (float)($s['entry_volume'] ?? 0);
             $entryP = (float)($s['entry_price'] ?? 0);
+            $enteredAt = !empty($s['entered_at']) ? strtotime($s['entered_at']) : 0;
+            $isRecentEntry = (time() - $enteredAt) < 180; // 🛡️ 최근 3분(180초) 이내 체결/연동된 슬롯은 절대 증발 차단
 
             // 실계좌에 코인이 있고 슬롯이 비어있거나 불완전할 때 실계좌 정보로 즉시 복구!
             if ($matchedAccount && (float)($matchedAccount['balance'] ?? 0) > 0.0000001) {
                 $accVol = (float)$matchedAccount['balance'];
-                $accAvgPrice = (float)$matchedAccount['avg_buy_price'] ?? 0;
+                $accAvgPrice = (float)($matchedAccount['avg_buy_price'] ?? 0);
                 $accEvalKrw = $accVol * ($accAvgPrice > 0 ? $accAvgPrice : 1);
 
-                // 🛡️ [업비트 최소 주문 기준 5,000원 가드]
-                // 5,000원 미만의 잔여 자투리(Dust) 코인은 업비트에서 매매가 불가능하므로 슬롯 자동 등록 대상에서 원천 배제!
-                if ($accEvalKrw < 5000) {
-                    // 이미 슬롯에 먼지 코인으로 비정상 등록되어 있는 경우 IDLE로 즉각 자동 정화
+                // 🛡️ [업비트 최소 잔여 자투리(Dust) 코인 가드]
+                // 1,000원 미만의 잔여 자투리 코인만 정화 대상 (5,000원 매수 후 수수료 차감으로 4,990원대가 된 정상 코인 보존!)
+                if ($accEvalKrw < 1000 && !$isRecentEntry) {
+                    // 이미 슬롯에 먼지 코인으로 비정상 등록되어 있는 경우 IDLE로 자동 정화
                     if ($s['position_status'] === 'IN_POSITION' || $s['position_status'] === 'HOLDING' || $s['position_status'] === 'TRAILING_ACTIVE') {
                         $s['position_status'] = 'IDLE';
                         $s['entry_volume'] = null;
@@ -993,15 +995,14 @@ try {
                     $claimedCurrencies[$currency] = $slotId;
                 }
             } else {
-                // 🛡️ [비정상 슬롯 자동 정화]
+                // 🛡️ [비정상 슬롯 신중한 정화]
                 // 1) 다른 슬롯이 이미 가진 코인을 내가 갖고 있거나 (중복)
-                // 2) 슬롯이 OFF 상태인데 IN_POSITION이거나
-                // 3) 실계좌에 코인이 없는데 IN_POSITION으로 표시된 경우
+                // 2) 실계좌에 코인이 명백히 없고, 최근 3분 이내 체결/연동된 건도 아닌 경우에만 신중히 정화!
+                // (※ 슬롯이 OFF 상태이더라도 보유 중인 실자산 포지션은 절대 임의 삭제하지 않음!)
                 $isDuplicateClaim = $isAlreadyClaimedByOther && ($s['position_status'] === 'IN_POSITION' || $s['position_status'] === 'HOLDING');
-                $isOffHolding = !$isEnabled && ($s['position_status'] === 'IN_POSITION' || $s['position_status'] === 'HOLDING');
-                $hasNoRealCoin = empty($accountError) && is_array($accounts) && count($accounts) > 0 && !$matchedAccount && ($s['position_status'] === 'IN_POSITION' || $s['position_status'] === 'HOLDING' || $s['position_status'] === 'TRAILING_ACTIVE');
+                $hasNoRealCoin = !$isRecentEntry && empty($accountError) && is_array($accounts) && count($accounts) > 0 && !$matchedAccount && ($s['position_status'] === 'IN_POSITION' || $s['position_status'] === 'HOLDING' || $s['position_status'] === 'TRAILING_ACTIVE');
 
-                if ($isDuplicateClaim || $isOffHolding || $hasNoRealCoin) {
+                if ($isDuplicateClaim || $hasNoRealCoin) {
                     $s['position_status'] = 'IDLE';
                     $s['entry_volume'] = null;
                     $s['entry_price'] = null;
@@ -1713,8 +1714,9 @@ try {
         $calcPrice = $currentPrice > 0 ? $currentPrice : 1;
         $calcVolume = $tradeAmount / $calcPrice;
 
-        // 슬롯 상태를 IN_POSITION으로 업데이트 (실제 체결 성공 시에만 반영!)
+        // 슬롯 상태를 IN_POSITION으로 업데이트 (실제 체결 성공 시에만 반영 및 자동 슬롯 활성화!)
         $stmt = $pdo->prepare("UPDATE nurioh_slots SET 
+            is_enabled = 1,
             position_status = 'IN_POSITION',
             target_market = ?,
             entry_price = ?,
@@ -1788,8 +1790,9 @@ try {
         $highestPrice = max($entryPrice, $currentPrice);
         $profitPct = ($entryPrice > 0) ? (($currentPrice - $entryPrice) / $entryPrice * 100) : 0;
 
-        // 슬롯 상태를 IN_POSITION으로 업데이트
+        // 슬롯 상태를 IN_POSITION으로 업데이트 (자동 슬롯 활성화!)
         $stmt = $pdo->prepare("UPDATE nurioh_slots SET 
+            is_enabled = 1,
             position_status = 'IN_POSITION',
             target_market = ?,
             entry_price = ?,
