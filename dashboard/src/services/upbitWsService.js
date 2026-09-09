@@ -102,6 +102,34 @@ class ClientUpbitEngine {
     this.marketRefreshTimer = setInterval(() => {
       this.refreshMarketList();
     }, 10 * 60 * 1000);
+
+    // 🐕 5. 5초 주기 웹소켓 헬스체크 워치독 (연결 끊김 또는 25초간 무응답 시 자동 재연결)
+    this.watchdogTimer = setInterval(() => {
+      if (this.isDestroyed) return;
+      const now = Date.now();
+      const isStale = this.lastMessageTime > 0 && (now - this.lastMessageTime > 25000);
+      const isDead = !this.ws || this.ws.readyState === WebSocket.CLOSED || this.ws.readyState === WebSocket.CLOSING;
+      if (isDead || isStale) {
+        console.log('🔄 [Upbit WS Watchdog] Stale or disconnected socket detected. Reconnecting...');
+        try { if (this.ws) this.ws.close(); } catch (e) {}
+        this.connect();
+      }
+    }, 5000);
+
+    // 📱 6. 모바일 화면 복귀 / 탭 전환 시 0초 즉시 재연결
+    if (typeof document !== 'undefined') {
+      this.visibilityHandler = () => {
+        if (!document.hidden && !this.isDestroyed) {
+          const isDead = !this.ws || this.ws.readyState !== WebSocket.OPEN;
+          if (isDead) {
+            console.log('📱 [Upbit WS] Screen visible! Instantly reconnecting stream...');
+            this.connect();
+            this.fetchInitialSnapshots(this.activeMarkets.slice(0, 50));
+          }
+        }
+      };
+      document.addEventListener('visibilitychange', this.visibilityHandler);
+    }
   }
 
   // 🌐 업비트 원화(KRW) 전체 마켓 목록 실시간 동적 조회
@@ -333,6 +361,10 @@ class ClientUpbitEngine {
     clearTimeout(this.reconnectTimer);
     clearInterval(this.marketRefreshTimer);
     clearInterval(this.snapshotTimer);
+    clearInterval(this.watchdogTimer);
+    if (typeof document !== 'undefined' && this.visibilityHandler) {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+    }
     if (this.ws) {
       this.ws.close();
       this.ws = null;

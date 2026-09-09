@@ -323,7 +323,7 @@ $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
 $method = $_SERVER['REQUEST_METHOD'];
 
 $path = parse_url($requestUri, PHP_URL_PATH);
-$path = preg_replace('#^/api/#', '', $path);
+$path = preg_replace('#^.*?/api/#', '', $path);
 $path = trim($path, '/');
 
 $input = json_decode(file_get_contents('php://input'), true) ?? [];
@@ -875,42 +875,38 @@ try {
         $slotStmt->execute([$userId]);
         $slots = $slotStmt->fetchAll() ?: [];
 
-        // 🛡️ 슬롯이 비어있는 경우 1~9번 슬롯 즉시 자동 생성 (Self-Healing)
-        if (empty($slots)) {
-            $defaultMarkets = [
-                1 => 'KRW-BTC', 2 => 'KRW-ETH', 3 => 'KRW-SOL',
-                4 => 'KRW-XRP', 5 => 'KRW-DOGE', 6 => 'KRW-ADA',
-                7 => 'KRW-AVAX', 8 => 'KRW-DOT', 9 => 'KRW-NEAR'
-            ];
-            $userRole = 'USER';
-            $userTier = 'FREE_TRIAL';
-            $maxSlots = 9; // 기본 9개 지원
-
-            $uStmt = $pdo->prepare("SELECT role, tier, max_slots FROM nurioh_users WHERE id = ?");
-            $uStmt->execute([$userId]);
-            $uData = $uStmt->fetch();
-            if ($uData) {
-                $maxSlots = max(1, (int)($uData['max_slots'] ?? 9));
-            }
-
-            for ($s = 1; $s <= 9; $s++) {
-                $m = $defaultMarkets[$s] ?? 'KRW-BTC';
-                $isEnabled = ($s <= $maxSlots) ? 1 : 0;
-                $slotInsert = $pdo->prepare("INSERT INTO nurioh_slots 
-                    (user_id, slot_id, slot_name, is_enabled, target_market, trade_amount_krw, strategy_type, target_profit_pct, trailing_callback_pct, stop_loss_pct, position_status) 
-                    VALUES (?, ?, ?, ?, ?, 0, 'RECOMMENDED', 3.0, 1.0, 2.0, 'IDLE')
-                    ON DUPLICATE KEY UPDATE is_enabled=VALUES(is_enabled)");
-                $slotInsert->execute([$userId, $s, "{$s}번 슬롯", $isEnabled, $m]);
-            }
-            $slotStmt->execute([$userId]);
-            $slots = $slotStmt->fetchAll() ?: [];
-        }
-
         $defaultMarkets = [
             1 => 'KRW-BTC', 2 => 'KRW-ETH', 3 => 'KRW-SOL',
             4 => 'KRW-XRP', 5 => 'KRW-DOGE', 6 => 'KRW-ADA',
             7 => 'KRW-AVAX', 8 => 'KRW-DOT', 9 => 'KRW-NEAR'
         ];
+
+        // 🛡️ 슬롯 자가 치유(Self-Healing): 1~9번 중 누락된 슬롯을 감지하여 즉시 자동 보충 생성
+        $uStmt = $pdo->prepare("SELECT role, tier, max_slots FROM nurioh_users WHERE id = ?");
+        $uStmt->execute([$userId]);
+        $uData = $uStmt->fetch();
+        $maxSlots = max(1, (int)($uData['max_slots'] ?? 9));
+
+        $existingSlotIds = array_map(function($row) { return (int)$row['slot_id']; }, $slots);
+        $needsReload = false;
+
+        for ($s = 1; $s <= 9; $s++) {
+            if (!in_array($s, $existingSlotIds, true)) {
+                $m = $defaultMarkets[$s] ?? 'KRW-BTC';
+                $isEnabled = ($s <= $maxSlots) ? 1 : 0;
+                $slotInsert = $pdo->prepare("INSERT INTO nurioh_slots 
+                    (user_id, slot_id, slot_name, is_enabled, target_market, trade_amount_krw, strategy_type, target_profit_pct, trailing_callback_pct, stop_loss_pct, position_status) 
+                    VALUES (?, ?, ?, ?, ?, 10000, 'RECOMMENDED', 3.0, 1.0, 2.0, 'IDLE')");
+                $slotInsert->execute([$userId, $s, "{$s}번 슬롯", $isEnabled, $m]);
+                $needsReload = true;
+            }
+        }
+
+        if ($needsReload || empty($slots)) {
+            $slotStmt->execute([$userId]);
+            $slots = $slotStmt->fetchAll() ?: [];
+        }
+
 
         // 🛡️ 1차 점유 등록: 현재 활성화(ON)되어 있고 실제로 IN_POSITION인 슬롯의 코인을 먼저 점유!
         $claimedCurrencies = [];

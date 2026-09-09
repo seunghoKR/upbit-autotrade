@@ -514,6 +514,7 @@ export default function App() {
   const stopLossCooldownsRef = useRef({}); // 🧊 { 'KRW-XRP': unblockTimestamp } (손절 종목 재진입 방지)
   const pendingSustainRef = useRef({}); // ⏱️ { 'KRW-XRP': { firstTriggerTime, baseBreakPrice, slotId, ... } } (1초 윗꼬리 설거지 방지)
   const lastSlotUpdatesRef = useRef({}); // 🛡️ { [slotId]: timestamp } (최근 슬롯 수정 후 5초 폴링 롤백 방어)
+  const livePriceMapRef = useRef(livePriceMap);
 
   const settingsRef = useRef(settings);
 
@@ -532,6 +533,10 @@ export default function App() {
   useEffect(() => {
     botRunningRef.current = botRunning;
   }, [botRunning]);
+
+  useEffect(() => {
+    livePriceMapRef.current = livePriceMap;
+  }, [livePriceMap]);
 
   useEffect(() => {
     settingsRef.current = settings;
@@ -923,18 +928,82 @@ export default function App() {
           const recentTicks = buffer.filter(t => t.timestamp >= cutoff);
           if (recentTicks.length < 2) continue;
 
-          // 🛡️ [쉴드 3] 단기 평균 체결가(VWAP) vs 최저가 기준 돌파 필터 (1틱 튐 노이즈 왜곡 방지)
-          let basePrice = recentTicks[0].price;
-          if (baseMode === 'VWAP') {
-            const totalVol = recentTicks.reduce((sum, t) => sum + (t.volume || 0), 0);
-            const totalAmt = recentTicks.reduce((sum, t) => sum + (t.amount || (t.price * (t.volume || 0))), 0);
-            basePrice = (totalVol > 0 && totalAmt > 0) ? (totalAmt / totalVol) : recentTicks[0].price;
-          } else {
-            let minPrice = recentTicks[0].price;
-            for (let i = 0; i < recentTicks.length; i++) {
-              if (recentTicks[i].price < minPrice) minPrice = recentTicks[i].price;
+          const executeAutoBuy = async (assignedSlotId, targetMarketCode, tradeAmount, targetPrice, diffRate, winSecs, totVolKrw) => {
+            if (isExecutingBuyRef.current[assignedSlotId]) return;
+            activeSurgeCoinsRef.current.add(targetMarketCode);
+            isExecutingBuyRef.current[assignedSlotId] = true;
+
+            try {
+              console.log(`🚨 [Client Surge Verified Trigger] ${assignedSlotId}번 슬롯 안전 매수: ${targetMarketCode} +${diffRate.toFixed(2)}% (${winSecs}초 내 ${Math.round(totVolKrw).toLocaleString()}원)`);
+
+              // 1. 실제 업비트 시장가 매수 주문 먼저 전송 (체결 성공 여부 확인 후 UI 반영)
+              const buyRes = await buySlotPosition(assignedSlotId, {
+                userId: activeUser?.id || 1,
+                market: targetMarketCode,
+                amountKrw: tradeAmount,
+                currentPrice: targetPrice
+              });
+
+              if (buyRes && buyRes.success !== false && !buyRes.error) {
+                console.log(`✅ [Auto Buy Success Slot ${assignedSlotId}]`, buyRes);
+                soundService.playBuyAlert();
+                setSelectedSlotId(assignedSlotId);
+
+                // 2. 실제 체결 성공 시에만 슬롯 상태를 IN_POSITION으로 업데이트
+                setSlots(prevSlots => prevSlots.map(s => {
+                  if (s.slotId === assignedSlotId) {
+                    return {
+                      ...s,
+                      positionStatus: 'IN_POSITION',
+                      targetMarket: targetMarketCode,
+                      entryPrice: targetPrice,
+                      entryVolume: tradeAmount / targetPrice,
+                      entryAmountKrw: tradeAmount,
+                      highestPrice: targetPrice,
+                      highestProfitPct: 0
+                    };
+                  }
+                  return s;
+                }));
+
+                // 3. 브라우저 푸시 알림
+                if ('Notification' in window && Notification.permission === 'granted') {
+                  new Notification('⚡ [안전 검증 급등 코인 매수 체결]', {
+                    body: `${assignedSlotId}번 슬롯: ${targetMarketCode} (+${diffRate.toFixed(2)}%) ${Math.round(tradeAmount).toLocaleString()}원 체결! (트레일링 익절 가동)`,
+                    icon: '/favicon.png'
+                  });
+                }
+
+                await loadData();
+              } else {
+                console.warn(`⚠️ [Auto Buy Skipped/Failed Slot ${assignedSlotId}]`, buyRes?.error || '체결 불발');
+              }
+            } catch (buyErr) {
+              console.error(`❌ [Auto Buy Failed Slot ${assignedSlotId}]`, buyErr);
+            } finally {
+              setTimeout(() => {
+                activeSurgeCoinsRef.current.delete(targetMarketCode);
+                delete pendingSustainRef.current[targetMarketCode];
+                if (isExecutingBuyRef.current && typeof isExecutingBuyRef.current === 'object') {
+                  delete isExecutingBuyRef.current[assignedSlotId];
+                }
+              }, 5000);
             }
-            basePrice = minPrice;
+          };
+
+          // 🛡️ [쉴드 3] 단기 윈도우 기준가 산출 (피크 직전 최저가 또는 VWAP 기준)
+          let minPrice = recentTicks[0].price;
+          for (let i = 0; i < recentTicks.length; i++) {
+            if (recentTicks[i].price < minPrice) minPrice = recentTicks[i].price;
+          }
+
+          let basePrice = minPrice;
+          if (baseMode === 'VWAP' && recentTicks.length > 2) {
+            // 피크 틱을 제외한 직전 틱들의 거래량 가중 평균가로 기준가 왜곡 방지
+            const baseTicks = recentTicks.slice(0, recentTicks.length - 1);
+            const totalVol = baseTicks.reduce((sum, t) => sum + (t.volume || 0), 0);
+            const totalAmt = baseTicks.reduce((sum, t) => sum + (t.amount || (t.price * (t.volume || 0))), 0);
+            basePrice = (totalVol > 0 && totalAmt > 0) ? (totalAmt / totalVol) : minPrice;
           }
 
           const currentPrice = recentTicks[recentTicks.length - 1].price;
@@ -950,126 +1019,67 @@ export default function App() {
             }
           }
 
-          // 🛡️ [쉴드 4] 급등 지지 확인 시간 (Sustain Time Delay: 1초 윗꼬리 설거지 방어)
+          // 🛡️ [쉴드 4] 급등 지지 확인 시간 (Sustain Time Delay: 윗꼬리 설거지 방어)
           const isSurgeConditionMet = (priceDiffRate >= rateThreshold && totalVolumeKrw >= minVolumeKrw);
 
-          if (pendingSustainRef.current[marketCode]) {
-            const sustainItem = pendingSustainRef.current[marketCode];
-            if (sustainItem.slotId !== slot.slotId) {
-              continue;
-            }
-
-            // 1) 급락 시에만 가짜 윗꼬리(설거지)로 판정하여 취소 (기준가의 -1.5% 이하로 폭락 시)
-            if (currentPrice < sustainItem.baseBreakPrice * 0.985) {
-              console.log(`🚫 [Sustain Cancelled] ${marketCode}: 윗꼬리 급락 감지 (${currentPrice} < ${sustainItem.baseBreakPrice * 0.985}) -> 가짜 펌핑 설거지 회피!`);
-              delete pendingSustainRef.current[marketCode];
-              activeSurgeCoinsRef.current.delete(marketCode);
-              continue;
-            }
-
-            // 2) 지지 유지 시간 검사
-            const elapsedSec = (now - sustainItem.firstTriggerTime) / 1000;
-            if (elapsedSec < sustainSeconds) {
-              // 지지 검증 진행 중... (현재 슬롯 검증 대기)
-              return;
-            }
-
-            // 🎉 3) N초간 가격을 단단하게 지켜냈음 -> 진짜 급등 확인! 즉시 매수 실행!
-            console.log(`✨ [Sustain Verified] ${marketCode}: ${sustainSeconds}초간 가격 지지 성공 (+${priceDiffRate.toFixed(2)}%)! 진짜 급등주 매수 집행!`);
-            delete pendingSustainRef.current[marketCode];
-          } else {
+          if (!pendingSustainRef.current[marketCode]) {
             if (isSurgeConditionMet) {
+              const assignedSlotId = slot.slotId;
+              const tradeAmount = slot.tradeAmountKrw || 50000;
+
               if (sustainSeconds > 0) {
-                // ⏱️ 최초 돌파 포착 시 즉시 사지 않고 타이머 시작!
-                console.log(`⏱️ [Sustain Wait] ${marketCode} 급등 포착 (+${priceDiffRate.toFixed(2)}%) -> ${sustainSeconds}초간 윗꼬리 방어 지지 검증 시작...`);
+                console.log(`⏱️ [Sustain Wait] ${marketCode} 급등 포착 (+${priceDiffRate.toFixed(2)}%) -> ${sustainSeconds}초간 윗꼬리 방어 지지 검증 타이머 시작...`);
                 activeSurgeCoinsRef.current.add(marketCode);
+                const baseBreakPrice = currentPrice;
+
+                // ⏱️ 액티브 타이머 가동: 다음 틱 수신 지연과 무관하게 지정 초 후 지지 검증 및 매수 집행
+                const timerId = setTimeout(() => {
+                  const item = pendingSustainRef.current[marketCode];
+                  if (!item) return;
+                  delete pendingSustainRef.current[marketCode];
+
+                  const liveLatest = livePriceMapRef.current?.[marketCode]?.trade_price || baseBreakPrice;
+                  if (liveLatest < baseBreakPrice * 0.985) {
+                    console.log(`🚫 [Sustain Timer Cancelled] ${marketCode}: 윗꼬리 급락 감지 (${liveLatest} < ${baseBreakPrice * 0.985}) -> 가짜 펌핑 설거지 회피!`);
+                    activeSurgeCoinsRef.current.delete(marketCode);
+                    return;
+                  }
+
+                  console.log(`✨ [Sustain Verified by Timer] ${marketCode}: ${sustainSeconds}초간 가격 지지 성공 (+${priceDiffRate.toFixed(2)}%)! 진짜 급등주 매수 집행!`);
+                  executeAutoBuy(assignedSlotId, marketCode, tradeAmount, liveLatest, priceDiffRate, windowSeconds, totalVolumeKrw);
+                }, Math.round(sustainSeconds * 1000));
+
                 pendingSustainRef.current[marketCode] = {
                   firstTriggerTime: now,
-                  baseBreakPrice: currentPrice,
-                  slotId: slot.slotId,
-                  tradeAmount: slot.tradeAmountKrw || 50000,
+                  baseBreakPrice,
+                  slotId: assignedSlotId,
+                  tradeAmount,
                   currentPrice,
                   priceDiffRate,
                   windowSeconds,
-                  totalVolumeKrw
+                  totalVolumeKrw,
+                  timerId
                 };
                 return;
+              } else {
+                // 지지 대기 시간이 없으면 즉시 매수
+                executeAutoBuy(assignedSlotId, marketCode, tradeAmount, currentPrice, priceDiffRate, windowSeconds, totalVolumeKrw);
+                break;
               }
             } else {
-              // 🛡️ 현재 슬롯 조건에 부합하지 않으면 다음 슬롯(2~9번)으로 넘어가서 계속 탐색!
               continue;
             }
-          }
-
-          // ⚡ 안전 쉴드 4단계를 모두 통과한 진짜 급등주 시장가 매수 집행!
-          const assignedSlotId = slot.slotId;
-          const tradeAmount = slot.tradeAmountKrw || 50000;
-          console.log(`🚨 [Client Surge Verified Trigger] ${assignedSlotId}번 슬롯 안전 매수: ${marketCode} +${priceDiffRate.toFixed(2)}% (${windowSeconds}초 내 ${Math.round(totalVolumeKrw).toLocaleString()}원)`);
-
-          // 코인 중복 진입 락 및 매수 실행 플래그 등록
-          activeSurgeCoinsRef.current.add(marketCode);
-          isExecutingBuyRef.current[assignedSlotId] = true;
-
-          (async () => {
-            try {
-              // 1. 실제 업비트 시장가 매수 주문 먼저 전송 (체결 성공 여부 확인 후 UI 반영)
-              const buyRes = await buySlotPosition(assignedSlotId, {
-                userId: activeUser?.id || 1,
-                market: marketCode,
-                amountKrw: tradeAmount,
-                currentPrice: currentPrice
-              });
-
-              if (buyRes && buyRes.success !== false && !buyRes.error) {
-                console.log(`✅ [Auto Buy Success Slot ${assignedSlotId}]`, buyRes);
-                soundService.playBuyAlert();
-                setSelectedSlotId(assignedSlotId);
-
-                // 2. 실제 체결 성공 시에만 슬롯 상태를 IN_POSITION으로 업데이트
-                setSlots(prevSlots => prevSlots.map(s => {
-                  if (s.slotId === assignedSlotId) {
-                    return {
-                      ...s,
-                      positionStatus: 'IN_POSITION',
-                      targetMarket: marketCode,
-                      entryPrice: currentPrice,
-                      entryVolume: tradeAmount / currentPrice,
-                      entryAmountKrw: tradeAmount,
-                      highestPrice: currentPrice,
-                      highestProfitPct: 0
-                    };
-                  }
-                  return s;
-                }));
-
-                // 3. 브라우저 푸시 알림
-                if ('Notification' in window && Notification.permission === 'granted') {
-                  new Notification('⚡ [안전 검증 급등 코인 매수 체결]', {
-                    body: `${assignedSlotId}번 슬롯: ${marketCode} (+${priceDiffRate.toFixed(2)}%) ${Math.round(tradeAmount).toLocaleString()}원 체결! (트레일링 익절 가동)`,
-                    icon: '/favicon.png'
-                  });
-                }
-
-                await loadData();
-              } else {
-                console.warn(`⚠️ [Auto Buy Skipped/Failed Slot ${assignedSlotId}]`, buyRes?.error || '체결 불발');
-                // 체결 불발 시 슬롯 상태를 절대 변경하지 않음 (즉시 깨끗한 빈 슬롯 유지)
-              }
-            } catch (buyErr) {
-              console.error(`❌ [Auto Buy Failed Slot ${assignedSlotId}]`, buyErr);
-              // 체결 실패 시 즉시 빈 슬롯 유지
-            } finally {
-              setTimeout(() => {
-                activeSurgeCoinsRef.current.delete(marketCode);
-                delete pendingSustainRef.current[marketCode];
-                if (isExecutingBuyRef.current && typeof isExecutingBuyRef.current === 'object') {
-                  delete isExecutingBuyRef.current[assignedSlotId];
-                }
-              }, 5000);
+          } else {
+            // 이미 타이머 가동 중인 경우: 틱 단위로 혹시 1.5% 급락하면 타이머 조기 취소하여 빠른 방어
+            const sustainItem = pendingSustainRef.current[marketCode];
+            if (currentPrice < sustainItem.baseBreakPrice * 0.985) {
+              console.log(`🚫 [Sustain Fast Cancelled] ${marketCode}: 틱 단위 윗꼬리 급락 감지 (${currentPrice} < ${sustainItem.baseBreakPrice * 0.985}) -> 타이머 조기 취소`);
+              if (sustainItem.timerId) clearTimeout(sustainItem.timerId);
+              delete pendingSustainRef.current[marketCode];
+              activeSurgeCoinsRef.current.delete(marketCode);
             }
-          })();
-
-          break; // 한 번에 한 슬롯만 트리거
+            return;
+          }
         }
       }
     });
