@@ -107,8 +107,6 @@ export default function ImportCoinModal({
         ? ((currentPrice - avgBuyPrice) / avgBuyPrice) * 100 
         : 0;
 
-      const isTradeable = evalAmount >= 5000;
-
       return {
         currency: curr,
         market,
@@ -116,12 +114,11 @@ export default function ImportCoinModal({
         avgBuyPrice,
         currentPrice,
         evalAmount,
-        profitPct,
-        isTradeable
+        profitPct
       };
     })
-    // ⚡ 1,000원 이상이거나 업비트 마켓 시세가 존재하는 코인 모두 노출!
-    .filter(coin => (coin.evalAmount >= 1000 || coin.avgBuyPrice > 0) && coin.currentPrice > 0)
+    // ⚡ 업비트 최소 거래 규정(평가금액 5,000원 이상) 충족 코인만 노출 (5,000원 미만 먼지/자투리 코인 원천 배제!)
+    .filter(coin => coin.evalAmount >= 5000 && coin.currentPrice > 0)
     .sort((a, b) => b.evalAmount - a.evalAmount); // 평가금액 높은 순 정렬
 
   const handleSelectCoin = async (coin) => {
@@ -206,10 +203,15 @@ export default function ImportCoinModal({
           </div>
         </div>
 
-        {/* ℹ️ 안내 배너 */}
-        <div className="px-5 py-2 bg-slate-900/90 border-b border-slate-800/60 text-[11px] text-slate-400 flex items-center gap-1.5">
-          <AlertCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-          <span>코인을 슬롯에 등록하면 슬롯이 <strong>자동으로 활성화(ON)</strong>되며 실시간 트레일링 익절이 시작됩니다.</span>
+        {/* ℹ️ 업비트 최소 거래 규정 안내 */}
+        <div className="px-5 py-2 bg-slate-900/90 border-b border-slate-800/60 text-[11px] text-slate-400 flex items-center justify-between">
+          <span className="flex items-center gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <span>업비트 최소 주문 규정상 <strong>평가금액 5,000원 이상</strong>인 코인만 등록 가능합니다.</span>
+          </span>
+          <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+            등록 시 슬롯 자동 ON
+          </span>
         </div>
 
         {/* 보유 코인 목록 */}
@@ -223,12 +225,12 @@ export default function ImportCoinModal({
                 <p className="font-bold text-sm text-slate-300">
                   {occupiedMarkets.size > 0 
                     ? '가져올 수 있는 추가 보유 코인이 없습니다.' 
-                    : '업비트 계좌에 보유 중인 코인이 없습니다.'}
+                    : '업비트 계좌에 5,000원 이상 보유 중인 코인이 없습니다.'}
                 </p>
                 <p className="text-xs text-slate-500 mt-1">
                   {occupiedMarkets.size > 0 
                     ? '이미 보유 중인 코인이 다른 슬롯에 모두 배정되어 있습니다.' 
-                    : '업비트에서 코인을 매수하거나 API 키 연결 상태를 확인해주세요.'}
+                    : '평가금액 5,000원 이상인 코인만 슬롯에 등록할 수 있습니다.'}
                 </p>
               </div>
             </div>
@@ -262,16 +264,10 @@ export default function ImportCoinModal({
                             {isPositive ? '+' : ''}{coin.profitPct.toFixed(2)}%
                           </span>
                         )}
-                        {coin.isTradeable ? (
-                          <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-0.5">
-                            <CheckCircle2 className="w-2.5 h-2.5" />
-                            주문가능
-                          </span>
-                        ) : (
-                          <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30" title="업비트 최소 주문 금액(5,000원) 미만입니다. 가져온 후 추가 매수 시 정상 주문 가능합니다.">
-                            5,000원 미만
-                          </span>
-                        )}
+                        <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-0.5">
+                          <CheckCircle2 className="w-2.5 h-2.5" />
+                          주문가능
+                        </span>
                       </div>
                       <div className="flex items-center gap-3 text-xs text-slate-400 mt-0.5 flex-wrap">
                         <span>수량: <strong className="text-slate-200 font-mono">{coin.balance.toLocaleString(undefined, { maximumFractionDigits: 4 })}</strong></span>
