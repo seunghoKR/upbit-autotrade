@@ -55,6 +55,11 @@ async function main() {
     RewriteEngine On
     RewriteBase /lab/
 
+    # 🔒 HTTP -> HTTPS 자동 리다이렉트 (보안서버 강제 적용)
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
     # 1. API 라우팅
     RewriteRule ^api/(.*)$ api/index.php [QSA,L]
     RewriteRule ^api$ api/index.php [QSA,L]
