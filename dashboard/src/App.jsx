@@ -66,16 +66,16 @@ const DEFAULT_SLOTS = [
   { id: 9, slotId: 9, slotName: '9번 슬롯', isEnabled: true, targetMarket: 'KRW-NEAR', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
 ];
 
-// 🧪 연구실(LAB) 기본 최고 개발자 마스터 계정 템플릿
+// 🧪 연구실(LAB) 기본 최고 개발자 마스터 계정 템플릿 (이승호 대표님 실계정 연동)
 const LAB_DEV_USER = {
-  id: 1,
-  kakaoId: 'lab_dev_master',
-  name: '누리오 마스터',
-  nickname: '누리오 마스터 대표님',
-  phone: '010-9999-8888',
-  email: 'ceo@nurioh.com',
-  birthyear: '1985',
-  profileImage: 'https://raw.githubusercontent.com/wonseokjung/solopreneur-ai-agents/main/agents/youngja/assets/youngja_thumbsup.png',
+  id: 3,
+  kakaoId: 'kakao_5059461126',
+  name: '이승호',
+  nickname: '이승호 대표님',
+  phone: '010-4069-2739',
+  email: 'leeshkr@kakao.com',
+  birthyear: '1990',
+  profileImage: 'http://k.kakaocdn.net/dn/0zp9q/dJMb99UNQGL/eJk5PkMvi8ABaQYFBViuj1/img_640x640.jpg',
   role: 'DEVELOPER',
   tier: 'VIP',
   subscriptionExpiresAt: '2099-12-31T23:59:59Z',
@@ -140,6 +140,12 @@ export default function App() {
       const sessionProfile = sessionStorage.getItem('nurioh_user_profile');
       const sessionUserId = sessionStorage.getItem('nurioh_user_id');
       if (sessionProfile && sessionUserId) {
+        // 🧪 연구실에서 이전 임시 계정(id=1 등) 세션이 남아있다면 대표님 계정(id=3)으로 자동 동기화
+        if (isLabEnvironment && sessionUserId !== String(LAB_DEV_USER.id)) {
+          sessionStorage.setItem('nurioh_user_id', String(LAB_DEV_USER.id));
+          sessionStorage.setItem('nurioh_user_profile', JSON.stringify(LAB_DEV_USER));
+          return LAB_DEV_USER;
+        }
         return JSON.parse(sessionProfile);
       }
 
@@ -1321,7 +1327,7 @@ export default function App() {
   const handleLabDevLogin = () => {
     try {
       sessionStorage.removeItem('nurioh_lab_explicit_logout');
-      sessionStorage.setItem('nurioh_user_id', '1');
+      sessionStorage.setItem('nurioh_user_id', String(LAB_DEV_USER.id));
       sessionStorage.setItem('nurioh_user_profile', JSON.stringify(LAB_DEV_USER));
     } catch (e) {}
     setCurrentUser(LAB_DEV_USER);
