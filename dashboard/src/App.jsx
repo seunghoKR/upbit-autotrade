@@ -42,6 +42,7 @@ import {
   importSlotPosition,
   sellSlotPosition,
   resetSlotStats,
+  resetAllSlotStats,
   panicSellAll,
   approveTrade,
   rejectTrade,
@@ -1576,14 +1577,29 @@ export default function App() {
     }
   };
 
-  // 📊 슬롯 개별 누적 통계 초기화
+  // 📊 슬롯 개별 누적 통계 초기화 (즉시 실시간 동기화)
   const handleResetSlotStats = async (slotId) => {
     const userId = currentUser?.id || 1;
+    // ⚡ 0초 낙관적 즉시 동기화 (모달/슬롯성과표에 0초 만에 0으로 즉시 반영)
+    setSlots(prev => prev.map(s => s.slotId === slotId ? { ...s, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 } : s));
     try {
       await resetSlotStats(slotId, { userId });
       await loadData();
     } catch (err) {
       console.error('Reset slot stats error:', err);
+    }
+  };
+
+  // 📊 전 슬롯 누적 통계 일괄 초기화
+  const handleResetAllSlotStats = async () => {
+    const userId = currentUser?.id || 1;
+    // ⚡ 0초 낙관적 즉시 동기화 (전 슬롯 0으로 즉시 반영)
+    setSlots(prev => prev.map(s => ({ ...s, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 })));
+    try {
+      await resetAllSlotStats({ userId });
+      await loadData();
+    } catch (err) {
+      console.error('Reset all slot stats error:', err);
     }
   };
 
@@ -1925,6 +1941,8 @@ export default function App() {
         hasApiKey={!accountError && hasRealAccounts}
         slots={slots}
         onUpdateSlot={handleUpdateSlot}
+        onResetSlotStats={handleResetSlotStats}
+        onResetAllSlotStats={handleResetAllSlotStats}
         onOpenApiModal={() => setIsApiModalOpen(true)}
         onOpenPricing={() => setIsPricingOpen(true)}
         onReloadUser={loadData}

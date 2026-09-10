@@ -2096,6 +2096,18 @@ try {
         exit;
     }
 
+    // 8.2 POST slots/reset-all-stats : 전체 슬롯 누적 통계 일괄 초기화
+    if ($path === 'slots/reset-all-stats' && $method === 'POST') {
+        $userId = (int)($input['userId'] ?? 1);
+        $pdo->prepare("UPDATE nurioh_slots SET total_trades = 0, win_trades = 0, total_realized_profit_krw = 0 WHERE user_id = ?")
+            ->execute([$userId]);
+        echo json_encode([
+            'success' => true, 
+            'message' => "모든 슬롯의 누적 매매 통계가 0으로 초기화되었습니다."
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
     // 9. POST auth/apikey : 업비트 API 키 등록
     if ($path === 'auth/apikey' && $method === 'POST') {
         $userId = (int)($input['userId'] ?? 1);

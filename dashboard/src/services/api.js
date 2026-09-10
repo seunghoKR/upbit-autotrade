@@ -132,6 +132,11 @@ export const resetSlotStats = async (slotId, payload = {}) => {
   return res.data;
 };
 
+export const resetAllSlotStats = async (payload = {}) => {
+  const res = await axios.post(`${API_BASE}/slots/reset-all-stats`, payload);
+  return res.data;
+};
+
 // 비상 Panic Sell (전량 즉시 시장가 매도)
 export const panicSellAll = async (payload = {}) => {
   const res = await axios.post(`${API_BASE}/panic-sell`, payload);

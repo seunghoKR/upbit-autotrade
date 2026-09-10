@@ -29,7 +29,8 @@ import {
   Table,
   FileSpreadsheet,
   Activity,
-  Percent
+  Percent,
+  RotateCcw
 } from 'lucide-react';
 import { requestUserProfileUpdate, linkTelegram, updateTelegramNotifySettings, getTelegramConfig, updateTelegramBotToken, sendTelegramTestMessage } from '../services/api';
 import { soundService } from '../services/soundService';
@@ -42,6 +43,8 @@ export default function MyPageModal({
   onUpdateUser,
   onOpenApiModal,
   onReloadUser,
+  onResetSlotStats,
+  onResetAllSlotStats,
   serverIp = '115.68.168.243' 
 }) {
   const [activeTab, setActiveTab] = useState('PROFILE'); // PROFILE | SLOT_REPORT | APP_SOUND | TELEGRAM | PRICING
@@ -642,41 +645,28 @@ export default function MyPageModal({
           {/* TAB 2: 📊 슬롯별 전략 설정 및 실시간 성과 매트릭스 (운영자표 통합) */}
           {/* ========================================================= */}
           {activeTab === 'SLOT_REPORT' && isApproved && (() => {
-            const defaultSlotMatrix = [
-              { slotId: 1, name: '1번 슬롯', windowSeconds: 15, ratePct: 3.0, minVol: 25000000, baseMode: 'VWAP', targetProfit: 3.5, callback: 1.5, stopLoss: 1.5, trades: 9, wins: 1, profit: -1132 },
-              { slotId: 2, name: '2번 슬롯', windowSeconds: 15, ratePct: 3.0, minVol: 20000000, baseMode: 'VWAP', targetProfit: 3.0, callback: 1.0, stopLoss: 1.5, trades: 1, wins: 0, profit: -245 },
-              { slotId: 3, name: '3번 슬롯', windowSeconds: 15, ratePct: 2.5, minVol: 30000000, baseMode: 'VWAP', targetProfit: 2.5, callback: 0.5, stopLoss: 1.0, trades: 63, wins: 14, profit: -3308 },
-              { slotId: 4, name: '4번 슬롯', windowSeconds: 20, ratePct: 3.5, minVol: 40000000, baseMode: 'MIN', targetProfit: 4.0, callback: 1.0, stopLoss: 2.0, trades: 0, wins: 0, profit: 0 },
-              { slotId: 5, name: '5번 슬롯', windowSeconds: 20, ratePct: 3.0, minVol: 30000000, baseMode: 'MIN', targetProfit: 3.5, callback: 1.0, stopLoss: 1.5, trades: 12, wins: 1, profit: -1581 },
-              { slotId: 6, name: '6번 슬롯', windowSeconds: 20, ratePct: 4.0, minVol: 50000000, baseMode: 'MIN', targetProfit: 5.0, callback: 1.5, stopLoss: 2.0, trades: 0, wins: 0, profit: 0 },
-              { slotId: 7, name: '7번 슬롯', windowSeconds: 10, ratePct: 3.0, minVol: 20000000, baseMode: 'VWAP', targetProfit: 3.0, callback: 1.0, stopLoss: 1.5, trades: 0, wins: 0, profit: 0 },
-              { slotId: 8, name: '8번 슬롯', windowSeconds: 10, ratePct: 2.5, minVol: 25000000, baseMode: 'MIN', targetProfit: 3.0, callback: 0.8, stopLoss: 1.5, trades: 4, wins: 0, profit: -655 },
-              { slotId: 9, name: '9번 슬롯', windowSeconds: 10, ratePct: 3.5, minVol: 15000000, baseMode: 'MIN', targetProfit: 4.0, callback: 1.2, stopLoss: 2.0, trades: 0, wins: 0, profit: 0 },
-            ];
-
             const processedSlotsData = Array.from({ length: 9 }, (_, idx) => {
               const sId = idx + 1;
               const liveSlot = (slots || []).find(s => s.slotId === sId);
-              const def = defaultSlotMatrix[idx];
               
               if (liveSlot) {
-                const trades = (liveSlot.totalTrades !== undefined && liveSlot.totalTrades > 0) ? Number(liveSlot.totalTrades) : def.trades;
-                const wins = (liveSlot.winTrades !== undefined && liveSlot.winTrades > 0) ? Number(liveSlot.winTrades) : def.wins;
-                const profit = (liveSlot.totalRealizedProfitKrw !== undefined && Number(liveSlot.totalRealizedProfitKrw) !== 0) ? Number(liveSlot.totalRealizedProfitKrw) : def.profit;
-                const winRate = trades > 0 ? Math.round((wins / trades) * 100) : (def.trades > 0 ? def.winRate : 0);
+                const trades = (liveSlot.totalTrades !== undefined && liveSlot.totalTrades !== null) ? Number(liveSlot.totalTrades) : 0;
+                const wins = (liveSlot.winTrades !== undefined && liveSlot.winTrades !== null) ? Number(liveSlot.winTrades) : 0;
+                const profit = (liveSlot.totalRealizedProfitKrw !== undefined && liveSlot.totalRealizedProfitKrw !== null) ? Number(liveSlot.totalRealizedProfitKrw) : 0;
+                const winRate = trades > 0 ? Math.round((wins / trades) * 100) : 0;
 
                 return {
                   slotId: sId,
                   name: liveSlot.slotName || `${sId}번 슬롯`,
                   isEnabled: Boolean(liveSlot.isEnabled !== false),
                   targetMarket: liveSlot.targetMarket || '전체종목',
-                  windowSeconds: liveSlot.surgeWindowSeconds || def.windowSeconds,
-                  ratePct: liveSlot.surgeRatePct || def.ratePct,
-                  minVol: liveSlot.surgeMinVolumeKrw || def.minVol,
-                  baseMode: liveSlot.surgeBaseMode || def.baseMode,
-                  targetProfit: liveSlot.targetProfitPct || liveSlot.trailingTargetProfitPct || def.targetProfit,
-                  callback: liveSlot.trailingCallbackPct || def.callback,
-                  stopLoss: liveSlot.stopLossPct || def.stopLoss,
+                  windowSeconds: liveSlot.surgeWindowSeconds || 5,
+                  ratePct: liveSlot.surgeRatePct || 1.5,
+                  minVol: liveSlot.surgeMinVolumeKrw || 10000000,
+                  baseMode: liveSlot.surgeBaseMode || 'VWAP',
+                  targetProfit: liveSlot.targetProfitPct || liveSlot.trailingTargetProfitPct || 3.0,
+                  callback: liveSlot.trailingCallbackPct || 1.0,
+                  stopLoss: liveSlot.stopLossPct || 2.0,
                   trades,
                   wins,
                   winRate,
@@ -684,10 +674,21 @@ export default function MyPageModal({
                 };
               }
               return {
-                ...def,
-                isEnabled: true,
+                slotId: sId,
+                name: `${sId}번 슬롯`,
+                isEnabled: false,
                 targetMarket: '전체종목',
-                winRate: def.winRate || (def.trades > 0 ? Math.round((def.wins / def.trades) * 100) : 0)
+                windowSeconds: 5,
+                ratePct: 1.5,
+                minVol: 10000000,
+                baseMode: 'VWAP',
+                targetProfit: 3.0,
+                callback: 1.0,
+                stopLoss: 2.0,
+                trades: 0,
+                wins: 0,
+                winRate: 0,
+                profit: 0
               };
             });
 
@@ -696,6 +697,14 @@ export default function MyPageModal({
             const totalProfitSum = processedSlotsData.reduce((acc, cur) => acc + cur.profit, 0);
             const overallWinRate = totalTradesSum > 0 ? Math.round((totalWinsSum / totalTradesSum) * 100) : 0;
             const activeSlotsCount = processedSlotsData.filter(s => s.isEnabled).length;
+
+            const handleResetAll = async () => {
+              if (window.confirm('🚨 [전 슬롯 통계 초기화]\n1번부터 9번까지 모든 슬롯의 누적 거래횟수, 승률, 실현손익을 0으로 초기화하시겠습니까?')) {
+                if (onResetAllSlotStats) {
+                  await onResetAllSlotStats();
+                }
+              }
+            };
 
             const handleCopyTsv = () => {
               let tsv = "슬롯\t감시 시간(초)\t상승률(%)\t최소거래대금(원)\t돌파기준\t감시익절(%)\t콜백(%)\t손절(%)\t거래횟수\t승률(%)\t손익(원)\n";
@@ -710,7 +719,7 @@ export default function MyPageModal({
 
             return (
               <div className="space-y-4 animate-in fade-in text-sm text-slate-200">
-                {/* 상단 타이틀 & 엑셀 복사 버튼 */}
+                {/* 상단 타이틀 & 전 슬롯 초기화 & 엑셀 복사 버튼 */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3.5 rounded-2xl bg-gradient-to-r from-purple-950/40 via-slate-950 to-indigo-950/40 border border-purple-500/30">
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-300 flex items-center justify-center border border-purple-500/30 shrink-0">
@@ -725,23 +734,35 @@ export default function MyPageModal({
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleCopyTsv}
-                    className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs transition flex items-center gap-1.5 cursor-pointer shadow-md shadow-purple-600/30 shrink-0 border border-purple-400/40"
-                  >
-                    {copiedTable ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-emerald-300" />
-                        <span className="text-emerald-200">엑셀 복사 완료!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>📋 엑셀(Excel) 복사</span>
-                      </>
-                    )}
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleResetAll}
+                      className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-950/70 text-slate-300 hover:text-rose-300 font-bold text-xs transition flex items-center gap-1.5 cursor-pointer shadow-md border border-slate-700 hover:border-rose-500/50"
+                      title="모든 슬롯의 거래횟수, 승률, 실현손익을 0으로 초기화합니다"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-rose-400" />
+                      <span>전 슬롯 초기화</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleCopyTsv}
+                      className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs transition flex items-center gap-1.5 cursor-pointer shadow-md shadow-purple-600/30 shrink-0 border border-purple-400/40"
+                    >
+                      {copiedTable ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-300" />
+                          <span className="text-emerald-200">엑셀 복사 완료!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>📋 엑셀(Excel) 복사</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 {/* 4대 핵심 KPI 카드 요약 */}
@@ -810,9 +831,26 @@ export default function MyPageModal({
                               }`}
                             >
                               {/* 슬롯 번호 */}
-                              <td className="py-2 px-2.5 font-bold text-slate-200 flex items-center gap-1.5">
-                                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${s.isEnabled ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
-                                <span className="font-sans font-bold">{s.name}</span>
+                              <td className="py-2 px-2.5 font-bold text-slate-200 flex items-center justify-between gap-1.5">
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${s.isEnabled ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
+                                  <span className="font-sans font-bold">{s.name}</span>
+                                </div>
+                                {(s.trades > 0 || s.profit !== 0) && (
+                                  <button
+                                    type="button"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      if (window.confirm(`${s.slotId}번 슬롯의 통계를 0으로 초기화하시겠습니까?`)) {
+                                        if (onResetSlotStats) await onResetSlotStats(s.slotId);
+                                      }
+                                    }}
+                                    className="p-1 rounded hover:bg-rose-950/50 text-slate-500 hover:text-rose-400 transition cursor-pointer"
+                                    title={`${s.slotId}번 슬롯 통계 초기화`}
+                                  >
+                                    <RotateCcw className="w-2.5 h-2.5" />
+                                  </button>
+                                )}
                               </td>
                               {/* 감시시간 */}
                               <td className="py-2 px-2 text-center text-slate-300">{s.windowSeconds}초</td>
@@ -844,7 +882,7 @@ export default function MyPageModal({
                                     {s.trades}회
                                   </span>
                                 ) : (
-                                  <span className="text-slate-600">0</span>
+                                  <span className="text-slate-600">0회</span>
                                 )}
                               </td>
                               {/* 승률 */}
@@ -854,7 +892,7 @@ export default function MyPageModal({
                                     {s.winRate}%
                                   </span>
                                 ) : (
-                                  <span className="text-slate-600">0%</span>
+                                  <span className="text-slate-600">-</span>
                                 )}
                               </td>
                               {/* 손익 */}
