@@ -28,6 +28,7 @@ import NoticeBoardModal from './components/NoticeBoardModal';
 import TodayListingPopupModal from './components/TodayListingPopupModal';
 import { COIN_NOTICES } from './data/coinNotices';
 import { soundService } from './services/soundService';
+import { APP_VERSION } from './version';
 
 import {
   getBotStatus,
@@ -1790,13 +1791,13 @@ export default function App() {
         btcProtection={btcProtection}
       />
 
-      {/* 🔬 [실험실 전용 상단 띠 배너] 운영자/개발자 사전 체험 전용 안내 */}
-      {isStagingLab && (
+      {/* 🏛️ [연구실/실험실 전용 상단 띠 배너] 운영자/개발자 사전 체험 전용 안내 */}
+      {isStagingLab ? (
         <div className="bg-gradient-to-r from-amber-600/90 via-orange-600/90 to-amber-700/90 text-white px-4 py-2 border-b border-amber-400/50 shadow-md">
           <div className="max-w-7xl mx-auto flex items-center justify-between text-xs sm:text-sm font-bold">
             <div className="flex items-center gap-2">
               <span className="text-base animate-bounce">🔬</span>
-              <span>[실험실 v3.1.0] 운영자 전용 사전 검증 공간입니다.</span>
+              <span>[실험실 v{APP_VERSION}] 운영자 전용 사전 검증 공간입니다.</span>
               <span className="hidden md:inline text-amber-100/90 font-normal text-xs">
                 (실서버 적용 전 신규 기능과 UI를 직접 테스트해 보세요. 개발자/운영자 승인 후 실서버로 배포됩니다.)
               </span>
@@ -1806,7 +1807,22 @@ export default function App() {
             </span>
           </div>
         </div>
-      )}
+      ) : isLocalLab ? (
+        <div className="bg-gradient-to-r from-purple-900/90 via-indigo-900/90 to-purple-950/90 text-white px-4 py-2 border-b border-purple-400/50 shadow-md">
+          <div className="max-w-7xl mx-auto flex items-center justify-between text-xs sm:text-sm font-bold">
+            <div className="flex items-center gap-2">
+              <span className="text-base animate-bounce">🧪</span>
+              <span>[연구실 v{APP_VERSION}] 대표님 로컬 연구 및 개발 전용 공간입니다.</span>
+              <span className="hidden md:inline text-purple-200/90 font-normal text-xs">
+                (코드가 실시간으로 반영되는 로컬 테스트베드입니다.)
+              </span>
+            </div>
+            <span className="px-2 py-0.5 rounded bg-black/30 text-purple-200 text-[11px] font-mono border border-purple-300/40 shrink-0">
+              LOCAL LAB
+            </span>
+          </div>
+        </div>
+      ) : null}
 
       {/* 메인 콘텐츠 영역 (상단 헤더와 좌우 라인 100% 일치) */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-6">

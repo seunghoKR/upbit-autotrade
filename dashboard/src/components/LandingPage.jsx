@@ -17,6 +17,7 @@ import {
   Layers,
   Gift
 } from 'lucide-react';
+import { APP_VERSION } from '../version';
 
 export default function LandingPage({ onOpenKakaoLogin, onLabDevLogin }) {
   // 🏛️ 3단계 환경 감지: 🧪 연구실(로컬) | 🔬 실험실(호스팅 Staging) | 🏛️ 실서버(상용 Live)
@@ -53,7 +54,7 @@ export default function LandingPage({ onOpenKakaoLogin, onLabDevLogin }) {
                   AI TRADER
                 </span>
                 <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-mono font-bold border border-emerald-500/30">
-                  v3.1.0
+                  v{APP_VERSION}
                 </span>
                 {isLocalLab ? (
                   <span className="text-[9px] px-2 py-0.5 rounded-full bg-purple-950/80 text-purple-300 font-bold border border-purple-500/50 animate-pulse">

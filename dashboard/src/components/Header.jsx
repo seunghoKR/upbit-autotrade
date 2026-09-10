@@ -15,6 +15,7 @@ import {
   VolumeX
 } from 'lucide-react';
 import { soundService } from '../services/soundService';
+import { APP_VERSION } from '../version';
 
 export default function Header({ 
   user,
@@ -57,13 +58,13 @@ export default function Header({
   useEffect(() => {
     let faviconName = 'favicon.png';
     if (isLocalLab) {
-      document.title = "🧪 [연구실 v3.1.0] NURIOH AI TRADER";
+      document.title = `🧪 [연구실 v${APP_VERSION}] NURIOH AI TRADER`;
       faviconName = 'favicon-lab.png';
     } else if (isStagingLab) {
-      document.title = "🔬 [실험실 v3.1.0] NURIOH AI TRADER";
+      document.title = `🔬 [실험실 v${APP_VERSION}] NURIOH AI TRADER`;
       faviconName = 'favicon-lab.png';
     } else {
-      document.title = "NURIOH AI TRADER (누리오 AI v3.1.0)";
+      document.title = `NURIOH AI TRADER (누리오 AI v${APP_VERSION})`;
       faviconName = 'favicon.png';
     }
 
@@ -71,7 +72,8 @@ export default function Header({
       const linkEl = document.querySelector("link[rel*='icon']");
       if (linkEl) {
         const basePath = isStagingLab ? '/lab/' : './';
-        linkEl.href = `${basePath}${faviconName}?v=310`;
+        const vQuery = APP_VERSION.replace(/\./g, '');
+        linkEl.href = `${basePath}${faviconName}?v=${vQuery}`;
       }
     } catch (e) {
       console.warn('Favicon switch error:', e);
@@ -132,7 +134,7 @@ export default function Header({
                 </span>
               </div>
               <span className="text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-mono font-black border border-emerald-500/30 shrink-0">
-                v3.1.0
+                v{APP_VERSION}
               </span>
 
               {/* 🏛️ 3단계 시각적 직관 배지: 🧪 연구실 | 🔬 실험실 | 🟢 실서버 */}

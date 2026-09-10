@@ -23,8 +23,10 @@ import {
   Shield,
   RefreshCw,
   AlertTriangle,
-  Crown
+  Crown,
+  Copy
 } from 'lucide-react';
+import { APP_VERSION } from '../version';
 
 export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onOpenMyPage }) {
   const [activeTab, setActiveTab] = useState('MANUAL'); // 'MANUAL' | 'OPERATOR_GUIDE' | 'FEEDBACK'
@@ -91,7 +93,7 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
                   누리오 트레이더 (NURIOH TRADER) 통합 매뉴얼 & 의견 수렴 센터
                 </h3>
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40 hidden sm:inline">
-                  v3.1.0
+                  v{APP_VERSION}
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-slate-300 mt-0.5 sm:mt-1">
