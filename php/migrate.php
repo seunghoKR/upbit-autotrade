@@ -113,6 +113,24 @@ try {
     try {
         $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `surge_min_volume_krw` BIGINT DEFAULT 10000000");
     } catch (Exception $ex) {}
+    try {
+        $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `surge_volume_mode` VARCHAR(10) DEFAULT 'RATE'");
+    } catch (Exception $ex) {}
+    try {
+        $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `surge_min_volume_rate_pct` DECIMAL(6,4) DEFAULT 0.0500");
+    } catch (Exception $ex) {}
+    try {
+        $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `use_reverse_alignment_filter` TINYINT(1) DEFAULT 1");
+    } catch (Exception $ex) {}
+    try {
+        $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `use_whale_tick_filter` TINYINT(1) DEFAULT 1");
+    } catch (Exception $ex) {}
+    try {
+        $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `whale_min_amount_krw` BIGINT DEFAULT 10000000");
+    } catch (Exception $ex) {}
+    try {
+        $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `use_orderbook_filter` TINYINT(1) DEFAULT 1");
+    } catch (Exception $ex) {}
 
     $pdo->exec("UPDATE `nurioh_slots` SET 
         `position_status` = 'IDLE',

@@ -80,6 +80,12 @@ export default function SlotManager({
     surgeWindowSeconds: 5,
     surgeRatePct: 1.5,
     surgeMinVolumeKrw: 10000000,
+    surgeVolumeMode: 'RATE',
+    surgeMinVolumeRatePct: 0.05,
+    useReverseAlignmentFilter: true,
+    useWhaleTickFilter: true,
+    whaleMinAmountKrw: 10000000,
+    useOrderbookFilter: true,
     surgeBaseMode: 'VWAP',
     trailingTargetProfitPct: 3.0,
     trailingCallbackPct: 1.0,
@@ -127,6 +133,12 @@ export default function SlotManager({
       surgeWindowSeconds: slot.surgeWindowSeconds !== undefined ? slot.surgeWindowSeconds : 5,
       surgeRatePct: slot.surgeRatePct !== undefined ? slot.surgeRatePct : 1.5,
       surgeMinVolumeKrw: slot.surgeMinVolumeKrw !== undefined ? slot.surgeMinVolumeKrw : 10000000,
+      surgeVolumeMode: slot.surgeVolumeMode || 'RATE',
+      surgeMinVolumeRatePct: slot.surgeMinVolumeRatePct !== undefined ? slot.surgeMinVolumeRatePct : 0.05,
+      useReverseAlignmentFilter: slot.useReverseAlignmentFilter !== undefined ? Boolean(slot.useReverseAlignmentFilter) : true,
+      useWhaleTickFilter: slot.useWhaleTickFilter !== undefined ? Boolean(slot.useWhaleTickFilter) : true,
+      whaleMinAmountKrw: slot.whaleMinAmountKrw !== undefined ? slot.whaleMinAmountKrw : 10000000,
+      useOrderbookFilter: slot.useOrderbookFilter !== undefined ? Boolean(slot.useOrderbookFilter) : true,
       surgeBaseMode: slot.surgeBaseMode || 'VWAP',
       targetProfitPct: targetProfit,
       trailingTargetProfitPct: targetProfit,
@@ -156,6 +168,12 @@ export default function SlotManager({
         surgeWindowSeconds: editForm.surgeWindowSeconds,
         surgeRatePct: editForm.surgeRatePct,
         surgeMinVolumeKrw: editForm.surgeMinVolumeKrw,
+        surgeVolumeMode: editForm.surgeVolumeMode || 'RATE',
+        surgeMinVolumeRatePct: parseFloat(editForm.surgeMinVolumeRatePct) || 0.05,
+        useReverseAlignmentFilter: Boolean(editForm.useReverseAlignmentFilter),
+        useWhaleTickFilter: Boolean(editForm.useWhaleTickFilter),
+        whaleMinAmountKrw: parseFloat(editForm.whaleMinAmountKrw) || 10000000,
+        useOrderbookFilter: Boolean(editForm.useOrderbookFilter),
         surgeBaseMode: editForm.surgeBaseMode || 'VWAP',
         targetProfitPct: targetProfit,
         trailingTargetProfitPct: targetProfit,
@@ -600,26 +618,57 @@ export default function SlotManager({
                             />
                           </div>
                           <div className="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800 text-center">
-                            <label className="text-[11px] text-slate-300 block mb-1 font-medium whitespace-nowrap text-center" title="동반되어야 할 최소 거래대금 (1,000 = 1,000만원)">
-                              최소대금(만원)
-                            </label>
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              value={editForm.surgeMinVolumeManwon !== undefined ? editForm.surgeMinVolumeManwon : Math.round((editForm.surgeMinVolumeKrw || 10000000) / 10000)}
-                              onChange={(e) => {
-                                const val = e.target.value.replace(/[^0-9]/g, '');
-                                setEditForm(prev => ({
-                                  ...prev,
-                                  surgeMinVolumeManwon: val,
-                                  surgeMinVolumeKrw: (Number(val) || 0) * 10000
-                                }));
-                              }}
-                              className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 text-center font-mono text-xs font-bold text-emerald-300 focus:border-emerald-400 focus:outline-none transition-colors"
-                              title={`실제 적용: ${Math.round(editForm.surgeMinVolumeKrw || 10000000).toLocaleString()}원`}
-                            />
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-[11px] text-slate-300 font-medium whitespace-nowrap">
+                                {editForm.surgeVolumeMode === 'RATE' ? '24h수급(%)' : '최소대금(만)'}
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => setEditForm(prev => ({ ...prev, surgeVolumeMode: prev.surgeVolumeMode === 'RATE' ? 'FIXED' : 'RATE' }))}
+                                className="text-[9px] px-1 py-0.2 rounded bg-slate-800 text-cyan-300 hover:bg-slate-700 border border-slate-700 cursor-pointer"
+                                title="상대비율(%)과 고정금액(만원) 모드를 전환합니다"
+                              >
+                                {editForm.surgeVolumeMode === 'RATE' ? '만원전환' : '%전환'}
+                              </button>
+                            </div>
+                            {editForm.surgeVolumeMode === 'RATE' ? (
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                value={editForm.surgeMinVolumeRatePct !== undefined ? editForm.surgeMinVolumeRatePct : 0.05}
+                                onChange={(e) => {
+                                  const val = e.target.value.replace(/[^0-9.]/g, '');
+                                  setEditForm(prev => ({ ...prev, surgeMinVolumeRatePct: val }));
+                                }}
+                                className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 text-center font-mono text-xs font-bold text-cyan-300 focus:border-cyan-400 focus:outline-none transition-colors"
+                                placeholder="0.05"
+                                title="24시간 누적 거래대금 대비 순간 터져야 할 수급 비율"
+                              />
+                            ) : (
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={editForm.surgeMinVolumeManwon !== undefined ? editForm.surgeMinVolumeManwon : Math.round((editForm.surgeMinVolumeKrw || 10000000) / 10000)}
+                                onChange={(e) => {
+                                  const val = e.target.value.replace(/[^0-9]/g, '');
+                                  setEditForm(prev => ({
+                                    ...prev,
+                                    surgeMinVolumeManwon: val,
+                                    surgeMinVolumeKrw: (Number(val) || 0) * 10000
+                                  }));
+                                }}
+                                className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 text-center font-mono text-xs font-bold text-emerald-300 focus:border-emerald-400 focus:outline-none transition-colors"
+                                title={`실제 적용: ${Math.round(editForm.surgeMinVolumeKrw || 10000000).toLocaleString()}원`}
+                              />
+                            )}
                           </div>
                         </div>
+                        {/* 💡 24h 대비 수급률 모드 시 실시간 안내 캡션 */}
+                        {editForm.surgeVolumeMode === 'RATE' && (
+                          <div className="text-[10px] text-cyan-400/90 font-mono text-right pr-1 flex items-center justify-end gap-1">
+                            <span>💡 체급별 자동계산: 24h 대금의 {editForm.surgeMinVolumeRatePct || 0.05}% 순간 유입 시 진입</span>
+                          </div>
+                        )}
                       </div>
 
                       {/* 📈 2. 돌파 기준가 모드 (1틱 튐 노이즈 방어) */}
@@ -681,12 +730,69 @@ export default function SlotManager({
                         </div>
                       </div>
 
-                      {/* 🎯 3. 수익 실현 및 손절 조건 */}
+                      {/* 🛡️ 3. 퀀트 안전 진입 필터 (운영자 검증 룰) */}
+                      <div className="p-2.5 rounded-xl bg-emerald-950/20 border border-emerald-500/30 space-y-2">
+                        <div className="text-xs text-emerald-300 flex items-center justify-between font-bold">
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            🛡️ 3. 퀀트 안전 진입 필터 (운영자 룰)
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-200 font-normal">
+                            가짜 펌핑 원천 차단
+                          </span>
+                        </div>
+
+                        <div className="space-y-1.5 pt-0.5">
+                          {/* 1) 3분봉 역배열 차단 */}
+                          <label className="flex items-center justify-between p-2 rounded-lg bg-slate-900/70 border border-slate-800 hover:border-slate-700 cursor-pointer transition">
+                            <div className="pr-2">
+                              <span className="text-xs font-bold text-slate-200 block">3분봉 역배열(데드캣) 차단</span>
+                              <span className="text-[10px] text-slate-400 block leading-tight">5선 &lt; 20선 하락 추세 속 낚시성 반등 매수 차단</span>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={editForm.useReverseAlignmentFilter !== false}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, useReverseAlignmentFilter: e.target.checked }))}
+                              className="w-4 h-4 rounded text-emerald-500 bg-slate-800 border-slate-700 focus:ring-emerald-400 cursor-pointer"
+                            />
+                          </label>
+
+                          {/* 2) 고래 단일 틱(1천만원+) 식별 */}
+                          <label className="flex items-center justify-between p-2 rounded-lg bg-slate-900/70 border border-slate-800 hover:border-slate-700 cursor-pointer transition">
+                            <div className="pr-2">
+                              <span className="text-xs font-bold text-slate-200 block">고래 단일 틱(1,000만원+) 검증</span>
+                              <span className="text-[10px] text-slate-400 block leading-tight">개미 쪼개기 매수 배제, 1천만원 이상 거대 틱 포함 시 진입</span>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={editForm.useWhaleTickFilter !== false}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, useWhaleTickFilter: e.target.checked }))}
+                              className="w-4 h-4 rounded text-emerald-500 bg-slate-800 border-slate-700 focus:ring-emerald-400 cursor-pointer"
+                            />
+                          </label>
+
+                          {/* 3) 호가창 스프레드 공백 차단 */}
+                          <label className="flex items-center justify-between p-2 rounded-lg bg-slate-900/70 border border-slate-800 hover:border-slate-700 cursor-pointer transition">
+                            <div className="pr-2">
+                              <span className="text-xs font-bold text-slate-200 block">호가창 스프레드 공백(0.4%+) 차단</span>
+                              <span className="text-[10px] text-slate-400 block leading-tight">호가창이 텅 비어 갭이 벌어진 인위적 조작 덤핑 방어</span>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={editForm.useOrderbookFilter !== false}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, useOrderbookFilter: e.target.checked }))}
+                              className="w-4 h-4 rounded text-emerald-500 bg-slate-800 border-slate-700 focus:ring-emerald-400 cursor-pointer"
+                            />
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* 🎯 4. 수익 실현 및 손절 조건 */}
                       <div className="p-2.5 rounded-xl bg-purple-950/20 border border-purple-500/30 space-y-2">
                         <div className="text-xs text-purple-300 flex items-center justify-between font-bold">
                           <span className="flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
-                            🎯 3. 수익 실현 &amp; 손절 조건 (트레일링 스탑)
+                            🎯 4. 수익 실현 &amp; 손절 조건 (트레일링 스탑)
                           </span>
                           <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-200 font-normal">
                             손익 관리

@@ -225,6 +225,10 @@ export default function App() {
   const [pendingSurgeCountdowns, setPendingSurgeCountdowns] = useState({});
   const countdownTimersRef = useRef({});
   const activeSurgeCoinsRef = useRef(new Set());
+  // 🔒 [운영자 퀀트 필터] 동일 코인 서킷 브레이커 & BTC 실시간 틱 추적
+  const circuitBreakersRef = useRef({}); // { [market]: { lossHistory: [], lockedUntil: number } }
+  const btcTicksRef = useRef([]); // [{ timestamp, price }]
+  const btcProtectionRef = useRef(null);
 
   // 🌐 업비트 원화 마켓 감시 개수 (기본 288개, 캐싱으로 새로고침 시 깜빡임 완전 방지)
   const [marketCount, setMarketCount] = useState(() => {
@@ -728,6 +732,22 @@ export default function App() {
                   stopLossCooldownsRef.current[slot.targetMarket] = unblockTime;
                   console.log(`🧊 [StopLoss Cool-down] ${slot.targetMarket} 손절 발생 -> ${cooldownMinutes}분간 재진입 차단`);
                 }
+
+                // 🔒 [동일 코인 서킷 브레이커] 1시간 내 2연속 손절 시 2시간 강력 락(Lock)
+                const mktKey = slot.targetMarket;
+                const nowMs = Date.now();
+                if (mktKey) {
+                  if (!circuitBreakersRef.current[mktKey]) {
+                    circuitBreakersRef.current[mktKey] = { lossHistory: [], lockedUntil: 0 };
+                  }
+                  const cb = circuitBreakersRef.current[mktKey];
+                  cb.lossHistory = (cb.lossHistory || []).filter(t => (nowMs - t) < 3600000);
+                  cb.lossHistory.push(nowMs);
+                  if (cb.lossHistory.length >= 2) {
+                    cb.lockedUntil = nowMs + (2 * 60 * 60 * 1000); // 2시간 락
+                    console.warn(`🔒 [서킷 브레이커 발동] ${mktKey}: 1시간 내 2연속 손절 감지 -> 2시간 동안 신규 매수 전면 락!`);
+                  }
+                }
               }
               await loadData();
             })
@@ -820,6 +840,14 @@ export default function App() {
       },
       onTick: (tick) => {
         setLivePriceMap(prev => ({ ...prev, [tick.code]: tick }));
+        if (tick.code === 'KRW-BTC') {
+          const nowMs = Date.now();
+          btcTicksRef.current.push({ price: tick.trade_price, timestamp: nowMs });
+          const btcCutoff = nowMs - 180000;
+          while (btcTicksRef.current.length > 0 && btcTicksRef.current[0].timestamp < btcCutoff) {
+            btcTicksRef.current.shift();
+          }
+        }
         if (tick.code === activeMarket) {
           setLivePrice(tick);
         }
@@ -832,6 +860,29 @@ export default function App() {
 
         const now = Date.now();
         const marketCode = tick.code.toUpperCase();
+
+        // 🪙 BTC 틱 실시간 기록 (최근 3분 버퍼 유지)
+        if (marketCode === 'KRW-BTC') {
+          btcTicksRef.current.push({ price: tick.trade_price, timestamp: now });
+          const btcCutoff = now - 180000;
+          while (btcTicksRef.current.length > 0 && btcTicksRef.current[0].timestamp < btcCutoff) {
+            btcTicksRef.current.shift();
+          }
+        }
+
+        // 🛡️ [대장주 BTC 하락 커플링 셧다운] BTC가 최근 3분 내 -0.5% 이상 급락 시 알트코인 매수 일시 정지!
+        if (marketCode !== 'KRW-BTC' && btcTicksRef.current.length >= 2) {
+          const btcFirst = btcTicksRef.current[0].price;
+          const btcLast = btcTicksRef.current[btcTicksRef.current.length - 1].price;
+          const timeSpanMs = btcTicksRef.current[btcTicksRef.current.length - 1].timestamp - btcTicksRef.current[0].timestamp;
+          if (timeSpanMs >= 10000 && btcFirst > 0) {
+            const btcChangePct = ((btcLast - btcFirst) / btcFirst) * 100;
+            if (btcChangePct <= -0.5) {
+              return; // BTC 급락 중 -> 알트코인 신규 매수 전면 차단
+            }
+          }
+        }
+
         const currentSettings = settingsRef.current || {};
         const excludedList = (currentSettings.EXCLUDED_MARKETS || []).map(m => String(m).trim().toUpperCase());
 
@@ -866,6 +917,16 @@ export default function App() {
             return; // 쿨다운 잔여 중 -> 매수 스킵
           } else {
             delete stopLossCooldownsRef.current[marketCode]; // 만료 시 쿨다운 해제
+          }
+        }
+
+        // 🔒 [동일 코인 서킷 브레이커] 1시간 내 2연속 손절 발생 코인은 2시간 동안 매수 전면 락(Lock)
+        const cbState = circuitBreakersRef.current[marketCode];
+        if (cbState && cbState.lockedUntil) {
+          if (now < cbState.lockedUntil) {
+            return; // 2시간 락 진행 중 -> 매수 스킵
+          } else {
+            delete circuitBreakersRef.current[marketCode]; // 만료 시 해제
           }
         }
 
@@ -913,9 +974,20 @@ export default function App() {
           const rateThreshold = isSelf 
             ? (slot.surgeRatePct || 1.5) 
             : (currentSettings.SURGE_RATE_THRESHOLD || 1.5);
-          const minVolumeKrw = isSelf 
+          let minVolumeKrw = isSelf 
             ? (slot.surgeMinVolumeKrw || 10000000) 
             : (currentSettings.SURGE_MIN_VOLUME_KRW || 10000000);
+
+          // 📊 [운영자 퀀트 필터 1] 거래대금 상대비율(%) 모드 지원
+          const volumeMode = slot.surgeVolumeMode || 'AMOUNT';
+          if (volumeMode === 'RATE') {
+            const acc24h = tick.acc_trade_price_24h || livePriceMapRef.current?.[marketCode]?.acc_trade_price_24h || 0;
+            const ratePct = slot.surgeMinVolumeRatePct !== undefined ? slot.surgeMinVolumeRatePct : 0.05;
+            if (acc24h > 0) {
+              minVolumeKrw = acc24h * (ratePct / 100);
+            }
+          }
+
           const baseMode = isSelf
             ? (slot.surgeBaseMode || 'VWAP')
             : (currentSettings.SURGE_BASE_MODE || 'VWAP');
@@ -928,6 +1000,15 @@ export default function App() {
           const recentTicks = buffer.filter(t => t.timestamp >= cutoff);
           if (recentTicks.length < 2) continue;
 
+          // 🐋 [운영자 퀀트 필터 5] 고래 단일 틱 식별 엔진 (지정 금액 이상의 단일 체결 틱 존재 여부)
+          if (slot.useWhaleTickFilter) {
+            const whaleMin = slot.whaleMinAmountKrw || 10000000;
+            const hasWhale = recentTicks.some(t => (t.amount || 0) >= whaleMin);
+            if (!hasWhale) {
+              continue; // 고래 단일 체결 부재 (자전거래/개미 소액 노이즈) -> 스킵
+            }
+          }
+
           const executeAutoBuy = async (assignedSlotId, targetMarketCode, tradeAmount, targetPrice, diffRate, winSecs, totVolKrw) => {
             if (isExecutingBuyRef.current[assignedSlotId]) return;
             activeSurgeCoinsRef.current.add(targetMarketCode);
@@ -935,6 +1016,59 @@ export default function App() {
 
             try {
               console.log(`🚨 [Client Surge Verified Trigger] ${assignedSlotId}번 슬롯 안전 매수: ${targetMarketCode} +${diffRate.toFixed(2)}% (${winSecs}초 내 ${Math.round(totVolKrw).toLocaleString()}원)`);
+
+              // 🛡️ [운영자 퀀트 필터 2] 3분봉 역배열(데드캣 바운스) 진입 차단
+              const targetSlot = (slotsRef.current || []).find(s => s.slotId === assignedSlotId) || slot;
+              if (targetSlot?.useReverseAlignmentFilter) {
+                try {
+                  const controller = new AbortController();
+                  const timer = setTimeout(() => controller.abort(), 2500);
+                  const candleRes = await fetch(`https://api.upbit.com/v1/candles/minutes/3?market=${targetMarketCode}&count=20`, { signal: controller.signal });
+                  clearTimeout(timer);
+                  if (candleRes.ok) {
+                    const candles = await candleRes.json();
+                    if (Array.isArray(candles) && candles.length >= 20) {
+                      const ma5 = candles.slice(0, 5).reduce((sum, c) => sum + (c.trade_price || 0), 0) / 5;
+                      const ma20 = candles.slice(0, 20).reduce((sum, c) => sum + (c.trade_price || 0), 0) / 20;
+                      if (ma5 < ma20) {
+                        console.warn(`🛡️ [역배열 필터 차단] ${targetMarketCode}: 3분봉 MA5(${ma5.toFixed(2)}) < MA20(${ma20.toFixed(2)}) 역배열(데드캣) 상태 -> 매수 전면 차단!`);
+                        activeSurgeCoinsRef.current.delete(targetMarketCode);
+                        delete pendingSustainRef.current[targetMarketCode];
+                        delete isExecutingBuyRef.current[assignedSlotId];
+                        return;
+                      }
+                    }
+                  }
+                } catch (candleErr) {
+                  console.warn('⚠️ 3분봉 역배열 체크 타임아웃/오류:', candleErr.message);
+                }
+              }
+
+              // 🛡️ [운영자 퀀트 필터 4] 호가창 스프레드 공백(0.4%+) 차단
+              if (targetSlot?.useOrderbookFilter) {
+                try {
+                  const controller = new AbortController();
+                  const timer = setTimeout(() => controller.abort(), 2500);
+                  const obRes = await fetch(`https://api.upbit.com/v1/orderbook?markets=${targetMarketCode}`, { signal: controller.signal });
+                  clearTimeout(timer);
+                  if (obRes.ok) {
+                    const obData = await obRes.json();
+                    const topUnit = obData?.[0]?.orderbook_units?.[0];
+                    if (topUnit && topUnit.ask_price && topUnit.bid_price && topUnit.bid_price > 0) {
+                      const spreadPct = ((topUnit.ask_price - topUnit.bid_price) / topUnit.bid_price) * 100;
+                      if (spreadPct >= 0.4) {
+                        console.warn(`🛡️ [호가창 스프레드 차단] ${targetMarketCode}: 매도1-매수1 스프레드 ${spreadPct.toFixed(3)}% >= 0.4% (텅 빈 호가창 덤핑 위험) -> 매수 차단!`);
+                        activeSurgeCoinsRef.current.delete(targetMarketCode);
+                        delete pendingSustainRef.current[targetMarketCode];
+                        delete isExecutingBuyRef.current[assignedSlotId];
+                        return;
+                      }
+                    }
+                  }
+                } catch (obErr) {
+                  console.warn('⚠️ 호가창 스프레드 체크 타임아웃/오류:', obErr.message);
+                }
+              }
 
               // 1. 실제 업비트 시장가 매수 주문 먼저 전송 (체결 성공 여부 확인 후 UI 반영)
               const buyRes = await buySlotPosition(assignedSlotId, {

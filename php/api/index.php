@@ -882,6 +882,17 @@ try {
         ];
 
         // 🛡️ 슬롯 자가 치유(Self-Healing): 1~9번 중 누락된 슬롯을 감지하여 즉시 자동 보충 생성
+        static $quantColumnsEnsured = false;
+        if (!$quantColumnsEnsured) {
+            $quantColumnsEnsured = true;
+            try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `surge_volume_mode` VARCHAR(10) DEFAULT 'RATE'"); } catch (Exception $e) {}
+            try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `surge_min_volume_rate_pct` DECIMAL(6,4) DEFAULT 0.0500"); } catch (Exception $e) {}
+            try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `use_reverse_alignment_filter` TINYINT(1) DEFAULT 1"); } catch (Exception $e) {}
+            try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `use_whale_tick_filter` TINYINT(1) DEFAULT 1"); } catch (Exception $e) {}
+            try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `whale_min_amount_krw` BIGINT DEFAULT 10000000"); } catch (Exception $e) {}
+            try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `use_orderbook_filter` TINYINT(1) DEFAULT 1"); } catch (Exception $e) {}
+        }
+
         $uStmt = $pdo->prepare("SELECT role, tier, max_slots FROM nurioh_users WHERE id = ?");
         $uStmt->execute([$userId]);
         $uData = $uStmt->fetch();
@@ -1030,6 +1041,12 @@ try {
                 'surgeWindowSeconds' => (int)($s['surge_window_seconds'] ?? 5),
                 'surgeRatePct' => (float)($s['surge_rate_pct'] ?? 1.5),
                 'surgeMinVolumeKrw' => (float)($s['surge_min_volume_krw'] ?? 10000000),
+                'surgeVolumeMode' => $s['surge_volume_mode'] ?? 'RATE',
+                'surgeMinVolumeRatePct' => (float)($s['surge_min_volume_rate_pct'] ?? 0.05),
+                'useReverseAlignmentFilter' => (bool)($s['use_reverse_alignment_filter'] ?? true),
+                'useWhaleTickFilter' => (bool)($s['use_whale_tick_filter'] ?? true),
+                'whaleMinAmountKrw' => (float)($s['whale_min_amount_krw'] ?? 10000000),
+                'useOrderbookFilter' => (bool)($s['use_orderbook_filter'] ?? true),
                 'surgeBaseMode' => ($s['surge_base_mode'] ?? 'VWAP') ?: 'VWAP',
                 'targetProfitPct' => (float)($s['target_profit_pct'] ?? 3.0),
                 'trailingCallbackPct' => (float)($s['trailing_callback_pct'] ?? 1.0),
@@ -1043,7 +1060,6 @@ try {
                 'highestProfitPct' => $hasPos ? (float)($s['highest_profit_pct'] ?? 0) : 0,
                 'totalTrades' => (int)($s['total_trades'] ?? 0),
                 'winTrades' => (int)($s['win_trades'] ?? 0),
-                'totalRealizedProfitKrw' => $realizedProfit
             ];
         }
 
@@ -1544,6 +1560,12 @@ try {
             $surgeWindowSeconds = isset($input['surgeWindowSeconds']) ? max(1, abs((int)$input['surgeWindowSeconds'])) : (int)($existingSlot['surge_window_seconds'] ?? 5);
             $surgeRatePct = isset($input['surgeRatePct']) ? abs((float)$input['surgeRatePct']) : (float)($existingSlot['surge_rate_pct'] ?? 1.5);
             $surgeMinVolumeKrw = isset($input['surgeMinVolumeKrw']) ? abs((float)$input['surgeMinVolumeKrw']) : (float)($existingSlot['surge_min_volume_krw'] ?? 10000000);
+            $surgeVolumeMode = in_array(strtoupper($input['surgeVolumeMode'] ?? ''), ['RATE', 'FIXED'], true) ? strtoupper($input['surgeVolumeMode']) : ($existingSlot['surge_volume_mode'] ?? 'RATE');
+            $surgeMinVolumeRatePct = isset($input['surgeMinVolumeRatePct']) ? abs((float)$input['surgeMinVolumeRatePct']) : (float)($existingSlot['surge_min_volume_rate_pct'] ?? 0.05);
+            $useReverseAlignmentFilter = isset($input['useReverseAlignmentFilter']) ? ((bool)$input['useReverseAlignmentFilter'] ? 1 : 0) : (int)($existingSlot['use_reverse_alignment_filter'] ?? 1);
+            $useWhaleTickFilter = isset($input['useWhaleTickFilter']) ? ((bool)$input['useWhaleTickFilter'] ? 1 : 0) : (int)($existingSlot['use_whale_tick_filter'] ?? 1);
+            $whaleMinAmountKrw = isset($input['whaleMinAmountKrw']) ? abs((float)$input['whaleMinAmountKrw']) : (float)($existingSlot['whale_min_amount_krw'] ?? 10000000);
+            $useOrderbookFilter = isset($input['useOrderbookFilter']) ? ((bool)$input['useOrderbookFilter'] ? 1 : 0) : (int)($existingSlot['use_orderbook_filter'] ?? 1);
             $surgeBaseMode = isset($input['surgeBaseMode']) ? (in_array(strtoupper($input['surgeBaseMode']), ['VWAP', 'MIN'], true) ? strtoupper($input['surgeBaseMode']) : 'VWAP') : ($existingSlot['surge_base_mode'] ?? 'VWAP');
             $targetProfitPct = isset($input['targetProfitPct']) ? abs((float)$input['targetProfitPct']) : (float)($existingSlot['target_profit_pct'] ?? 3.0);
             $trailingCallbackPct = isset($input['trailingCallbackPct']) ? abs((float)$input['trailingCallbackPct']) : (float)($existingSlot['trailing_callback_pct'] ?? 1.0);
@@ -1559,6 +1581,12 @@ try {
                     surge_window_seconds = ?,
                     surge_rate_pct = ?,
                     surge_min_volume_krw = ?,
+                    surge_volume_mode = ?,
+                    surge_min_volume_rate_pct = ?,
+                    use_reverse_alignment_filter = ?,
+                    use_whale_tick_filter = ?,
+                    whale_min_amount_krw = ?,
+                    use_orderbook_filter = ?,
                     surge_base_mode = ?,
                     target_profit_pct = ?,
                     trailing_callback_pct = ?,
@@ -1573,6 +1601,12 @@ try {
                     $surgeWindowSeconds,
                     $surgeRatePct,
                     $surgeMinVolumeKrw,
+                    $surgeVolumeMode,
+                    $surgeMinVolumeRatePct,
+                    $useReverseAlignmentFilter,
+                    $useWhaleTickFilter,
+                    $whaleMinAmountKrw,
+                    $useOrderbookFilter,
                     $surgeBaseMode,
                     $targetProfitPct,
                     $trailingCallbackPct,
@@ -1583,8 +1617,8 @@ try {
                 ]);
             } else {
                 $stmt = $pdo->prepare("INSERT INTO nurioh_slots 
-                    (user_id, slot_id, slot_name, is_enabled, target_market, trade_amount_krw, strategy_type, surge_window_seconds, surge_rate_pct, surge_min_volume_krw, surge_base_mode, target_profit_pct, trailing_callback_pct, stop_loss_pct, use_atr_stop_loss, position_status) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'IDLE')");
+                    (user_id, slot_id, slot_name, is_enabled, target_market, trade_amount_krw, strategy_type, surge_window_seconds, surge_rate_pct, surge_min_volume_krw, surge_volume_mode, surge_min_volume_rate_pct, use_reverse_alignment_filter, use_whale_tick_filter, whale_min_amount_krw, use_orderbook_filter, surge_base_mode, target_profit_pct, trailing_callback_pct, stop_loss_pct, use_atr_stop_loss, position_status) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'IDLE')");
                 $stmt->execute([
                     $userId,
                     $slotId,
@@ -1596,6 +1630,12 @@ try {
                     $surgeWindowSeconds,
                     $surgeRatePct,
                     $surgeMinVolumeKrw,
+                    $surgeVolumeMode,
+                    $surgeMinVolumeRatePct,
+                    $useReverseAlignmentFilter,
+                    $useWhaleTickFilter,
+                    $whaleMinAmountKrw,
+                    $useOrderbookFilter,
                     $surgeBaseMode,
                     $targetProfitPct,
                     $trailingCallbackPct,
