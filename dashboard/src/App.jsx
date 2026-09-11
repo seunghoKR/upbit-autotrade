@@ -29,6 +29,7 @@ import TodayListingPopupModal from './components/TodayListingPopupModal';
 import { COIN_NOTICES } from './data/coinNotices';
 import { soundService } from './services/soundService';
 import { APP_VERSION } from './version';
+import { DEFAULT_BUY_TIME_BLOCKS, checkBuyRestricted } from './services/timeBlockService';
 
 import {
   getBotStatus,
@@ -238,6 +239,35 @@ export default function App() {
   const btcTicksRef = useRef([]); // [{ timestamp, price }]
   const btcProtectionRef = useRef(null);
 
+  // ⏰ 신규 매수 제한 시간대 (Time Block Filter) 상태 & Ref
+  const [buyTimeBlocks, setBuyTimeBlocks] = useState(() => {
+    try {
+      const cached = localStorage.getItem('nurioh_buy_time_blocks');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return DEFAULT_BUY_TIME_BLOCKS;
+  });
+  const buyTimeBlocksRef = useRef(buyTimeBlocks);
+  useEffect(() => {
+    buyTimeBlocksRef.current = buyTimeBlocks;
+  }, [buyTimeBlocks]);
+
+  // 실시간 활성 매수 제한 상태 (헤더 배지 연동용)
+  const [activeBuyRestriction, setActiveBuyRestriction] = useState(() => checkBuyRestricted(buyTimeBlocks));
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const res = checkBuyRestricted(buyTimeBlocksRef.current);
+      setActiveBuyRestriction(prev => {
+        if (prev.isRestricted !== res.isRestricted || prev.activeBlock?.id !== res.activeBlock?.id) {
+          return res;
+        }
+        return prev;
+      });
+    }, 2000);
+    return () => clearInterval(timer);
+  }, []);
+
   // 🌐 업비트 원화 마켓 감시 개수 (기본 288개, 캐싱으로 새로고침 시 깜빡임 완전 방지)
   const [marketCount, setMarketCount] = useState(() => {
     try {
@@ -323,6 +353,15 @@ export default function App() {
           }
           return userRes.user;
         });
+
+        // ⏰ 신규 매수 제한 시간대 서버 프로필 동기화
+        const serverBlocks = userRes.user?.autoTrading?.buyTimeBlocks || userRes.user?.buyTimeBlocks;
+        if (Array.isArray(serverBlocks) && serverBlocks.length > 0) {
+          setBuyTimeBlocks(serverBlocks);
+          try {
+            localStorage.setItem('nurioh_buy_time_blocks', JSON.stringify(serverBlocks));
+          } catch (e) {}
+        }
       }
 
       const status = await getBotStatus(validUserId);
@@ -952,6 +991,16 @@ export default function App() {
           return;
         }
 
+        // 🛑 [신규 매수 제한 시간대 가드] 활성화된 시간 블록에 포함될 경우 신규 매수 차단 (기존 보유 포지션 매도는 100% 정상 작동)
+        const buyRestriction = checkBuyRestricted(buyTimeBlocksRef.current);
+        if (buyRestriction.isRestricted) {
+          const b = buyRestriction.activeBlock;
+          if (Math.random() < 0.05) {
+            console.log(`🛑 [신규 매수 차단] ${b?.label || ''} (${b?.start}~${b?.end}) 제한 시간대 가동 중 - 신규 매수를 건너뛰고 기존 보유분 매도 감시만 유지합니다.`);
+          }
+          return;
+        }
+
         // 🛡️ 실제 주문 가능 원화 잔고 실시간 확인 (accountsRef live 동기화)
         const currentAccounts = accountsRef.current || [];
         const hasLiveRealAccounts = Array.isArray(currentAccounts) && currentAccounts.length > 0 && currentAccounts.some(a => parseFloat(a.balance || 0) > 0 || parseFloat(a.locked || 0) > 0);
@@ -1312,6 +1361,13 @@ export default function App() {
   // 회원 프로필 정보 실시간 동기화 및 스토리지 영구 반영
   const handleUpdateUser = (updatedUser) => {
     if (!updatedUser) return;
+    const blocks = updatedUser.buyTimeBlocks || updatedUser.autoTrading?.buyTimeBlocks;
+    if (Array.isArray(blocks) && blocks.length > 0) {
+      setBuyTimeBlocks(blocks);
+      try {
+        localStorage.setItem('nurioh_buy_time_blocks', JSON.stringify(blocks));
+      } catch (e) {}
+    }
     setCurrentUser(prev => ({
       ...prev,
       ...updatedUser
@@ -1789,6 +1845,7 @@ export default function App() {
         onRefresh={handleHardRefresh}
         marketCount={marketCount}
         btcProtection={btcProtection}
+        activeBuyRestriction={activeBuyRestriction}
       />
 
       {/* 🏛️ [연구실/실험실 전용 상단 띠 배너] 운영자/개발자 사전 체험 전용 안내 */}

@@ -1,6 +1,6 @@
 {
   "name": "upbit-auto-trading-system",
-  "version": "3.1.0",
+  "version": "3.2.1",
   "description": "Upbit Automated Trading Bot with Telegram Approval & Modern React Dashboard",
   "main": "server/index.js",
   "scripts": {

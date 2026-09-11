@@ -32,7 +32,8 @@ export default function Header({
   onOpenNotice,
   onLogout,
   marketCount = 134,
-  btcProtection = null
+  btcProtection = null,
+  activeBuyRestriction = null
 }) {
   const role = user?.role || 'USER';
   const tier = user?.tier || 'FREE_TRIAL';
@@ -169,6 +170,22 @@ export default function Header({
                 <div className="hidden 2xl:flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-900/60 border border-slate-800 text-[10px] text-slate-400 shrink-0">
                   <ShieldCheck className="w-3 h-3 text-emerald-400" />
                   <span className="whitespace-nowrap">BTC 커플링 보호 활성</span>
+                </div>
+              )}
+
+              {/* 🛑 [위험 시간대 방어] 신규 매수 제한 시간대 활성화 배지 */}
+              {activeBuyRestriction?.isRestricted && (
+                <div 
+                  onClick={onOpenMyPage}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-950/90 border border-rose-500/80 text-[11px] font-black text-rose-200 shadow-lg shadow-rose-950/60 animate-pulse shrink-0 cursor-pointer transition hover:bg-rose-900/90 active:scale-95" 
+                  title={`🛑 [신규 매수 차단] ${activeBuyRestriction.activeBlock?.label || ''} (${activeBuyRestriction.activeBlock?.start}~${activeBuyRestriction.activeBlock?.end}) 가동 중 - 클릭 시 마이페이지 시간 설정으로 이동`}
+                >
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                  </span>
+                  <span className="whitespace-nowrap">🛑 매수 제한: {activeBuyRestriction.activeBlock?.start}~{activeBuyRestriction.activeBlock?.end}</span>
+                  <span className="text-[10px] text-rose-300 font-normal hidden sm:inline">(매도만 허용)</span>
                 </div>
               )}
             </div>

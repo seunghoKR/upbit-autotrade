@@ -36,6 +36,11 @@ export const saveAutoTradingSettings = async (settingsData) => {
   return res.data;
 };
 
+export const saveBuyTimeBlocks = async (userId, timeBlocks) => {
+  const res = await axios.post(`${API_BASE}/user/time-blocks`, { userId, timeBlocks });
+  return res.data;
+};
+
 export const requestUserProfileUpdate = async (profileData) => {
   const res = await axios.post(`${API_BASE}/user/profile-request`, profileData);
   return res.data;

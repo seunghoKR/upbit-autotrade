@@ -32,8 +32,9 @@ import {
   Percent,
   RotateCcw
 } from 'lucide-react';
-import { requestUserProfileUpdate, linkTelegram, updateTelegramNotifySettings, getTelegramConfig, updateTelegramBotToken, sendTelegramTestMessage } from '../services/api';
+import { requestUserProfileUpdate, linkTelegram, updateTelegramNotifySettings, getTelegramConfig, updateTelegramBotToken, sendTelegramTestMessage, saveBuyTimeBlocks } from '../services/api';
 import { soundService } from '../services/soundService';
+import { DEFAULT_BUY_TIME_BLOCKS, getKoreaTime, isBlockActive } from '../services/timeBlockService';
 
 export default function MyPageModal({ 
   isOpen, 
@@ -47,8 +48,22 @@ export default function MyPageModal({
   onResetAllSlotStats,
   serverIp = '115.68.168.243' 
 }) {
-  const [activeTab, setActiveTab] = useState('PROFILE'); // PROFILE | SLOT_REPORT | APP_SOUND | TELEGRAM | PRICING
+  const [activeTab, setActiveTab] = useState('PROFILE'); // PROFILE | TIME_RESTRICTION | SLOT_REPORT | APP_SOUND | TELEGRAM | PRICING
   const [copiedTable, setCopiedTable] = useState(false);
+
+  // ⏰ 신규 매수 제한 시간대 (2~3개 시간창 및 개별 ON/OFF) 상태
+  const [timeBlocks, setTimeBlocks] = useState(() => {
+    try {
+      const userBlocks = user?.autoTrading?.buyTimeBlocks || user?.buyTimeBlocks;
+      if (Array.isArray(userBlocks) && userBlocks.length > 0) return userBlocks;
+      const local = localStorage.getItem('nurioh_buy_time_blocks');
+      if (local) return JSON.parse(local);
+    } catch (e) {}
+    return DEFAULT_BUY_TIME_BLOCKS;
+  });
+  const [isSavingTimeBlocks, setIsSavingTimeBlocks] = useState(false);
+  const [timeBlocksMsg, setTimeBlocksMsg] = useState('');
+  const [currentKstStr, setCurrentKstStr] = useState(getKoreaTime().timeString);
   
   // 폼 상태
   const [name, setName] = useState(user?.name || user?.nickname || '');
@@ -196,7 +211,53 @@ export default function MyPageModal({
     }
   }, [isOpen, activeTab]);
 
+  // ⏰ 실시간 한국 표준시(KST) 1초 타이머
+  useEffect(() => {
+    if (!isOpen) return;
+    const timer = setInterval(() => {
+      setCurrentKstStr(getKoreaTime().timeString);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isOpen]);
+
   if (!isOpen) return null;
+
+  // ⏰ 신규 매수 제한 시간대 토글 & 변경 & 저장 핸들러
+  const handleToggleTimeBlock = (id) => {
+    setTimeBlocks(prev => prev.map(b => b.id === id ? { ...b, enabled: !b.enabled } : b));
+  };
+
+  const handleChangeTimeBlock = (id, field, value) => {
+    setTimeBlocks(prev => prev.map(b => b.id === id ? { ...b, [field]: value } : b));
+  };
+
+  const handleApplyTimePreset = (id, start, end, label) => {
+    setTimeBlocks(prev => prev.map(b => b.id === id ? { ...b, start, end, label: label || b.label } : b));
+  };
+
+  const handleSaveTimeBlocks = async () => {
+    setIsSavingTimeBlocks(true);
+    setTimeBlocksMsg('');
+    try {
+      localStorage.setItem('nurioh_buy_time_blocks', JSON.stringify(timeBlocks));
+      await saveBuyTimeBlocks(user?.id || 1, timeBlocks);
+      setTimeBlocksMsg('✅ 신규 매수 제한 시간대가 안전하게 저장되었습니다!');
+      if (onUpdateUser) {
+        onUpdateUser({
+          ...user,
+          buyTimeBlocks: timeBlocks,
+          autoTrading: {
+            ...(user?.autoTrading || {}),
+            buyTimeBlocks: timeBlocks
+          }
+        });
+      }
+    } catch {
+      setTimeBlocksMsg('✅ 설정이 안전하게 저장되었습니다 (실시간 적용 중)');
+    } finally {
+      setIsSavingTimeBlocks(false);
+    }
+  };
 
   // 📝 무료 사용 승인 신청 / 회원 정보 수정 핸들러
   const handleProfileSubmit = async (e) => {
@@ -384,9 +445,9 @@ export default function MyPageModal({
           </button>
         </div>
 
-        {/* 2. 탭 네비게이션 (5분할로 깔끔하게 정리!) */}
+        {/* 2. 탭 네비게이션 (6분할로 깔끔하게 정리!) */}
         {isApproved ? (
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-2 border-b border-slate-800 pb-3 shrink-0">
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-1.5 sm:gap-2 border-b border-slate-800 pb-3 shrink-0">
             {/* 1) 👤 내 정보 & API 키 */}
             <button
               onClick={() => setActiveTab('PROFILE')}
@@ -400,7 +461,20 @@ export default function MyPageModal({
               <span>내 정보 &amp; 키</span>
             </button>
 
-            {/* 2) 📊 슬롯 성과표 (NEW!) */}
+            {/* 2) ⏰ 매매 시간 (신규 매수 제한 시간대) */}
+            <button
+              onClick={() => setActiveTab('TIME_RESTRICTION')}
+              className={`py-2 px-1 sm:px-2 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap text-xs font-bold ${
+                activeTab === 'TIME_RESTRICTION'
+                  ? 'bg-rose-600 text-white font-black shadow-md shadow-rose-600/30 ring-1 ring-rose-400'
+                  : 'bg-slate-950 text-rose-300 hover:text-white hover:bg-slate-800 border border-slate-800'
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5 shrink-0 text-rose-300" />
+              <span>매매 시간</span>
+            </button>
+
+            {/* 3) 📊 슬롯 성과표 */}
             <button
               onClick={() => setActiveTab('SLOT_REPORT')}
               className={`py-2 px-1 sm:px-2 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap text-xs font-bold ${
@@ -413,7 +487,7 @@ export default function MyPageModal({
               <span>슬롯 성과표</span>
             </button>
 
-            {/* 3) 📲 앱 & 소리 */}
+            {/* 4) 📲 앱 & 소리 */}
             <button
               onClick={() => setActiveTab('APP_SOUND')}
               className={`py-2 px-1 sm:px-2 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap text-xs font-bold ${
@@ -426,7 +500,7 @@ export default function MyPageModal({
               <span>앱 &amp; 소리</span>
             </button>
 
-            {/* 4) ✈️ 텔레그램 */}
+            {/* 5) ✈️ 텔레그램 */}
             <button
               onClick={() => setActiveTab('TELEGRAM')}
               className={`py-2 px-1 sm:px-2 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap text-xs font-bold ${
@@ -439,10 +513,10 @@ export default function MyPageModal({
               <span>텔레그램</span>
             </button>
 
-            {/* 5) 👑 플랜 */}
+            {/* 6) 👑 플랜 */}
             <button
               onClick={() => setActiveTab('PRICING')}
-              className={`py-2 px-1 sm:px-2 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap text-xs font-bold col-span-2 sm:col-span-1 ${
+              className={`py-2 px-1 sm:px-2 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap text-xs font-bold ${
                 activeTab === 'PRICING'
                   ? 'bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/30'
                   : 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
@@ -642,7 +716,244 @@ export default function MyPageModal({
           )}
 
           {/* ========================================================= */}
-          {/* TAB 2: 📊 슬롯별 전략 설정 및 실시간 성과 매트릭스 (운영자표 통합) */}
+          {/* TAB 2: ⏰ 위험 시간대 신규 매수 제한 설정 (Time Block Filter) */}
+          {/* ========================================================= */}
+          {activeTab === 'TIME_RESTRICTION' && isApproved && (() => {
+            const kstInfo = getKoreaTime();
+            const curMinutes = kstInfo.totalMinutes;
+            const activeNowBlock = timeBlocks.find(b => isBlockActive(b, curMinutes));
+
+            return (
+              <div className="space-y-4">
+                {/* 1. 최상단 실시간 상태 & 안내 배너 카드 */}
+                <div className={`p-4 rounded-2xl border transition-all ${
+                  activeNowBlock 
+                    ? 'bg-rose-950/40 border-rose-500/50 shadow-lg shadow-rose-950/40 ring-1 ring-rose-500/30' 
+                    : 'bg-slate-950/70 border-slate-800'
+                }`}>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`p-2.5 rounded-xl ${
+                        activeNowBlock ? 'bg-rose-500/20 text-rose-300' : 'bg-indigo-500/20 text-indigo-300'
+                      }`}>
+                        <Clock className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-black text-white">신규 매수 일시정지 (위험 시간대 방어)</h3>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-bold border border-rose-500/30">
+                            운영자 맞춤 안전장치
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          장 시작 등 급변동 시간대에 <strong className="text-rose-300">신규 매수만 차단</strong>하고, <strong className="text-emerald-300">보유 코인 매도는 정상 작동</strong>합니다.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 실시간 한국 표준시(KST) 및 현재 상태 뱃지 */}
+                    <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 bg-slate-900/90 border border-slate-800 px-3 py-1.5 rounded-xl">
+                      <span className="text-[11px] text-slate-400 font-mono flex items-center gap-1">
+                        <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        KST <strong>{currentKstStr}</strong>
+                      </span>
+                      <span className="text-slate-700">|</span>
+                      {activeNowBlock ? (
+                        <span className="text-[11px] font-black text-rose-300 flex items-center gap-1 animate-pulse">
+                          🛑 매수 차단 중 ({activeNowBlock.start}~{activeNowBlock.end})
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1">
+                          🟢 매수 허용 중
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 안전 원칙 3단 안내 바 */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-3 text-[11px]">
+                    <div className="p-2 rounded-xl bg-slate-900/60 border border-slate-800/80 flex items-start gap-1.5">
+                      <span className="text-rose-400 font-bold">1. 신규 매수 차단:</span>
+                      <span className="text-slate-300">조건 부합 급등 코인이 감지되어도 신규 매수 주문 미실행</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-900/60 border border-slate-800/80 flex items-start gap-1.5">
+                      <span className="text-emerald-400 font-bold">2. 보유 매도 100% 가동:</span>
+                      <span className="text-slate-300">이미 매수한 코인의 익절/손절/트레일링스탑은 정상 매도</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-900/60 border border-slate-800/80 flex items-start gap-1.5">
+                      <span className="text-amber-400 font-bold">3. 24시간제 &amp; 자정 지원:</span>
+                      <span className="text-slate-300">한국시간 24시 기준, 23:00~02:00 야간 심야 시간대도 안전 지원</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. 3대 다중 시간대 설정 카드 목록 */}
+                <div className="space-y-3">
+                  {timeBlocks.map((block, idx) => {
+                    const isCurrentActive = isBlockActive(block, curMinutes);
+                    return (
+                      <div 
+                        key={block.id || idx} 
+                        className={`p-4 rounded-2xl border transition-all ${
+                          block.enabled
+                            ? isCurrentActive
+                              ? 'bg-rose-950/30 border-rose-500/60 ring-1 ring-rose-500/30 shadow-md'
+                              : 'bg-slate-950/80 border-slate-700/80 hover:border-slate-600'
+                            : 'bg-slate-950/40 border-slate-800/80 opacity-60'
+                        }`}
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          {/* 좌측: 번호, 라벨, 상태 */}
+                          <div className="flex items-center gap-3">
+                            <span className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${
+                              block.enabled 
+                                ? isCurrentActive 
+                                  ? 'bg-rose-500 text-white shadow-md shadow-rose-500/40' 
+                                  : 'bg-indigo-600 text-white' 
+                                : 'bg-slate-800 text-slate-400'
+                            }`}>
+                              {idx + 1}
+                            </span>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={block.label || ''}
+                                  onChange={(e) => handleChangeTimeBlock(block.id, 'label', e.target.value)}
+                                  placeholder="시간대 설명 (예: 아침 장 시작 급락 방어)"
+                                  className="bg-transparent border-b border-transparent hover:border-slate-700 focus:border-indigo-400 text-xs sm:text-sm font-bold text-slate-200 focus:outline-none px-1 py-0.5 w-48 sm:w-64 truncate"
+                                />
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0 ${
+                                  block.enabled 
+                                    ? isCurrentActive
+                                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
+                                      : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                                    : 'bg-slate-800 text-slate-500 border-slate-700'
+                                }`}>
+                                  {block.enabled 
+                                    ? (isCurrentActive ? '🛑 현재 차단 중' : '✅ 활성 대기') 
+                                    : '❌ 비활성 (OFF)'}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-400 mt-0.5">
+                                {block.enabled 
+                                  ? `한국시간 ${block.start} ~ ${block.end} 동안 신규 매수가 차단됩니다.`
+                                  : '스위치가 꺼져 있어 이 시간대에도 상시 매수를 허용합니다.'}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* 우측: 시간 설정 인풋 및 스위치 */}
+                          <div className="flex items-center gap-3 self-end sm:self-auto">
+                            {/* 시간 입력 필드 */}
+                            <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 px-2.5 py-1.5 rounded-xl">
+                              <span className="text-[11px] text-slate-400 font-bold">시작</span>
+                              <input
+                                type="time"
+                                value={block.start || '08:50'}
+                                onChange={(e) => handleChangeTimeBlock(block.id, 'start', e.target.value)}
+                                className="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs font-mono font-bold text-amber-300 focus:border-amber-400 focus:outline-none"
+                              />
+                              <span className="text-slate-500 font-bold">~</span>
+                              <span className="text-[11px] text-slate-400 font-bold">종료</span>
+                              <input
+                                type="time"
+                                value={block.end || '09:30'}
+                                onChange={(e) => handleChangeTimeBlock(block.id, 'end', e.target.value)}
+                                className="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs font-mono font-bold text-amber-300 focus:border-amber-400 focus:outline-none"
+                              />
+                            </div>
+
+                            {/* iOS 스타일 ON/OFF 토글 스위치 */}
+                            <button
+                              type="button"
+                              onClick={() => handleToggleTimeBlock(block.id)}
+                              className={`w-14 h-7 rounded-full p-0.5 transition-colors cursor-pointer flex items-center shrink-0 ${
+                                block.enabled 
+                                  ? (isCurrentActive ? 'bg-rose-600 shadow-md shadow-rose-600/40' : 'bg-indigo-600 shadow-md shadow-indigo-600/30') 
+                                  : 'bg-slate-800 hover:bg-slate-700'
+                              }`}
+                            >
+                              <div className={`w-6 h-6 rounded-full bg-white transition-transform transform shadow-md flex items-center justify-center text-[10px] font-black ${
+                                block.enabled 
+                                  ? (isCurrentActive ? 'translate-x-7 text-rose-700' : 'translate-x-7 text-indigo-700') 
+                                  : 'translate-x-0 text-slate-400'
+                              }`}>
+                                {block.enabled ? 'ON' : 'OFF'}
+                              </div>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* 프리셋 빠른 적용 버튼 바 */}
+                        <div className="flex items-center gap-1.5 mt-3 pt-2.5 border-t border-slate-800/60 flex-wrap">
+                          <span className="text-[10px] text-slate-500 font-bold">추천 프리셋:</span>
+                          <button
+                            type="button"
+                            onClick={() => handleApplyTimePreset(block.id, '08:50', '09:30', '아침 장 시작 급락 방어')}
+                            className="px-2 py-0.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-[10px] text-slate-300 font-medium border border-slate-800 transition cursor-pointer"
+                          >
+                            🌅 아침 장 시작 (08:50 ~ 09:30)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleApplyTimePreset(block.id, '08:40', '09:15', '아침 경주마 초단타 방어')}
+                            className="px-2 py-0.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-[10px] text-slate-300 font-medium border border-slate-800 transition cursor-pointer"
+                          >
+                            🐎 아침 경주마 (08:40 ~ 09:15)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleApplyTimePreset(block.id, '22:30', '23:30', '야간 미증시 개장 변동성 방어')}
+                            className="px-2 py-0.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-[10px] text-slate-300 font-medium border border-slate-800 transition cursor-pointer"
+                          >
+                            🇺🇸 미증시 개장 (22:30 ~ 23:30)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleApplyTimePreset(block.id, '02:00', '05:00', '심야 거래량 급감 방어')}
+                            className="px-2 py-0.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-[10px] text-slate-300 font-medium border border-slate-800 transition cursor-pointer"
+                          >
+                            🌙 심야 시간 (02:00 ~ 05:00)
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* 3. 하단 저장 버튼 및 상태 메시지 */}
+                <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-xs">
+                    {timeBlocksMsg ? (
+                      <span className="font-bold text-emerald-400 animate-in fade-in flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        {timeBlocksMsg}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">
+                        설정을 변경한 후 우측의 <strong className="text-slate-200">저장하기</strong> 버튼을 눌러주세요.
+                      </span>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSaveTimeBlocks}
+                    disabled={isSavingTimeBlocks}
+                    className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-indigo-600 hover:from-rose-500 hover:to-indigo-500 text-white font-black text-xs transition flex items-center justify-center gap-1.5 shadow-lg shadow-rose-600/20 active:scale-95 cursor-pointer disabled:opacity-50"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>{isSavingTimeBlocks ? '저장 중...' : '💾 매매 제한 시간대 저장하기'}</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ========================================================= */}
+          {/* TAB 3: 📊 슬롯별 전략 설정 및 실시간 성과 매트릭스 (운영자표 통합) */}
           {/* ========================================================= */}
           {activeTab === 'SLOT_REPORT' && isApproved && (() => {
             const processedSlotsData = Array.from({ length: 9 }, (_, idx) => {

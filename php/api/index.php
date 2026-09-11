@@ -647,7 +647,8 @@ try {
             'isAgreed' => (bool)$isAgreed,
             'maxTotalLimitKrw' => $maxTotalLimitKrw,
             'executionMode' => $executionMode,
-            'slotLimits' => $slotLimits
+            'slotLimits' => $slotLimits,
+            'buyTimeBlocks' => $input['buyTimeBlocks'] ?? null
         ], JSON_UNESCAPED_UNICODE);
 
         $pdo->prepare("UPDATE nurioh_users SET auto_trading = ? WHERE id = ?")->execute([$autoData, $userId]);
@@ -664,7 +665,30 @@ try {
 
         echo json_encode([
             'success' => true,
-            'message' => '자동매매 한도 및 슬롯 설정이 안전하게 저장되었습니다.'
+            'message' => '자동매매 설정이 성공적으로 저장되었습니다.'
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // 1-D. POST user/time-blocks : 신규 매수 제한 시간대(Time Blocks) 전용 저장
+    if ($path === 'user/time-blocks' && $method === 'POST') {
+        $userId = (int)($input['userId'] ?? 1);
+        $timeBlocks = $input['timeBlocks'] ?? [];
+
+        $uStmt = $pdo->prepare("SELECT auto_trading FROM nurioh_users WHERE id = ?");
+        $uStmt->execute([$userId]);
+        $row = $uStmt->fetch();
+        $autoTrading = !empty($row['auto_trading']) ? json_decode($row['auto_trading'], true) : [];
+        if (!is_array($autoTrading)) $autoTrading = [];
+        $autoTrading['buyTimeBlocks'] = $timeBlocks;
+
+        $pdo->prepare("UPDATE nurioh_users SET auto_trading = ? WHERE id = ?")
+            ->execute([json_encode($autoTrading, JSON_UNESCAPED_UNICODE), $userId]);
+
+        echo json_encode([
+            'success' => true,
+            'message' => '신규 매수 제한 시간대가 성공적으로 저장되었습니다.',
+            'timeBlocks' => $timeBlocks
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }

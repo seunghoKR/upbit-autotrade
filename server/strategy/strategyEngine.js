@@ -34,13 +34,35 @@ class StrategyEngine {
     surgeDetector.onSurge(async (surge) => {
       if (!this.isRunning) return;
 
-      // 🛡️ [타임 블록 필터] 오전 경주마/위험 시간대 신규 매수 일시정지 체크
-      if (this.settings.TIME_BLOCK_ENABLED) {
+      // 🛡️ [타임 블록 필터] 위험 시간대 신규 매수 일시정지 체크 (다중 시간대 및 자정 초과 완벽 지원)
+      if (Array.isArray(this.settings.BUY_TIME_BLOCKS) && this.settings.BUY_TIME_BLOCKS.length > 0) {
+        const nowObj = new Date();
+        const curTotalMin = nowObj.getHours() * 60 + nowObj.getMinutes();
+        for (const block of this.settings.BUY_TIME_BLOCKS) {
+          if (!block.enabled || !block.start || !block.end) continue;
+          const [sH, sM] = block.start.split(':').map(Number);
+          const [eH, eM] = block.end.split(':').map(Number);
+          const startMin = sH * 60 + sM;
+          const endMin = eH * 60 + eM;
+          const isInRange = (startMin <= endMin)
+            ? (curTotalMin >= startMin && curTotalMin <= endMin)
+            : (curTotalMin >= startMin || curTotalMin <= endMin);
+          if (isInRange) {
+            console.log(`ℹ️ [다중 타임블록 매수 차단] ${block.label || ''} (${block.start}~${block.end}) 위험 시간대이므로 신규 매수를 건너뜁니다.`);
+            return;
+          }
+        }
+      } else if (this.settings.TIME_BLOCK_ENABLED) {
         const nowObj = new Date();
         const curTotalMin = nowObj.getHours() * 60 + nowObj.getMinutes();
         const [sH, sM] = (this.settings.TIME_BLOCK_START || '08:50').split(':').map(Number);
         const [eH, eM] = (this.settings.TIME_BLOCK_END || '09:30').split(':').map(Number);
-        if (curTotalMin >= (sH * 60 + sM) && curTotalMin <= (eH * 60 + eM)) {
+        const startMin = sH * 60 + sM;
+        const endMin = eH * 60 + eM;
+        const isInRange = (startMin <= endMin)
+          ? (curTotalMin >= startMin && curTotalMin <= endMin)
+          : (curTotalMin >= startMin || curTotalMin <= endMin);
+        if (isInRange) {
           console.log(`ℹ️ [타임블록 매수 차단] ${this.settings.TIME_BLOCK_START}~${this.settings.TIME_BLOCK_END} 위험 시간대이므로 신규 매수를 건너뜁니다.`);
           return;
         }
