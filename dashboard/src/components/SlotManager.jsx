@@ -285,9 +285,9 @@ export default function SlotManager({
           </div>
         </div>
 
-        {/* 2. 1~12번 슬롯 탭 버튼 바 */}
+        {/* 2. 1~12번 슬롯 탭 버튼 바 (모바일: 슬롯번호만 2줄 그리드 표시, 가로 슬라이딩 제거 / 데스크탑: 1줄 상세 표시) */}
         {displaySlots.length > 1 && (
-          <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto pb-0.5 lg:pb-0 scrollbar-none max-w-full min-w-0">
+          <div className={`grid ${displaySlots.length <= 4 ? 'grid-cols-4' : (displaySlots.length <= 8 ? 'grid-cols-4' : 'grid-cols-6')} sm:flex sm:items-center sm:flex-wrap lg:flex-nowrap gap-1 sm:gap-1.5 w-full lg:w-auto`}>
             {displaySlots.map((slot) => {
               const isSelected = (selectedSlotId === slot.slotId);
               const hasPosition = (slot.positionStatus === 'IN_POSITION' || slot.positionStatus === 'HOLDING' || slot.positionStatus === 'TRAILING_ACTIVE') || Boolean(slot.entryPrice && slot.entryPrice > 0);
@@ -296,10 +296,10 @@ export default function SlotManager({
 
               const tabColorClass = isSelected
                 ? (isSwing 
-                    ? 'bg-sky-400 text-black border-sky-300 font-black shadow-md shadow-sky-500/30 scale-105 ring-1 ring-sky-300' 
+                    ? 'bg-sky-400 text-black border-sky-300 font-black shadow-md shadow-sky-500/30 scale-105 ring-1 ring-sky-300 relative z-10' 
                     : isBreakout 
-                    ? 'bg-amber-400 text-black border-amber-300 font-black shadow-md shadow-amber-500/30 scale-105 ring-1 ring-amber-300' 
-                    : 'bg-emerald-500 text-black border-emerald-400 font-black shadow-md shadow-emerald-500/30 scale-105 ring-1 ring-emerald-300')
+                    ? 'bg-amber-400 text-black border-amber-300 font-black shadow-md shadow-amber-500/30 scale-105 ring-1 ring-amber-300 relative z-10' 
+                    : 'bg-emerald-500 text-black border-emerald-400 font-black shadow-md shadow-emerald-500/30 scale-105 ring-1 ring-emerald-300 relative z-10')
                 : !slot.isEnabled
                   ? 'bg-slate-950/60 text-slate-500 border-slate-800 hover:text-slate-400'
                   : hasPosition
@@ -314,23 +314,28 @@ export default function SlotManager({
                 <button
                   key={slot.slotId}
                   onClick={() => handleSlotNavClick(slot.slotId)}
-                  className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold shrink-0 transition-all border cursor-pointer whitespace-nowrap active:scale-95 ${tabColorClass}`}
+                  className={`flex items-center justify-center gap-1 px-1 sm:px-2.5 py-1.5 sm:py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold w-full sm:w-auto transition-all border cursor-pointer whitespace-nowrap active:scale-95 ${tabColorClass}`}
                   title={`${slot.slotId}번 슬롯으로 화면 이동`}
                 >
+                  {/* 모바일: 슬롯번호만 표시 (예: 1번, 2번...) */}
                   <span>{slot.slotId}번</span>
-                  <span className="font-normal truncate max-w-[48px] sm:max-w-[60px]">
+
+                  {/* 데스크탑(sm 이상): 코인명/전략 모드 상세 텍스트 */}
+                  <span className="hidden sm:inline font-normal truncate max-w-[48px] sm:max-w-[60px]">
                     {!slot.isEnabled ? '정지' : (hasPosition && slot.targetMarket ? slot.targetMarket.replace('KRW-', '') : (isSwing ? '스윙' : (isBreakout ? '돌파' : '스캘핑')))}
                   </span>
+
+                  {/* 상태 아이콘: 모바일에서는 포지션 보유 시 펄스 점만 표시, 데스크탑에서는 풀 아이콘 표시 */}
                   {!slot.isEnabled ? (
-                    <span className="text-[9px] text-slate-500 font-mono">⏸️</span>
+                    <span className="hidden sm:inline text-[9px] text-slate-500 font-mono">⏸️</span>
                   ) : hasPosition ? (
-                    <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse shrink-0"></span>
                   ) : isSwing ? (
-                    <span className="text-[9px] text-sky-400" title="정배열 추세 스윙">🌊</span>
+                    <span className="hidden sm:inline text-[9px] text-sky-400" title="정배열 추세 스윙">🌊</span>
                   ) : isBreakout ? (
-                    <span className="text-[9px] text-amber-400" title="당일 신고가 돌파">🚀</span>
+                    <span className="hidden sm:inline text-[9px] text-amber-400" title="당일 신고가 돌파">🚀</span>
                   ) : (
-                    <span className="text-[9px] text-emerald-400" title="초단타 스캘핑">⚡</span>
+                    <span className="hidden sm:inline text-[9px] text-emerald-400" title="초단타 스캘핑">⚡</span>
                   )}
                 </button>
               );
