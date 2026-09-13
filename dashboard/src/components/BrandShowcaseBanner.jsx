@@ -53,7 +53,7 @@ export default function BrandShowcaseBanner({ marketCount = 288 }) {
           </div>
           <div className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 text-center min-w-[100px]">
             <span className="text-[10px] text-slate-400 font-bold block">독립 슬롯</span>
-            <span className="text-base font-black text-indigo-400 font-mono">최대 9개</span>
+            <span className="text-base font-black text-indigo-400 font-mono">최대 12개</span>
           </div>
           <div className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 text-center min-w-[100px]">
             <span className="text-[10px] text-slate-400 font-bold block">보안 수준</span>
@@ -93,17 +93,17 @@ export default function BrandShowcaseBanner({ marketCount = 288 }) {
           </p>
         </div>
 
-        {/* 카드 3 : 1~9개 독립 멀티 슬롯 */}
+        {/* 카드 3 : 1~12개 독립 멀티 슬롯 & 3대 하이브리드 전략 */}
         <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-purple-500/50 transition-all group">
           <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
             <Layers className="w-5 h-5" />
           </div>
           <h3 className="font-extrabold text-white text-sm mb-1 flex items-center justify-between">
             <span>독립 멀티 슬롯 분산</span>
-            <span className="text-[10px] text-purple-400 font-mono font-bold">Multi-Slot</span>
+            <span className="text-[10px] text-purple-400 font-mono font-bold">12 Multi-Slot</span>
           </h3>
           <p className="text-[11px] text-slate-400 leading-relaxed">
-            슬롯마다 독립적인 목표 익절선과 트레일링 스탑, 손절선을 배정하여 계좌 리스크를 철저히 분산하고 안전성을 극대화합니다.
+            최대 12개 슬롯에 스캘핑(1~8), 당일신고가(9~10), 정배열추세(11~12) 3대 전략을 하이브리드로 배정하여 계좌 리스크를 완벽 분산합니다.
           </p>
         </div>
 

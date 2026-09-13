@@ -144,6 +144,23 @@ class UpbitClient {
   }
 
   /**
+   * 일봉 캔들 조회
+   * @param {string} market 예: 'KRW-BTC'
+   * @param {number} count 캔들 개수 (최대 200)
+   */
+  async getDayCandles(market = 'KRW-BTC', count = 100) {
+    try {
+      const response = await axios.get(
+        `${this.serverUrl}/candles/days?market=${market}&count=${count}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Upbit getDayCandles Error:', error.response?.data || error.message);
+      throw error.response?.data || error;
+    }
+  }
+
+  /**
    * 주문 가능 정보 조회 (마켓별 최소 주문 금액, 수수료 등)
    */
   async getOrderChance(market = 'KRW-BTC') {

@@ -58,15 +58,23 @@ import LandingPage from './components/LandingPage';
 
 // 🛠️ 기본 1~9번 분산 트레이딩 슬롯 템플릿 (어떤 상황에서도 슬롯이 비어있지 않도록 보장)
 const DEFAULT_SLOTS = [
-  { id: 1, slotId: 1, slotName: '1번 슬롯', isEnabled: true, targetMarket: 'KRW-BTC', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 2, slotId: 2, slotName: '2번 슬롯', isEnabled: true, targetMarket: 'KRW-ETH', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 3, slotId: 3, slotName: '3번 슬롯', isEnabled: true, targetMarket: 'KRW-SOL', tradeAmountKrw: 30000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 4, slotId: 4, slotName: '4번 슬롯', isEnabled: true, targetMarket: 'KRW-XRP', tradeAmountKrw: 30000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 5, slotId: 5, slotName: '5번 슬롯', isEnabled: true, targetMarket: 'KRW-DOGE', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 6, slotId: 6, slotName: '6번 슬롯', isEnabled: true, targetMarket: 'KRW-ADA', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 7, slotId: 7, slotName: '7번 슬롯', isEnabled: true, targetMarket: 'KRW-AVAX', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 8, slotId: 8, slotName: '8번 슬롯', isEnabled: true, targetMarket: 'KRW-DOT', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 9, slotId: 9, slotName: '9번 슬롯', isEnabled: true, targetMarket: 'KRW-NEAR', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, targetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  // 1~8번: 초단타 스캘핑 (모드 A)
+  { id: 1, slotId: 1, slotName: '1번 주력 슬롯', strategyMode: 'SCALPING', isEnabled: true, targetMarket: 'KRW-BTC', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, targetProfitPct: 3.0, trailingCallbackPct: 0.5, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 2, slotId: 2, slotName: '2번 알트 슬롯', strategyMode: 'SCALPING', isEnabled: true, targetMarket: 'KRW-ETH', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, targetProfitPct: 3.0, trailingCallbackPct: 0.5, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 3, slotId: 3, slotName: '3번 급등 슬롯', strategyMode: 'SCALPING', isEnabled: true, targetMarket: 'KRW-SOL', tradeAmountKrw: 30000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, targetProfitPct: 3.0, trailingCallbackPct: 0.5, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 4, slotId: 4, slotName: '4번 리플 슬롯', strategyMode: 'SCALPING', isEnabled: true, targetMarket: 'KRW-XRP', tradeAmountKrw: 30000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, targetProfitPct: 3.0, trailingCallbackPct: 0.5, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 5, slotId: 5, slotName: '5번 보조 슬롯', strategyMode: 'SCALPING', isEnabled: true, targetMarket: 'KRW-DOGE', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, targetProfitPct: 3.0, trailingCallbackPct: 0.5, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 6, slotId: 6, slotName: '6번 보조 슬롯', strategyMode: 'SCALPING', isEnabled: true, targetMarket: 'KRW-ADA', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, targetProfitPct: 3.0, trailingCallbackPct: 0.5, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 7, slotId: 7, slotName: '7번 보조 슬롯', strategyMode: 'SCALPING', isEnabled: true, targetMarket: 'KRW-AVAX', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, targetProfitPct: 3.0, trailingCallbackPct: 0.5, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 8, slotId: 8, slotName: '8번 보조 슬롯', strategyMode: 'SCALPING', isEnabled: true, targetMarket: 'KRW-DOT', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, targetProfitPct: 3.0, trailingCallbackPct: 0.5, stopLossPct: 2.0, positionStatus: 'IDLE' },
+
+  // 9~10번: 당일 신고가 돌파 (모드 B)
+  { id: 9, slotId: 9, slotName: '9번 돌파 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutHighEnabled: true, breakoutCandleUnit: 1, breakoutMinVolumeKrwEok: 5, isEnabled: true, targetMarket: 'KRW-NEAR', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, targetProfitPct: 3.0, trailingCallbackPct: 0.5, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 10, slotId: 10, slotName: '10번 돌파 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutHighEnabled: true, breakoutCandleUnit: 1, breakoutMinVolumeKrwEok: 5, isEnabled: true, targetMarket: 'KRW-SUI', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, targetProfitPct: 3.0, trailingCallbackPct: 0.5, stopLossPct: 2.0, positionStatus: 'IDLE' },
+
+  // 11~12번: 정배열 추세 스윙 (모드 C)
+  { id: 11, slotId: 11, slotName: '11번 스윙 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'days', swingShortMa: 5, swingLongMa: 20, isEnabled: true, targetMarket: 'KRW-BTC', tradeAmountKrw: 100000, strategyType: 'RECOMMENDED', useWideTrailing: true, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 12.0, trailingTier2CallbackPct: 3.5, targetProfitPct: 5.0, trailingCallbackPct: 1.0, stopLossPct: 3.0, positionStatus: 'IDLE' },
+  { id: 12, slotId: 12, slotName: '12번 스윙 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'minutes/240', swingShortMa: 5, swingLongMa: 20, isEnabled: true, targetMarket: 'KRW-ETH', tradeAmountKrw: 100000, strategyType: 'RECOMMENDED', useWideTrailing: true, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 12.0, trailingTier2CallbackPct: 3.5, targetProfitPct: 5.0, trailingCallbackPct: 1.0, stopLossPct: 3.0, positionStatus: 'IDLE' },
 ];
 
 // 🧪 연구실(LAB) 기본 최고 개발자 마스터 계정 템플릿 (이승호 대표님 실계정 연동)
@@ -82,7 +90,7 @@ const LAB_DEV_USER = {
   role: 'DEVELOPER',
   tier: 'VIP',
   subscriptionExpiresAt: '2099-12-31T23:59:59Z',
-  maxSlots: 9,
+  maxSlots: 12,
   telegramChatId: '5618137472',
   isActive: true,
   hasApiKey: true,
@@ -214,7 +222,17 @@ export default function App() {
       const cached = localStorage.getItem('nurioh_cached_slots');
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length >= 12) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // 12개 슬롯으로 보강 (이전 캐시의 10~12번 누락 자동 보충)
+          const merged = [...parsed];
+          DEFAULT_SLOTS.forEach(defSlot => {
+            if (!merged.some(s => s.slotId === defSlot.slotId)) {
+              merged.push(defSlot);
+            }
+          });
+          return merged;
+        }
       }
     } catch (e) {}
     return DEFAULT_SLOTS;
@@ -255,6 +273,7 @@ export default function App() {
   // 실시간 활성 매수 제한 상태 (헤더 배지 연동용)
   const [activeBuyRestriction, setActiveBuyRestriction] = useState(() => checkBuyRestricted(buyTimeBlocks));
 
+  // 2초 주기로 현재 시각이 매수 제한 구간(08:50~09:10, 18:00~18:30 등)인지 정밀 감시
   useEffect(() => {
     const timer = setInterval(() => {
       const res = checkBuyRestricted(buyTimeBlocksRef.current);
@@ -277,9 +296,9 @@ export default function App() {
     return 288;
   });
 
-  // 회원 등급에 따른 슬롯 개수 제한 적용 (Free: 1개, Pro: 3개, VIP/운영자/개발자: 9개)
+  // 회원 등급에 따른 슬롯 개수 제한 적용 (Free: 1개, Pro: 3개, VIP/운영자/개발자: 12개)
   const isPrivileged = (currentUser?.role === 'OPERATOR' || currentUser?.role === 'DEVELOPER' || currentUser?.role === 'ADMIN' || currentUser?.tier === 'VIP');
-  const maxSlotsAllowed = isPrivileged ? 9 : (currentUser?.tier === 'PRO' ? 3 : 1);
+  const maxSlotsAllowed = isPrivileged ? 12 : (currentUser?.tier === 'PRO' ? 3 : 1);
   const effectiveSlots = (slots && slots.length > 0) ? slots : DEFAULT_SLOTS;
   const visibleSlots = effectiveSlots.slice(0, maxSlotsAllowed);
 
@@ -1389,8 +1408,8 @@ export default function App() {
       sessionStorage.setItem('nurioh_user_profile', JSON.stringify(LAB_DEV_USER));
     } catch (e) {}
     setCurrentUser(LAB_DEV_USER);
-    setDevModeOverride({ tier: 'VIP', role: 'DEVELOPER', maxSlots: 9 });
-    devModeRef.current = { tier: 'VIP', role: 'DEVELOPER', maxSlots: 9 };
+    setDevModeOverride({ tier: 'VIP', role: 'DEVELOPER', maxSlots: 12 });
+    devModeRef.current = { tier: 'VIP', role: 'DEVELOPER', maxSlots: 12 };
     setIsKakaoModalOpen(false);
     loadData();
   };
@@ -1851,7 +1870,7 @@ export default function App() {
       {/* 🏛️ [연구실/실험실 전용 상단 띠 배너] 운영자/개발자 사전 체험 전용 안내 */}
       {isStagingLab ? (
         <div className="bg-gradient-to-r from-amber-600/90 via-orange-600/90 to-amber-700/90 text-white px-4 py-2 border-b border-amber-400/50 shadow-md">
-          <div className="max-w-7xl mx-auto flex items-center justify-between text-xs sm:text-sm font-bold">
+          <div className="app-container-80 px-3 sm:px-4 flex items-center justify-between text-xs sm:text-sm font-bold">
             <div className="flex items-center gap-2">
               <span className="text-base animate-bounce">🔬</span>
               <span>[실험실 v{APP_VERSION}] 운영자 전용 사전 검증 공간입니다.</span>
@@ -1866,7 +1885,7 @@ export default function App() {
         </div>
       ) : isLocalLab ? (
         <div className="bg-gradient-to-r from-purple-900/90 via-indigo-900/90 to-purple-950/90 text-white px-4 py-2 border-b border-purple-400/50 shadow-md">
-          <div className="max-w-7xl mx-auto flex items-center justify-between text-xs sm:text-sm font-bold">
+          <div className="app-container-80 px-3 sm:px-4 flex items-center justify-between text-xs sm:text-sm font-bold">
             <div className="flex items-center gap-2">
               <span className="text-base animate-bounce">🧪</span>
               <span>[연구실 v{APP_VERSION}] 대표님 로컬 연구 및 개발 전용 공간입니다.</span>
@@ -1881,8 +1900,8 @@ export default function App() {
         </div>
       ) : null}
 
-      {/* 메인 콘텐츠 영역 (상단 헤더와 좌우 라인 100% 일치) */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-6">
+      {/* 메인 콘텐츠 영역 (PC 모드: 화면 너비의 80% 고정 레이아웃, 가로 4열 x 세로 3행) */}
+      <main className="flex-1 app-container-80 px-3 sm:px-4 py-4 sm:py-6 space-y-6">
         {/* 계좌 잔고 요약 카드 */}
         <BalanceCard 
           accounts={accounts} 

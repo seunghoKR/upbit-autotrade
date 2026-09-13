@@ -277,14 +277,21 @@ export default function SettingsModal({
                   const isHolding = slot.positionStatus !== 'IDLE' && slot.targetMarket;
                   return (
                     <div key={slot.slotId} className="flex items-center justify-between bg-slate-950/80 px-3.5 py-2 rounded-xl border border-slate-800/80 text-xs sm:text-sm">
-                      <div className="flex items-center gap-2.5 flex-wrap">
-                        <span className={`w-2.5 h-2.5 rounded-full ${slot.isEnabled ? 'bg-emerald-400' : 'bg-slate-600'}`}></span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`w-2 h-2 rounded-full ${slot.isEnabled ? 'bg-emerald-400' : 'bg-slate-600'}`}></span>
                         <span className="font-mono text-slate-300 font-bold">Slot {slot.slotId}:</span>
-                        <span className={`font-black font-mono text-sm ${isHolding ? 'text-amber-300' : 'text-slate-500'}`}>
+                        {slot.strategyMode === 'TREND_SWING' ? (
+                          <span className="text-[9px] px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 font-sans font-bold border border-sky-500/30">🌊 스윙</span>
+                        ) : slot.strategyMode === 'BREAKOUT_DAY_HIGH' ? (
+                          <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-sans font-bold border border-amber-500/30">🚀 돌파</span>
+                        ) : (
+                          <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-sans font-bold border border-emerald-500/30">⚡ 스캘핑</span>
+                        )}
+                        <span className={`font-black font-mono text-xs sm:text-sm ${isHolding ? 'text-amber-300' : 'text-slate-500'}`}>
                           [ {slot.targetMarket ? slot.targetMarket.replace('KRW-', '') : '-'} ]
                         </span>
-                        <span className="text-xs text-slate-400">
-                          {isHolding ? `(수익률: ${slot.profitRate || 0}%)` : (slot.isEnabled ? '급등 포착 대기' : '비활성화')}
+                        <span className="text-[11px] text-slate-400">
+                          {isHolding ? `(수익률: ${slot.profitRate || 0}%)` : (slot.isEnabled ? '감시 대기' : '비활성화')}
                         </span>
                       </div>
 

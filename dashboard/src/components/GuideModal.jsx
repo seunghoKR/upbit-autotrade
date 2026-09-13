@@ -60,15 +60,15 @@ export default function GuideModal({ isOpen, onClose }) {
           </div>
         </div>
 
-        {/* 3. 전략 파라미터 튜닝 안내 */}
+        {/* 3. 3대 전략 모드 & 다단 트레일링 익절 가이드 */}
         <div className="space-y-2">
           <h3 className="text-sm font-bold text-purple-400 flex items-center gap-2">
-            <Smartphone className="w-4 h-4" /> 3. 전략 설정 가이드
+            <Smartphone className="w-4 h-4" /> 3. 3대 전략 모드 &amp; 와이드 익절 가이드 (1~12번 슬롯)
           </h3>
           <div className="bg-dark-bg p-4 rounded-2xl border border-dark-border text-xs text-slate-300 space-y-2 leading-relaxed">
-            <p>• <b>1회 매수 금액:</b> 업비트 최소 주문 금액인 5,000원 이상으로 설정 (연습 시 5,000원~10,000원 권장)</p>
-            <p>• <b>급등 감시 / 상승률:</b> 최근 5초~30초간 일정 상승률 이상 돌파 시 즉시 추격 매수 진입</p>
-            <p>• <b>손절선 / 목표 익절선:</b> -2.0% 도달 시 즉시 손절, +3.0% 이상 도달 시 트레일링 익절 추적 시작</p>
+            <p>• <b>모드 A (초단타 스캘핑, 1~8번):</b> 5초 급등 및 수급 즉시 추격 진입, 1단 익절(+3%) 및 2단 와이드(+10% 이상 대시세 홀딩)</p>
+            <p>• <b>모드 B (당일 신고가 돌파, 9~10번):</b> 09:00 KST 장중 최고가 돌파 + 분봉 대금 5억 이상 시 진입 (08:50~09:30 타임락 방어)</p>
+            <p>• <b>모드 C (정배열 추세 스윙, 11~12번):</b> 일봉/4시간봉 5선 &gt; 20선 골든크로스 스윙 진입, 데드크로스 발생 시 시장가 즉시 청산</p>
           </div>
         </div>
 

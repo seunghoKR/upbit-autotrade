@@ -76,9 +76,14 @@ module.exports = {
     // 💰 [원화 고갈 방어 버퍼] 최소 비상 원화 잔고 (20,000원) 유지
     MIN_KRW_RESERVE_BUFFER: 20000,
 
-    // 트레일링 스탑 파라미터
+    // 트레일링 스탑 파라미터 (기본 & 2단계 와이드 트레일링 스탑)
     TRAILING_TARGET_PROFIT_PCT: 3.0, // 트레일링 감시 시작 목표 수익률 (%)
     TRAILING_CALLBACK_PCT: 1.0, // 최고점 대비 하락 폭 이익실현 매도 (%)
+    USE_WIDE_TRAILING: true, // 다단(와이드) 트레일링 스탑 활성화
+    TRAILING_TIER1_TARGET_PROFIT_PCT: 3.0, // 1단계 감시익절 시작 (%)
+    TRAILING_TIER1_CALLBACK_PCT: 0.5, // 1단계 타이트 콜백 폭 (%)
+    TRAILING_TIER2_HURDLE_PCT: 10.0, // 2단계 대시세 진입 허들 (%)
+    TRAILING_TIER2_CALLBACK_PCT: 3.0, // 2단계 와이드 콜백 폭 (%)
 
     // RSI 지표
     RSI_PERIOD: 14,

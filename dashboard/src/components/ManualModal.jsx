@@ -285,11 +285,75 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
               </div>
             </div>
 
-            {/* 3. 주요 제어 버튼 기능 안내 */}
+            {/* 3. 🌟 3대 독립 전략 모드 및 다단(와이드) 트레일링 스탑 시스템 */}
+            <div className="bg-slate-950/80 p-5 rounded-2xl border border-indigo-500/40 space-y-4">
+              <h4 className="text-base font-black text-slate-100 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-amber-400" />
+                3. 🌟 3대 독립 전략 모드 & 다단(와이드) 트레일링 스탑 시스템 (v3.4.0)
+              </h4>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs sm:text-[13px]">
+                {/* 모드 A */}
+                <div className="bg-slate-900/90 p-4 rounded-xl border border-emerald-500/30 space-y-2">
+                  <div className="font-bold text-emerald-300 flex items-center gap-1.5 text-sm">
+                    <Zap className="w-4 h-4 text-emerald-400" />
+                    <span>모드 A: 초단타 스캘핑 (1~8번)</span>
+                  </div>
+                  <p className="text-slate-300 leading-relaxed">
+                    초단위 틱 버퍼 기반으로 5초 +1.5% 급등과 1,000만원 이상 수급을 0.1초 만에 감지하여 빠르게 치고 빠지는 고성능 단타 전략입니다.
+                  </p>
+                  <div className="text-[11px] font-mono text-emerald-400 bg-slate-950/80 p-2 rounded-lg border border-emerald-500/20">
+                    익절: 1단 +3% (콜백 -0.5%) / 2단 와이드 +10% (콜백 -3.0%)
+                  </div>
+                </div>
+
+                {/* 모드 B */}
+                <div className="bg-slate-900/90 p-4 rounded-xl border border-amber-500/30 space-y-2">
+                  <div className="font-bold text-amber-300 flex items-center gap-1.5 text-sm">
+                    <Flame className="w-4 h-4 text-amber-400" />
+                    <span>모드 B: 당일 신고가 돌파 (9~10번)</span>
+                  </div>
+                  <p className="text-slate-300 leading-relaxed">
+                    오전 09:00(KST) 이후 장중 최고가를 1/3분봉 캔들 거래대금(5억원+)을 동반하며 돌파할 때 진입하는 모멘텀 돌파 전략입니다.
+                  </p>
+                  <div className="text-[11px] font-mono text-amber-300 bg-slate-950/80 p-2 rounded-lg border border-amber-500/20">
+                    안전장치: 08:50~09:30 장 시작 변동성 타임락 자동 차단
+                  </div>
+                </div>
+
+                {/* 모드 C */}
+                <div className="bg-slate-900/90 p-4 rounded-xl border border-sky-500/30 space-y-2">
+                  <div className="font-bold text-sky-300 flex items-center gap-1.5 text-sm">
+                    <Activity className="w-4 h-4 text-sky-400" />
+                    <span>모드 C: 정배열 추세 스윙 (11~12번)</span>
+                  </div>
+                  <p className="text-slate-300 leading-relaxed">
+                    일봉/4시간봉 이동평균선(5선 &gt; 20선) 골든크로스 정배열 구간을 추종하여 큰 추세 파동을 길게 먹는 중기 스윙 전략입니다.
+                  </p>
+                  <div className="text-[11px] font-mono text-sky-300 bg-slate-950/80 p-2 rounded-lg border border-sky-500/20">
+                    비상 청산: 데드크로스(5선 &lt; 20선) 발생 시 시장가 즉시 전량 매도
+                  </div>
+                </div>
+              </div>
+
+              {/* 와이드 트레일링 스탑 상세 */}
+              <div className="bg-purple-950/30 p-3.5 rounded-xl border border-purple-500/30 flex items-start gap-3">
+                <Crown className="w-5 h-5 text-purple-400 shrink-0 mt-0.5" />
+                <div className="text-xs space-y-1">
+                  <strong className="text-purple-300 text-sm block">🎯 2단계 다단(와이드) 트레일링 스탑 시스템 탑재</strong>
+                  <p className="text-slate-300 leading-relaxed">
+                    <strong>1단계(+10% 미만 잔파도):</strong> +3% 목표 도달 시 콜백 -0.5%로 타이트하게 익절하여 수익을 확정합니다.<br />
+                    <strong>2단계(+10% 이상 대시세):</strong> 상승률이 +10%를 뚫으면 와이드 모드로 자동 전환되어, 콜백 허용치를 -3.0%로 넓혀 잔파도에 털리지 않고 <strong>+30%~+100% 대박 수익을 끝까지 홀딩</strong>합니다!
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* 4. 주요 제어 버튼 기능 안내 */}
             <div className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800 space-y-4">
               <h4 className="text-base font-black text-slate-100 flex items-center gap-2">
                 <Sliders className="w-5 h-5 text-indigo-400" />
-                3. 핵심 화면 제어 버튼 가이드
+                4. 핵심 화면 제어 버튼 가이드
               </h4>
 
               <div className="space-y-3">
@@ -298,7 +362,7 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
                     [ 슬롯 원클릭 선택 ]
                   </span>
                   <p className="text-slate-200 text-xs sm:text-sm leading-relaxed">
-                    1~9번 슬롯 중 확인하고 싶은 슬롯을 콕 누르면, <strong>해당 코인의 실시간 원화(KRW) 전용 차트 그래프</strong>로 즉각 전환됩니다.
+                    1~12번 슬롯 중 확인하고 싶은 슬롯을 콕 누르면, <strong>해당 코인의 실시간 원화(KRW) 전용 차트 그래프</strong>로 즉각 전환됩니다.
                   </p>
                 </div>
 
@@ -335,7 +399,7 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
                   Q1. 급등 감지 민감도나 1회 매수금액을 변경하고 싶어요. 어디서 하나요?
                 </h5>
                 <p className="text-slate-300 text-xs sm:text-sm leading-relaxed pl-7">
-                  👉 화면 상단 헤더의 <strong>[⚙️ 설정]</strong> 버튼을 누르시면, <strong>급등 감지 초/상승률(%), 최소 거래대금 필터, 슬롯 개수(1~5개), 트레일링 스탑 목표치</strong>를 자유자재로 수정하고 바로 저장하실 수 있습니다.
+                  👉 화면 상단 헤더의 <strong>[전략관리]</strong> 및 각 슬롯 카드의 <strong>[⚙️ 설정]</strong> 버튼을 누르시면, <strong>급등 감지 초/상승률(%), 최소 거래대금 필터, 12개 슬롯(스캘핑/신고가/스윙), 2단 와이드 트레일링 스탑 목표치</strong>를 자유자재로 수정하고 바로 저장하실 수 있습니다.
                 </p>
               </div>
 

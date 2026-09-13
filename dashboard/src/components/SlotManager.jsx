@@ -32,15 +32,23 @@ import ImportCoinModal from './ImportCoinModal';
 import { formatCoinWithKo, getCoinNameKo } from '../services/coinNames';
 
 const DEFAULT_SLOTS = [
-  { id: 1, slotId: 1, slotName: '1번 슬롯', isEnabled: true, targetMarket: 'KRW-BTC', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, trailingTargetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 2, slotId: 2, slotName: '2번 슬롯', isEnabled: true, targetMarket: 'KRW-ETH', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, trailingTargetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 3, slotId: 3, slotName: '3번 슬롯', isEnabled: true, targetMarket: 'KRW-SOL', tradeAmountKrw: 30000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, trailingTargetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 4, slotId: 4, slotName: '4번 슬롯', isEnabled: true, targetMarket: 'KRW-XRP', tradeAmountKrw: 30000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, trailingTargetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 5, slotId: 5, slotName: '5번 슬롯', isEnabled: true, targetMarket: 'KRW-DOGE', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, trailingTargetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 6, slotId: 6, slotName: '6번 슬롯', isEnabled: true, targetMarket: 'KRW-ADA', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, trailingTargetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 7, slotId: 7, slotName: '7번 슬롯', isEnabled: true, targetMarket: 'KRW-AVAX', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, trailingTargetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 8, slotId: 8, slotName: '8번 슬롯', isEnabled: true, targetMarket: 'KRW-DOT', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, trailingTargetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 9, slotId: 9, slotName: '9번 슬롯', isEnabled: true, targetMarket: 'KRW-NEAR', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, trailingTargetProfitPct: 3.0, trailingCallbackPct: 1.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  // 1~8번: 초단타 스캘핑 (모드 A)
+  { id: 1, slotId: 1, slotName: '1번 주력 슬롯', strategyMode: 'SCALPING', isEnabled: true, targetMarket: 'KRW-BTC', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 2, slotId: 2, slotName: '2번 알트 슬롯', strategyMode: 'SCALPING', isEnabled: true, targetMarket: 'KRW-ETH', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 3, slotId: 3, slotName: '3번 급등 슬롯', strategyMode: 'SCALPING', isEnabled: true, targetMarket: 'KRW-SOL', tradeAmountKrw: 30000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 4, slotId: 4, slotName: '4번 리플 슬롯', strategyMode: 'SCALPING', isEnabled: true, targetMarket: 'KRW-XRP', tradeAmountKrw: 30000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 5, slotId: 5, slotName: '5번 보조 슬롯', strategyMode: 'SCALPING', isEnabled: true, targetMarket: 'KRW-DOGE', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 6, slotId: 6, slotName: '6번 보조 슬롯', strategyMode: 'SCALPING', isEnabled: true, targetMarket: 'KRW-ADA', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 7, slotId: 7, slotName: '7번 보조 슬롯', strategyMode: 'SCALPING', isEnabled: true, targetMarket: 'KRW-AVAX', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 8, slotId: 8, slotName: '8번 보조 슬롯', strategyMode: 'SCALPING', isEnabled: true, targetMarket: 'KRW-DOT', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+
+  // 9~10번: 당일 신고가 돌파 (모드 B)
+  { id: 9, slotId: 9, slotName: '9번 돌파 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutHighEnabled: true, breakoutCandleUnit: 1, breakoutMinVolumeKrwEok: 5, isEnabled: true, targetMarket: 'KRW-NEAR', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+  { id: 10, slotId: 10, slotName: '10번 돌파 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutHighEnabled: true, breakoutCandleUnit: 1, breakoutMinVolumeKrwEok: 5, isEnabled: true, targetMarket: 'KRW-SUI', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
+
+  // 11~12번: 정배열 추세 스윙 (모드 C)
+  { id: 11, slotId: 11, slotName: '11번 스윙 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'days', swingShortMa: 5, swingLongMa: 20, isEnabled: true, targetMarket: 'KRW-BTC', tradeAmountKrw: 100000, strategyType: 'RECOMMENDED', useWideTrailing: true, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 12.0, trailingTier2CallbackPct: 3.5, stopLossPct: 3.0, positionStatus: 'IDLE' },
+  { id: 12, slotId: 12, slotName: '12번 스윙 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'minutes/240', swingShortMa: 5, swingLongMa: 20, isEnabled: true, targetMarket: 'KRW-ETH', tradeAmountKrw: 100000, strategyType: 'RECOMMENDED', useWideTrailing: true, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 12.0, trailingTier2CallbackPct: 3.5, stopLossPct: 3.0, positionStatus: 'IDLE' },
 ];
 
 const formatPrice = (p) => {
@@ -76,6 +84,7 @@ export default function SlotManager({
   const [activeTabSlotId, setActiveTabSlotId] = useState(1);
   const [editForm, setEditForm] = useState({
     tradeAmountKrw: 50000,
+    strategyMode: 'SCALPING',
     strategyType: 'RECOMMENDED',
     surgeWindowSeconds: 5,
     surgeRatePct: 1.5,
@@ -87,8 +96,19 @@ export default function SlotManager({
     whaleMinAmountKrw: 10000000,
     useOrderbookFilter: true,
     surgeBaseMode: 'VWAP',
+    breakoutHighEnabled: true,
+    breakoutCandleUnit: 1,
+    breakoutMinVolumeKrwEok: 5,
+    swingCandleUnit: 'days',
+    swingShortMa: 5,
+    swingLongMa: 20,
+    useWideTrailing: true,
+    trailingTier1TargetProfitPct: 3.0,
+    trailingTier1CallbackPct: 0.5,
+    trailingTier2HurdlePct: 10.0,
+    trailingTier2CallbackPct: 3.0,
     trailingTargetProfitPct: 3.0,
-    trailingCallbackPct: 1.0,
+    trailingCallbackPct: 0.5,
     stopLossPct: 2.0,
     useAtrStopLoss: false
   });
@@ -105,7 +125,7 @@ export default function SlotManager({
     setIsImportModalOpen(true);
   };
 
-  // 🎯 1~9번 슬롯 탭 클릭 시 해당 슬롯 카드로 화면 부드럽게 스크롤 이동
+  // 🎯 1~12번 슬롯 탭 클릭 시 해당 슬롯 카드로 화면 부드럽게 스크롤 이동
   const handleSlotNavClick = (slotId) => {
     if (onSelectSlot) {
       onSelectSlot(slotId);
@@ -121,14 +141,23 @@ export default function SlotManager({
   const handleStartEdit = (e, slot) => {
     e.stopPropagation();
     setEditingSlotId(slot.slotId);
-    const targetProfit = (slot.targetProfitPct !== undefined && slot.targetProfitPct !== null && slot.targetProfitPct !== '') 
-      ? slot.targetProfitPct 
-      : (slot.trailingTargetProfitPct !== undefined && slot.trailingTargetProfitPct !== null && slot.trailingTargetProfitPct !== '' ? slot.trailingTargetProfitPct : 3.0);
-    const callback = (slot.trailingCallbackPct !== undefined && slot.trailingCallbackPct !== null && slot.trailingCallbackPct !== '') ? slot.trailingCallbackPct : 1.0;
+    const targetProfit = (slot.trailingTier1TargetProfitPct !== undefined && slot.trailingTier1TargetProfitPct !== null && slot.trailingTier1TargetProfitPct !== '')
+      ? slot.trailingTier1TargetProfitPct
+      : ((slot.targetProfitPct !== undefined && slot.targetProfitPct !== null && slot.targetProfitPct !== '') 
+          ? slot.targetProfitPct 
+          : (slot.trailingTargetProfitPct !== undefined && slot.trailingTargetProfitPct !== null && slot.trailingTargetProfitPct !== '' ? slot.trailingTargetProfitPct : 3.0));
+
+    const callback = (slot.trailingTier1CallbackPct !== undefined && slot.trailingTier1CallbackPct !== null && slot.trailingTier1CallbackPct !== '')
+      ? slot.trailingTier1CallbackPct
+      : ((slot.trailingCallbackPct !== undefined && slot.trailingCallbackPct !== null && slot.trailingCallbackPct !== '') ? slot.trailingCallbackPct : 0.5);
+
     const stopLoss = (slot.stopLossPct !== undefined && slot.stopLossPct !== null && slot.stopLossPct !== '') ? slot.stopLossPct : 2.0;
+
+    const inferredMode = slot.strategyMode || (slot.slotId >= 11 ? 'TREND_SWING' : (slot.slotId >= 9 ? 'BREAKOUT_DAY_HIGH' : 'SCALPING'));
 
     setEditForm({
       tradeAmountKrw: slot.tradeAmountKrw !== undefined ? slot.tradeAmountKrw : 50000,
+      strategyMode: inferredMode,
       strategyType: slot.strategyType || 'RECOMMENDED',
       surgeWindowSeconds: slot.surgeWindowSeconds !== undefined ? slot.surgeWindowSeconds : 5,
       surgeRatePct: slot.surgeRatePct !== undefined ? slot.surgeRatePct : 1.5,
@@ -140,6 +169,17 @@ export default function SlotManager({
       whaleMinAmountKrw: slot.whaleMinAmountKrw !== undefined ? slot.whaleMinAmountKrw : 10000000,
       useOrderbookFilter: slot.useOrderbookFilter !== undefined ? Boolean(slot.useOrderbookFilter) : true,
       surgeBaseMode: slot.surgeBaseMode || 'VWAP',
+      breakoutHighEnabled: slot.breakoutHighEnabled !== undefined ? Boolean(slot.breakoutHighEnabled) : true,
+      breakoutCandleUnit: slot.breakoutCandleUnit || 1,
+      breakoutMinVolumeKrwEok: slot.breakoutMinVolumeKrwEok !== undefined ? slot.breakoutMinVolumeKrwEok : 5,
+      swingCandleUnit: slot.swingCandleUnit || 'days',
+      swingShortMa: slot.swingShortMa || 5,
+      swingLongMa: slot.swingLongMa || 20,
+      useWideTrailing: slot.useWideTrailing !== undefined ? Boolean(slot.useWideTrailing) : true,
+      trailingTier1TargetProfitPct: targetProfit,
+      trailingTier1CallbackPct: callback,
+      trailingTier2HurdlePct: slot.trailingTier2HurdlePct !== undefined ? slot.trailingTier2HurdlePct : 10.0,
+      trailingTier2CallbackPct: slot.trailingTier2CallbackPct !== undefined ? slot.trailingTier2CallbackPct : 3.0,
       targetProfitPct: targetProfit,
       trailingTargetProfitPct: targetProfit,
       trailingCallbackPct: callback,
@@ -155,15 +195,18 @@ export default function SlotManager({
     }
 
     if (onUpdateSlot) {
-      const targetProfit = (editForm.targetProfitPct !== undefined && editForm.targetProfitPct !== '') 
-        ? editForm.targetProfitPct 
-        : (editForm.trailingTargetProfitPct !== undefined && editForm.trailingTargetProfitPct !== '' ? editForm.trailingTargetProfitPct : 3.0);
+      const targetProfit = (editForm.trailingTier1TargetProfitPct !== undefined && editForm.trailingTier1TargetProfitPct !== '')
+        ? Number(editForm.trailingTier1TargetProfitPct)
+        : ((editForm.targetProfitPct !== undefined && editForm.targetProfitPct !== '') 
+            ? Number(editForm.targetProfitPct) 
+            : 3.0);
 
       const currentSlot = slots.find(s => (s.id === slotId || s.slotId === slotId));
 
       onUpdateSlot(slotId, {
         isEnabled: currentSlot ? currentSlot.isEnabled : true,
         tradeAmountKrw: editForm.tradeAmountKrw,
+        strategyMode: editForm.strategyMode,
         strategyType: editForm.strategyType,
         surgeWindowSeconds: editForm.surgeWindowSeconds,
         surgeRatePct: editForm.surgeRatePct,
@@ -175,10 +218,21 @@ export default function SlotManager({
         whaleMinAmountKrw: parseFloat(editForm.whaleMinAmountKrw) || 10000000,
         useOrderbookFilter: Boolean(editForm.useOrderbookFilter),
         surgeBaseMode: editForm.surgeBaseMode || 'VWAP',
+        breakoutHighEnabled: Boolean(editForm.breakoutHighEnabled),
+        breakoutCandleUnit: Number(editForm.breakoutCandleUnit) || 1,
+        breakoutMinVolumeKrwEok: Number(editForm.breakoutMinVolumeKrwEok) || 5,
+        swingCandleUnit: editForm.swingCandleUnit || 'days',
+        swingShortMa: Number(editForm.swingShortMa) || 5,
+        swingLongMa: Number(editForm.swingLongMa) || 20,
+        useWideTrailing: Boolean(editForm.useWideTrailing),
+        trailingTier1TargetProfitPct: targetProfit,
+        trailingTier1CallbackPct: parseFloat(editForm.trailingTier1CallbackPct) || 0.5,
+        trailingTier2HurdlePct: parseFloat(editForm.trailingTier2HurdlePct) || 10.0,
+        trailingTier2CallbackPct: parseFloat(editForm.trailingTier2CallbackPct) || 3.0,
         targetProfitPct: targetProfit,
         trailingTargetProfitPct: targetProfit,
-        trailingCallbackPct: editForm.trailingCallbackPct,
-        stopLossPct: editForm.stopLossPct,
+        trailingCallbackPct: parseFloat(editForm.trailingTier1CallbackPct) || 0.5,
+        stopLossPct: parseFloat(editForm.stopLossPct) || 2.0,
         useAtrStopLoss: Boolean(editForm.useAtrStopLoss)
       });
     }
@@ -215,7 +269,7 @@ export default function SlotManager({
 
   return (
     <div className="space-y-4">
-      {/* 1. 상단 슬롯 헤더 & 1~9번 슬롯 탭 네비게이션 통합 바 (1줄 콤팩트 디자인) */}
+      {/* 1. 상단 슬롯 헤더 & 1~12번 슬롯 탭 네비게이션 통합 바 (1줄 콤팩트 디자인) */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl backdrop-blur-md">
         <div className="flex items-center gap-2 shrink-0">
           <div className="p-1.5 sm:p-2 rounded-xl bg-gradient-to-tr from-emerald-500/20 via-teal-500/15 to-indigo-500/20 border border-emerald-500/30 text-emerald-400">
@@ -231,37 +285,52 @@ export default function SlotManager({
           </div>
         </div>
 
-        {/* 2. 1~9번 슬롯 탭 버튼 바 (9개 슬롯 모두 짤림 없이 1줄 핏) */}
+        {/* 2. 1~12번 슬롯 탭 버튼 바 */}
         {displaySlots.length > 1 && (
           <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto pb-0.5 lg:pb-0 scrollbar-none">
             {displaySlots.map((slot) => {
               const isSelected = (selectedSlotId === slot.slotId);
               const hasPosition = (slot.positionStatus === 'IN_POSITION' || slot.positionStatus === 'HOLDING' || slot.positionStatus === 'TRAILING_ACTIVE') || Boolean(slot.entryPrice && slot.entryPrice > 0);
+              const isBreakout = slot.strategyMode === 'BREAKOUT_DAY_HIGH';
+              const isSwing = slot.strategyMode === 'TREND_SWING';
+
+              const tabColorClass = isSelected
+                ? (isSwing 
+                    ? 'bg-sky-400 text-black border-sky-300 font-black shadow-md shadow-sky-500/30 scale-105 ring-1 ring-sky-300' 
+                    : isBreakout 
+                    ? 'bg-amber-400 text-black border-amber-300 font-black shadow-md shadow-amber-500/30 scale-105 ring-1 ring-amber-300' 
+                    : 'bg-emerald-500 text-black border-emerald-400 font-black shadow-md shadow-emerald-500/30 scale-105 ring-1 ring-emerald-300')
+                : !slot.isEnabled
+                  ? 'bg-slate-950/60 text-slate-500 border-slate-800 hover:text-slate-400'
+                  : hasPosition
+                  ? 'bg-slate-800/90 text-rose-300 border-rose-500/40 hover:bg-slate-800 shadow-sm shadow-rose-950/50'
+                  : isSwing
+                  ? 'bg-slate-950/90 text-sky-400 border-sky-500/30 hover:text-white hover:bg-sky-950/50 hover:border-sky-400'
+                  : isBreakout
+                  ? 'bg-slate-950/90 text-amber-400 border-amber-500/30 hover:text-white hover:bg-amber-950/50 hover:border-amber-400'
+                  : 'bg-slate-950/90 text-emerald-400 border-emerald-500/30 hover:text-white hover:bg-emerald-950/50 hover:border-emerald-400';
+
               return (
                 <button
                   key={slot.slotId}
                   onClick={() => handleSlotNavClick(slot.slotId)}
-                  className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold shrink-0 transition-all border cursor-pointer whitespace-nowrap active:scale-95 ${
-                    isSelected
-                      ? 'bg-emerald-500 text-black border-emerald-400 font-black shadow-md shadow-emerald-500/30 scale-105'
-                      : !slot.isEnabled
-                        ? 'bg-slate-950/60 text-slate-500 border-slate-800 hover:text-slate-400'
-                        : hasPosition
-                        ? 'bg-slate-800/90 text-emerald-300 border-emerald-500/30 hover:bg-slate-800'
-                        : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white hover:bg-slate-800'
-                  }`}
+                  className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold shrink-0 transition-all border cursor-pointer whitespace-nowrap active:scale-95 ${tabColorClass}`}
                   title={`${slot.slotId}번 슬롯으로 화면 이동`}
                 >
                   <span>{slot.slotId}번</span>
                   <span className="font-normal truncate max-w-[48px] sm:max-w-[60px]">
-                    {!slot.isEnabled ? '정지' : (hasPosition && slot.targetMarket ? slot.targetMarket.replace('KRW-', '') : '대기')}
+                    {!slot.isEnabled ? '정지' : (hasPosition && slot.targetMarket ? slot.targetMarket.replace('KRW-', '') : (isSwing ? '스윙' : (isBreakout ? '돌파' : '스캘핑')))}
                   </span>
                   {!slot.isEnabled ? (
                     <span className="text-[9px] text-slate-500 font-mono">⏸️</span>
                   ) : hasPosition ? (
                     <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span>
+                  ) : isSwing ? (
+                    <span className="text-[9px] text-sky-400" title="정배열 추세 스윙">🌊</span>
+                  ) : isBreakout ? (
+                    <span className="text-[9px] text-amber-400" title="당일 신고가 돌파">🚀</span>
                   ) : (
-                    <span className="text-[9px] text-emerald-400">⚡</span>
+                    <span className="text-[9px] text-emerald-400" title="초단타 스캘핑">⚡</span>
                   )}
                 </button>
               );
@@ -270,8 +339,8 @@ export default function SlotManager({
         )}
       </div>
 
-      {/* 3. 슬롯 카드 그리드 (1개 슬롯은 화면 가운데 정렬, 멀티 슬롯은 PC 3열 그리드 배치) */}
-      <div className={displaySlots.length === 1 ? "flex justify-center py-2" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4"}>
+      {/* 3. 슬롯 카드 그리드 (PC 와이드 4열 x 3행: 1,2,3,4 / 5,6,7,8 / 9,10,11,12 완벽 배치) */}
+      <div className={displaySlots.length === 1 ? "flex justify-center py-2" : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5"}>
         {displaySlots.map((slot) => {
           const isSelected = (selectedSlotId === slot.slotId);
           const isEditing = (editingSlotId === slot.slotId);
@@ -310,28 +379,49 @@ export default function SlotManager({
 
           const isPendingApproval = (currentUser?.role !== 'DEVELOPER' && currentUser?.role !== 'OPERATOR' && currentUser?.approvalStatus === 'PENDING');
           const isSelfStrategy = (slot.strategyType === 'SELF');
+          const isBreakout = (slot.strategyMode === 'BREAKOUT_DAY_HIGH');
+          const isSwing = (slot.strategyMode === 'TREND_SWING');
 
           return (
             <div
               key={slot.slotId}
               id={`slot-card-${slot.slotId}`}
               onClick={() => handleSlotNavClick(slot.slotId)}
-              className={`rounded-2xl p-4 sm:p-5 border transition-all duration-300 scroll-mt-24 cursor-pointer relative overflow-hidden flex flex-col justify-between min-h-[320px] select-none ${
+              className={`rounded-2xl p-3.5 sm:p-4 border transition-all duration-300 scroll-mt-24 cursor-pointer relative overflow-hidden flex flex-col justify-between min-h-[300px] select-none ${
                 displaySlots.length === 1 ? 'max-w-xl w-full ' : ''
               }${
                 !slot.isEnabled
                   ? (isSelected ? 'bg-slate-950 border-slate-700 ring-2 ring-slate-500 shadow-xl' : 'bg-slate-950/90 border-slate-800/80 opacity-60 grayscale-[25%]')
                   : isSurgeCounting
                   ? 'bg-amber-950/40 border-amber-400 ring-2 ring-amber-400 shadow-2xl shadow-amber-500/30 animate-pulse'
+                  : isSwing
+                  ? (isSelected
+                      ? 'bg-gradient-to-b from-sky-950/60 via-slate-900/95 to-slate-950 border-sky-400 ring-2 ring-sky-400/80 shadow-2xl shadow-sky-500/30 scale-[1.01]'
+                      : 'bg-gradient-to-b from-sky-950/30 via-slate-900/90 to-slate-950 border-sky-500/50 hover:border-sky-400 hover:shadow-lg hover:shadow-sky-500/20')
+                  : isBreakout
+                  ? (isSelected
+                      ? 'bg-gradient-to-b from-amber-950/60 via-slate-900/95 to-slate-950 border-amber-400 ring-2 ring-amber-400/80 shadow-2xl shadow-amber-500/30 scale-[1.01]'
+                      : 'bg-gradient-to-b from-amber-950/30 via-slate-900/90 to-slate-950 border-amber-500/50 hover:border-amber-400 hover:shadow-lg hover:shadow-amber-500/20')
                   : isSelfStrategy
                   ? (isSelected
-                      ? 'bg-gradient-to-br from-purple-950/60 via-slate-900/95 to-slate-950 border-purple-400 shadow-2xl shadow-purple-500/30 ring-2 ring-purple-400 scale-[1.01]'
-                      : 'bg-gradient-to-br from-purple-950/30 via-slate-900/90 to-slate-950 border-purple-500/60 hover:border-purple-400 hover:shadow-lg hover:shadow-purple-500/15')
+                      ? 'bg-gradient-to-b from-purple-950/60 via-slate-900/95 to-slate-950 border-purple-400 shadow-2xl shadow-purple-500/30 ring-2 ring-purple-400 scale-[1.01]'
+                      : 'bg-gradient-to-b from-purple-950/30 via-slate-900/90 to-slate-950 border-purple-500/60 hover:border-purple-400 hover:shadow-lg hover:shadow-purple-500/15')
                   : (isSelected
-                      ? 'bg-gradient-to-br from-emerald-950/60 via-slate-900/95 to-slate-950 border-emerald-400 shadow-2xl shadow-emerald-500/30 ring-2 ring-emerald-400 scale-[1.01]'
-                      : 'bg-gradient-to-br from-emerald-950/25 via-slate-900/90 to-slate-950 border-emerald-500/50 hover:border-emerald-400 hover:shadow-lg hover:shadow-emerald-500/15')
+                      ? 'bg-gradient-to-b from-emerald-950/60 via-slate-900/95 to-slate-950 border-emerald-400 shadow-2xl shadow-emerald-500/30 ring-2 ring-emerald-400/80 scale-[1.01]'
+                      : 'bg-gradient-to-b from-emerald-950/25 via-slate-900/90 to-slate-950 border-emerald-500/50 hover:border-emerald-400 hover:shadow-lg hover:shadow-emerald-500/15')
               }`}
             >
+              {/* 🌟 전략 모드별 상단 컬러 악센트 라인 (카드 상단 가로 줄) */}
+              <div className={`h-2 w-[calc(100%+1.75rem)] sm:w-[calc(100%+2rem)] -mt-3.5 sm:-mt-4 -mx-3.5 sm:-mx-4 mb-3 shrink-0 ${
+                !slot.isEnabled
+                  ? 'bg-slate-700'
+                  : isSwing
+                  ? 'bg-gradient-to-r from-sky-400 via-cyan-400 to-indigo-500 shadow-md shadow-sky-500/50'
+                  : isBreakout
+                  ? 'bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-500 shadow-md shadow-amber-500/50'
+                  : 'bg-gradient-to-r from-emerald-400 via-teal-400 to-green-500 shadow-md shadow-emerald-500/50'
+              }`} />
+
               {/* 🔒 [무료방문자 승인 대기] 락 오버레이 */}
               {isPendingApproval && (
                 <div 
@@ -356,32 +446,48 @@ export default function SlotManager({
                 </div>
               )}
 
-              {/* 1. 상단 슬롯 헤더 (| 1번 슬롯 | 추천전략 |    | [Power] ON | [통계] | [수정] |) */}
+              {/* 1. 상단 슬롯 헤더 (| 1번 슬롯 | 전략모드 |    | [Power] ON | [통계] | [수정] |) */}
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   {/* 슬롯 번호 버튼형 뱃지 */}
                   <div className={`px-2.5 py-1 rounded-xl text-xs sm:text-sm font-black flex items-center justify-center border shadow-sm shrink-0 whitespace-nowrap ${
                     !slot.isEnabled
                       ? 'bg-slate-800 text-slate-400 border-slate-700'
-                      : hasPosition 
-                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 shadow-rose-500/10' 
+                      : isSwing
+                      ? 'bg-sky-500/25 text-sky-300 border-sky-400/60 shadow-sky-500/20'
+                      : isBreakout
+                      ? 'bg-amber-500/25 text-amber-300 border-amber-400/60 shadow-amber-500/20'
                       : (isSelfStrategy 
-                          ? 'bg-purple-500/20 text-purple-200 border-purple-400/40 shadow-purple-500/10' 
-                          : 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40 shadow-emerald-500/10')
+                          ? 'bg-purple-500/25 text-purple-200 border-purple-400/60 shadow-purple-500/20' 
+                          : 'bg-emerald-500/25 text-emerald-300 border-emerald-400/60 shadow-emerald-500/20')
                   }`}>
-                    {slot.slotId}번 슬롯
+                    <span className="flex items-center gap-1.5">
+                      {hasPosition && <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping" />}
+                      <span>{slot.slotId}번 슬롯</span>
+                    </span>
                   </div>
 
-                  {/* 전략 뱃지 */}
-                  <span className={`text-[10px] px-2 py-0.8 rounded-lg font-extrabold tracking-tight border shadow-sm shrink-0 whitespace-nowrap ${
+                  {/* 전략 모드 뱃지 (스캘핑 / 신고가 돌파 / 추세 스윙) */}
+                  <span className={`text-[10px] px-2 py-0.8 rounded-lg font-black tracking-tight border shadow-sm shrink-0 whitespace-nowrap ${
                     !slot.isEnabled
                       ? 'bg-slate-900 text-slate-500 border-slate-800'
-                      : isSelfStrategy 
-                      ? 'bg-purple-950/60 text-purple-300 border-purple-500/40' 
-                      : 'bg-emerald-950/60 text-emerald-300 border-emerald-500/40'
+                      : isSwing
+                      ? 'bg-sky-500/20 text-sky-200 border-sky-400/50 shadow-sm shadow-sky-500/20'
+                      : isBreakout
+                      ? 'bg-amber-500/20 text-amber-200 border-amber-400/50 shadow-sm shadow-amber-500/20'
+                      : 'bg-emerald-500/20 text-emerald-200 border-emerald-400/50 shadow-sm shadow-emerald-500/20'
                   }`}>
-                    {isSelfStrategy ? '셀프전략' : '추천전략'}
+                    {isSwing 
+                      ? '🌊 추세 스윙' 
+                      : (isBreakout ? '🚀 신고가 돌파' : (isSelfStrategy ? '⚡ 셀프' : '⚡ 스캘핑'))}
                   </span>
+
+                  {/* 🚀 와이드 트레일링 2단계 대시세 진입 뱃지 */}
+                  {hasPosition && slot.trailingStage === 2 && (
+                    <span className="text-[10px] px-2 py-0.8 rounded-lg font-black tracking-tight bg-gradient-to-r from-purple-600 to-indigo-600 text-white border border-purple-400 shadow-md shadow-purple-500/30 animate-pulse whitespace-nowrap">
+                      🚀 와이드 2단계
+                    </span>
+                  )}
                 </div>
 
                 {/* 우측 액션 메뉴: | [Power] ON | [통계 아이콘] | [수정 아이콘] | */}
@@ -503,35 +609,61 @@ export default function SlotManager({
                   </div>
                 </div>
               ) : isEditing ? (
-                /* ⚙️ 수정 모드 폼 */
-                <div className="flex-1 flex flex-col justify-center my-1.5 space-y-2" onClick={(e) => e.stopPropagation()}>
-                  {/* 전략 선택 */}
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setEditForm(prev => ({ ...prev, strategyType: 'RECOMMENDED' }))}
-                      className={`py-1.5 px-2 rounded-lg text-xs font-bold border transition flex items-center justify-center gap-1 ${
-                        editForm.strategyType === 'RECOMMENDED'
-                          ? 'bg-emerald-500 text-black border-emerald-400 shadow-md font-black'
-                          : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
-                      }`}
-                    >
-                      <span>🎯 추천전략 (운영자)</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditForm(prev => ({ ...prev, strategyType: 'SELF' }))}
-                      className={`py-1.5 px-2 rounded-lg text-xs font-bold border transition flex items-center justify-center gap-1 ${
-                        editForm.strategyType === 'SELF'
-                          ? 'bg-purple-600 text-white border-purple-400 shadow-md font-black'
-                          : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
-                      }`}
-                    >
-                      <span>🛠️ 셀프전략 (직접)</span>
-                    </button>
+                /* ⚙️ 수정 모드 폼 (전략 모드 선택 & 전용 UI) */
+                <div className="flex-1 flex flex-col justify-center my-1.5 space-y-2.5" onClick={(e) => e.stopPropagation()}>
+                  
+                  {/* 🌟 1. 최상단 [전략 모드] 3단 선택 탭 */}
+                  <div className="bg-slate-950/80 p-2 rounded-xl border border-slate-800 space-y-1.5 shadow-inner">
+                    <div className="flex items-center justify-between text-[11px] font-bold">
+                      <span className="text-slate-300 flex items-center gap-1">
+                        <Sliders className="w-3.5 h-3.5 text-indigo-400" />
+                        <span>전략 모드 선택</span>
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-normal">
+                        {editForm.strategyMode === 'SCALPING' ? '1~8번 권장' : (editForm.strategyMode === 'BREAKOUT_DAY_HIGH' ? '9~10번 권장' : '11~12번 권장')}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setEditForm(prev => ({ ...prev, strategyMode: 'SCALPING' }))}
+                        className={`py-1.5 px-1 rounded-lg text-[11px] font-extrabold border transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+                          editForm.strategyMode === 'SCALPING'
+                            ? 'bg-emerald-500 text-black border-emerald-400 shadow-md ring-1 ring-emerald-400 font-black'
+                            : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200 hover:bg-slate-800'
+                        }`}
+                      >
+                        <span className="flex items-center gap-1">⚡ <span>모드 A</span></span>
+                        <span className="text-[9px] font-normal opacity-90">초단타 스캘핑</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditForm(prev => ({ ...prev, strategyMode: 'BREAKOUT_DAY_HIGH' }))}
+                        className={`py-1.5 px-1 rounded-lg text-[11px] font-extrabold border transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+                          editForm.strategyMode === 'BREAKOUT_DAY_HIGH'
+                            ? 'bg-amber-500 text-black border-amber-400 shadow-md ring-1 ring-amber-400 font-black'
+                            : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200 hover:bg-slate-800'
+                        }`}
+                      >
+                        <span className="flex items-center gap-1">🚀 <span>모드 B</span></span>
+                        <span className="text-[9px] font-normal opacity-90">신고가 돌파</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditForm(prev => ({ ...prev, strategyMode: 'TREND_SWING' }))}
+                        className={`py-1.5 px-1 rounded-lg text-[11px] font-extrabold border transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+                          editForm.strategyMode === 'TREND_SWING'
+                            ? 'bg-sky-500 text-black border-sky-400 shadow-md ring-1 ring-sky-400 font-black'
+                            : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200 hover:bg-slate-800'
+                        }`}
+                      >
+                        <span className="flex items-center gap-1">🌊 <span>모드 C</span></span>
+                        <span className="text-[9px] font-normal opacity-90">추세 스윙</span>
+                      </button>
+                    </div>
                   </div>
 
-                  {/* 매수금액(KRW) - 1줄 컴팩트 레이아웃 */}
+                  {/* 💰 2. 매수금액(KRW) - 1줄 컴팩트 레이아웃 */}
                   <div className="bg-slate-950/60 p-2 rounded-xl border border-slate-800/80">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5 shrink-0">
@@ -570,302 +702,425 @@ export default function SlotManager({
                     )}
                   </div>
 
-                  {/* 🛠️ 셀프전략 전용 상세 옵션 (1. 매수 조건 -> 2. 돌파 기준가 모드 -> 3. 매도 조건 3단 구조) */}
-                  {editForm.strategyType === 'SELF' ? (
-                    <div className="space-y-2.5">
-                      {/* ⚡ 1. 자동 매수 조건 (급등 포착) */}
-                      <div className="p-2.5 rounded-xl bg-amber-950/20 border border-amber-500/30 space-y-2">
-                        <div className="text-xs text-amber-300 flex items-center justify-between font-bold">
-                          <span className="flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-                            ⚡ 1. 자동 매수 조건 (급등 포착)
-                          </span>
-                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-200 font-normal">
-                            조건 만족 시 자동 매수
-                          </span>
-                        </div>
-                        
-                        {/* 초 단위 감시 시간 & 상승률 & 최소거래대금 (스피너 없는 순수 텍스트 인풋) */}
-                        <div className="grid grid-cols-3 gap-1.5 text-center items-center">
-                          <div className="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800 text-center">
-                            <label className="text-[11px] text-slate-300 block mb-1 font-medium whitespace-nowrap text-center" title="지정한 시간 동안의 가격 급등을 추적합니다">
-                              감시 시간(초)
-                            </label>
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              value={editForm.surgeWindowSeconds}
-                              onChange={(e) => {
-                                const val = e.target.value.replace(/[^0-9]/g, '');
-                                setEditForm(prev => ({ ...prev, surgeWindowSeconds: val === '' ? '' : Math.max(1, Number(val)) }));
-                              }}
-                              className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 text-center font-mono text-xs font-bold text-amber-300 focus:border-amber-400 focus:outline-none transition-colors"
-                            />
-                          </div>
-                          <div className="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800 text-center">
-                            <label className="text-[11px] text-slate-300 block mb-1 font-medium whitespace-nowrap text-center" title="감시 시간 내 기준가 대비 상승해야 하는 목표 비율">
-                              상승률(+%)
-                            </label>
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              value={editForm.surgeRatePct}
-                              onChange={(e) => {
-                                const val = e.target.value.replace(/[^0-9.]/g, '');
-                                setEditForm(prev => ({ ...prev, surgeRatePct: val }));
-                              }}
-                              className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 text-center font-mono text-xs font-bold text-amber-300 focus:border-amber-400 focus:outline-none transition-colors"
-                            />
-                          </div>
-                          <div className="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800 text-center">
-                            <div className="flex items-center justify-between mb-1">
-                              <label className="text-[11px] text-slate-300 font-medium whitespace-nowrap">
-                                {editForm.surgeVolumeMode === 'RATE' ? '24h수급(%)' : '최소대금(만)'}
-                              </label>
-                              <button
-                                type="button"
-                                onClick={() => setEditForm(prev => ({ ...prev, surgeVolumeMode: prev.surgeVolumeMode === 'RATE' ? 'FIXED' : 'RATE' }))}
-                                className="text-[9px] px-1 py-0.2 rounded bg-slate-800 text-cyan-300 hover:bg-slate-700 border border-slate-700 cursor-pointer"
-                                title="상대비율(%)과 고정금액(만원) 모드를 전환합니다"
-                              >
-                                {editForm.surgeVolumeMode === 'RATE' ? '만원전환' : '%전환'}
-                              </button>
-                            </div>
-                            {editForm.surgeVolumeMode === 'RATE' ? (
-                              <input
-                                type="text"
-                                inputMode="decimal"
-                                value={editForm.surgeMinVolumeRatePct !== undefined ? editForm.surgeMinVolumeRatePct : 0.05}
-                                onChange={(e) => {
-                                  const val = e.target.value.replace(/[^0-9.]/g, '');
-                                  setEditForm(prev => ({ ...prev, surgeMinVolumeRatePct: val }));
-                                }}
-                                className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 text-center font-mono text-xs font-bold text-cyan-300 focus:border-cyan-400 focus:outline-none transition-colors"
-                                placeholder="0.05"
-                                title="24시간 누적 거래대금 대비 순간 터져야 할 수급 비율"
-                              />
-                            ) : (
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                value={editForm.surgeMinVolumeManwon !== undefined ? editForm.surgeMinVolumeManwon : Math.round((editForm.surgeMinVolumeKrw || 10000000) / 10000)}
-                                onChange={(e) => {
-                                  const val = e.target.value.replace(/[^0-9]/g, '');
-                                  setEditForm(prev => ({
-                                    ...prev,
-                                    surgeMinVolumeManwon: val,
-                                    surgeMinVolumeKrw: (Number(val) || 0) * 10000
-                                  }));
-                                }}
-                                className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 text-center font-mono text-xs font-bold text-emerald-300 focus:border-emerald-400 focus:outline-none transition-colors"
-                                title={`실제 적용: ${Math.round(editForm.surgeMinVolumeKrw || 10000000).toLocaleString()}원`}
-                              />
-                            )}
-                          </div>
-                        </div>
-                        {/* 💡 24h 대비 수급률 모드 시 실시간 안내 캡션 */}
-                        {editForm.surgeVolumeMode === 'RATE' && (
-                          <div className="text-[10px] text-cyan-400/90 font-mono text-right pr-1 flex items-center justify-end gap-1">
-                            <span>💡 체급별 자동계산: 24h 대금의 {editForm.surgeMinVolumeRatePct || 0.05}% 순간 유입 시 진입</span>
-                          </div>
-                        )}
+                  {/* ⚡ [모드 A] 초단타 스캘핑 조건창 (기존 v3.2) */}
+                  {editForm.strategyMode === 'SCALPING' && (
+                    <div className="space-y-2">
+                      {/* 추천 vs 셀프 선택 */}
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setEditForm(prev => ({ ...prev, strategyType: 'RECOMMENDED' }))}
+                          className={`py-1 px-2 rounded-lg text-xs font-bold border transition flex items-center justify-center gap-1 ${
+                            editForm.strategyType === 'RECOMMENDED'
+                              ? 'bg-emerald-500 text-black border-emerald-400 shadow-md font-black'
+                              : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
+                          }`}
+                        >
+                          <span>🎯 추천전략 (운영자)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditForm(prev => ({ ...prev, strategyType: 'SELF' }))}
+                          className={`py-1 px-2 rounded-lg text-xs font-bold border transition flex items-center justify-center gap-1 ${
+                            editForm.strategyType === 'SELF'
+                              ? 'bg-purple-600 text-white border-purple-400 shadow-md font-black'
+                              : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
+                          }`}
+                        >
+                          <span>🛠️ 셀프전략 (직접)</span>
+                        </button>
                       </div>
 
-                      {/* 📈 2. 돌파 기준가 모드 (1틱 튐 노이즈 방어) */}
-                      <div className="p-2.5 rounded-xl bg-indigo-950/20 border border-indigo-500/30 space-y-2">
-                        <div className="text-xs text-indigo-300 flex items-center justify-between font-bold">
-                          <span className="flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
-                            📈 2. 돌파 기준가 모드 (1틱 튐 노이즈 방어)
-                          </span>
-                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-200 font-normal">
-                            측정 기준 선택
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setEditForm(prev => ({ ...prev, surgeBaseMode: 'VWAP' }))}
-                            className={`p-2 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                              (editForm.surgeBaseMode || 'VWAP') === 'VWAP'
-                                ? 'bg-indigo-600/30 border-indigo-400 text-white shadow-md ring-1 ring-indigo-400/50'
-                                : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="font-bold text-xs flex items-center gap-1">
-                                <span>📊 단기 평균가 (VWAP)</span>
+                      {editForm.strategyType === 'SELF' ? (
+                        <div className="space-y-2">
+                          {/* 1. 자동 매수 조건 */}
+                          <div className="p-2 rounded-xl bg-amber-950/20 border border-amber-500/30 space-y-1.5">
+                            <div className="text-xs text-amber-300 flex items-center justify-between font-bold">
+                              <span className="flex items-center gap-1">
+                                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                                ⚡ 1. 초단타 급등 포착
                               </span>
-                              {(editForm.surgeBaseMode || 'VWAP') === 'VWAP' && (
-                                <Check className="w-3.5 h-3.5 text-indigo-300" />
-                              )}
                             </div>
-                            <p className="text-[10px] text-slate-400 mt-1 leading-tight">
-                              10초간 거래량 가중평균 대비 상승 <span className="text-amber-300 font-bold">(추천 ✨)</span>
-                            </p>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => setEditForm(prev => ({ ...prev, surgeBaseMode: 'MIN' }))}
-                            className={`p-2 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                              editForm.surgeBaseMode === 'MIN'
-                                ? 'bg-indigo-600/30 border-indigo-400 text-white shadow-md ring-1 ring-indigo-400/50'
-                                : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="font-bold text-xs flex items-center gap-1">
-                                <span>📉 롤링 최저가 (Min)</span>
-                              </span>
-                              {editForm.surgeBaseMode === 'MIN' && (
-                                <Check className="w-3.5 h-3.5 text-indigo-300" />
-                              )}
+                            <div className="grid grid-cols-3 gap-1.5 text-center items-center">
+                              <div className="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800 text-center">
+                                <label className="text-[10px] text-slate-300 block mb-0.5">감시 시간(초)</label>
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={editForm.surgeWindowSeconds}
+                                  onChange={(e) => {
+                                    const val = e.target.value.replace(/[^0-9]/g, '');
+                                    setEditForm(prev => ({ ...prev, surgeWindowSeconds: val === '' ? '' : Math.max(1, Number(val)) }));
+                                  }}
+                                  className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1 text-center font-mono text-xs font-bold text-amber-300 focus:border-amber-400 focus:outline-none"
+                                />
+                              </div>
+                              <div className="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800 text-center">
+                                <label className="text-[10px] text-slate-300 block mb-0.5">상승률(+%)</label>
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={editForm.surgeRatePct}
+                                  onChange={(e) => {
+                                    const val = e.target.value.replace(/[^0-9.]/g, '');
+                                    setEditForm(prev => ({ ...prev, surgeRatePct: val }));
+                                  }}
+                                  className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1 text-center font-mono text-xs font-bold text-amber-300 focus:border-amber-400 focus:outline-none"
+                                />
+                              </div>
+                              <div className="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800 text-center">
+                                <label className="text-[10px] text-slate-300 block mb-0.5">최소대금(만)</label>
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={editForm.surgeMinVolumeManwon !== undefined ? editForm.surgeMinVolumeManwon : Math.round((editForm.surgeMinVolumeKrw || 10000000) / 10000)}
+                                  onChange={(e) => {
+                                    const val = e.target.value.replace(/[^0-9]/g, '');
+                                    setEditForm(prev => ({
+                                      ...prev,
+                                      surgeMinVolumeManwon: val,
+                                      surgeMinVolumeKrw: (Number(val) || 0) * 10000
+                                    }));
+                                  }}
+                                  className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1 text-center font-mono text-xs font-bold text-emerald-300 focus:border-emerald-400 focus:outline-none"
+                                />
+                              </div>
                             </div>
-                            <p className="text-[10px] text-slate-400 mt-1 leading-tight">
-                              10초 내 최저가 대비 상승 (초단타 모드)
-                            </p>
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* 🛡️ 3. 퀀트 안전 진입 필터 (운영자 검증 룰) */}
-                      <div className="p-2.5 rounded-xl bg-emerald-950/20 border border-emerald-500/30 space-y-2">
-                        <div className="text-xs text-emerald-300 flex items-center justify-between font-bold">
-                          <span className="flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                            🛡️ 3. 퀀트 안전 진입 필터 (운영자 룰)
-                          </span>
-                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-200 font-normal">
-                            가짜 펌핑 원천 차단
-                          </span>
-                        </div>
-
-                        <div className="space-y-1.5 pt-0.5">
-                          {/* 1) 3분봉 역배열 차단 */}
-                          <label className="flex items-center justify-between p-2 rounded-lg bg-slate-900/70 border border-slate-800 hover:border-slate-700 cursor-pointer transition">
-                            <div className="pr-2">
-                              <span className="text-xs font-bold text-slate-200 block">3분봉 역배열(데드캣) 차단</span>
-                              <span className="text-[10px] text-slate-400 block leading-tight">5선 &lt; 20선 하락 추세 속 낚시성 반등 매수 차단</span>
-                            </div>
-                            <input
-                              type="checkbox"
-                              checked={editForm.useReverseAlignmentFilter !== false}
-                              onChange={(e) => setEditForm(prev => ({ ...prev, useReverseAlignmentFilter: e.target.checked }))}
-                              className="w-4 h-4 rounded text-emerald-500 bg-slate-800 border-slate-700 focus:ring-emerald-400 cursor-pointer"
-                            />
-                          </label>
-
-                          {/* 2) 고래 단일 틱(1천만원+) 식별 */}
-                          <label className="flex items-center justify-between p-2 rounded-lg bg-slate-900/70 border border-slate-800 hover:border-slate-700 cursor-pointer transition">
-                            <div className="pr-2">
-                              <span className="text-xs font-bold text-slate-200 block">고래 단일 틱(1,000만원+) 검증</span>
-                              <span className="text-[10px] text-slate-400 block leading-tight">개미 쪼개기 매수 배제, 1천만원 이상 거대 틱 포함 시 진입</span>
-                            </div>
-                            <input
-                              type="checkbox"
-                              checked={editForm.useWhaleTickFilter !== false}
-                              onChange={(e) => setEditForm(prev => ({ ...prev, useWhaleTickFilter: e.target.checked }))}
-                              className="w-4 h-4 rounded text-emerald-500 bg-slate-800 border-slate-700 focus:ring-emerald-400 cursor-pointer"
-                            />
-                          </label>
-
-                          {/* 3) 호가창 스프레드 공백 차단 */}
-                          <label className="flex items-center justify-between p-2 rounded-lg bg-slate-900/70 border border-slate-800 hover:border-slate-700 cursor-pointer transition">
-                            <div className="pr-2">
-                              <span className="text-xs font-bold text-slate-200 block">호가창 스프레드 공백(0.4%+) 차단</span>
-                              <span className="text-[10px] text-slate-400 block leading-tight">호가창이 텅 비어 갭이 벌어진 인위적 조작 덤핑 방어</span>
-                            </div>
-                            <input
-                              type="checkbox"
-                              checked={editForm.useOrderbookFilter !== false}
-                              onChange={(e) => setEditForm(prev => ({ ...prev, useOrderbookFilter: e.target.checked }))}
-                              className="w-4 h-4 rounded text-emerald-500 bg-slate-800 border-slate-700 focus:ring-emerald-400 cursor-pointer"
-                            />
-                          </label>
-                        </div>
-                      </div>
-
-                      {/* 🎯 4. 수익 실현 및 손절 조건 */}
-                      <div className="p-2.5 rounded-xl bg-purple-950/20 border border-purple-500/30 space-y-2">
-                        <div className="text-xs text-purple-300 flex items-center justify-between font-bold">
-                          <span className="flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
-                            🎯 4. 수익 실현 &amp; 손절 조건 (트레일링 스탑)
-                          </span>
-                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-200 font-normal">
-                            손익 관리
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-1.5 text-center items-center">
-                          {/* 감시익절 - 붉은색 (상승/수익) */}
-                          <div className="bg-rose-950/25 p-1.5 rounded-lg border border-rose-500/40 text-center">
-                            <label className="text-[11px] text-rose-300 block mb-1 font-bold whitespace-nowrap text-center" title="이 수익률 도달 시 최고점 추적(트레일링)을 시작합니다">
-                              감시익절(+%)
-                            </label>
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              value={editForm.targetProfitPct !== undefined ? editForm.targetProfitPct : (editForm.trailingTargetProfitPct !== undefined ? editForm.trailingTargetProfitPct : 3.0)}
-                              onChange={(e) => {
-                                const val = e.target.value.replace(/[^0-9.]/g, '');
-                                setEditForm(prev => ({ ...prev, targetProfitPct: val, trailingTargetProfitPct: val }));
-                              }}
-                              className="w-full bg-slate-950 border border-rose-500/50 rounded-lg py-1.5 text-center font-mono text-xs font-bold text-rose-400 focus:border-rose-400 focus:outline-none transition-colors"
-                            />
                           </div>
 
-                          {/* 콜백 - 파란색 (하락/되돌림) */}
-                          <div className="bg-blue-950/25 p-1.5 rounded-lg border border-blue-500/40 text-center">
-                            <label className="text-[11px] text-blue-300 block mb-1 font-bold whitespace-nowrap text-center" title="최고점 도달 후 이만큼 하락 시 수익 확정 매도합니다">
-                              콜백(-%)
+                          {/* 3중 안심 필터 */}
+                          <div className="p-2 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1">
+                            <label className="flex items-center justify-between p-1.5 rounded-lg bg-slate-900/70 border border-slate-800 cursor-pointer">
+                              <span className="text-[11px] font-bold text-slate-300">역배열 하락 추세 차단 (5선 &lt; 20선)</span>
+                              <input
+                                type="checkbox"
+                                checked={editForm.useReverseAlignmentFilter !== false}
+                                onChange={(e) => setEditForm(prev => ({ ...prev, useReverseAlignmentFilter: e.target.checked }))}
+                                className="w-3.5 h-3.5 rounded text-emerald-500 bg-slate-800 border-slate-700"
+                              />
                             </label>
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              value={editForm.trailingCallbackPct}
-                              onChange={(e) => {
-                                const val = e.target.value.replace(/[^0-9.]/g, '');
-                                setEditForm(prev => ({ ...prev, trailingCallbackPct: val }));
-                              }}
-                              className="w-full bg-slate-950 border border-blue-500/50 rounded-lg py-1.5 text-center font-mono text-xs font-bold text-blue-400 focus:border-blue-400 focus:outline-none transition-colors"
-                            />
-                          </div>
-
-                          {/* 손절 - 파란색 (하락/손실제한) */}
-                          <div className="bg-blue-950/25 p-1.5 rounded-lg border border-blue-500/40 text-center">
-                            <label className="text-[11px] text-blue-300 block mb-1 font-bold whitespace-nowrap text-center" title="원금 손실 방지를 위해 즉시 시장가 매도합니다">
-                              손절(-%)
+                            <label className="flex items-center justify-between p-1.5 rounded-lg bg-slate-900/70 border border-slate-800 cursor-pointer">
+                              <span className="text-[11px] font-bold text-slate-300">고래 단일 틱(1,000만원+) 검증</span>
+                              <input
+                                type="checkbox"
+                                checked={editForm.useWhaleTickFilter !== false}
+                                onChange={(e) => setEditForm(prev => ({ ...prev, useWhaleTickFilter: e.target.checked }))}
+                                className="w-3.5 h-3.5 rounded text-emerald-500 bg-slate-800 border-slate-700"
+                              />
                             </label>
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              value={editForm.stopLossPct}
-                              onChange={(e) => {
-                                const val = e.target.value.replace(/[^0-9.]/g, '');
-                                setEditForm(prev => ({ ...prev, stopLossPct: val }));
-                              }}
-                              className="w-full bg-slate-950 border border-blue-500/50 rounded-lg py-1.5 text-center font-mono text-xs font-bold text-blue-400 focus:border-blue-400 focus:outline-none transition-colors"
-                            />
                           </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="p-2 rounded-xl bg-emerald-950/20 border border-emerald-500/20 text-xs text-slate-300 space-y-1">
+                          <div className="flex items-center justify-between text-emerald-400 font-bold">
+                            <span>🎯 운영자 황금 스캘핑 프리셋</span>
+                            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 font-normal">자동 적용</span>
+                          </div>
+                          <p className="text-[10px] text-slate-400 leading-relaxed">
+                            • <strong>5초</strong> 내 <strong>+1.5%</strong> 급등 &amp; <strong>1,000만원</strong> 수급 시 자동 진입
+                          </p>
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    /* 🎯 추천전략 프리셋 안내 */
-                    <div className="p-2.5 rounded-xl bg-emerald-950/20 border border-emerald-500/20 text-xs text-slate-300 space-y-1.5">
-                      <div className="flex items-center justify-between text-emerald-400 font-bold">
-                        <span>🎯 운영자 황금 추천 조건</span>
-                        <span className="text-[10px] px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 font-normal">자동 적용</span>
+                  )}
+
+                  {/* 🚀 [모드 B] 당일 신고가 돌파 조건창 (9~10번 슬롯용) */}
+                  {editForm.strategyMode === 'BREAKOUT_DAY_HIGH' && (
+                    <div className="p-2.5 rounded-xl bg-amber-950/20 border border-amber-500/30 space-y-2.5">
+                      <div className="text-xs text-amber-300 flex items-center justify-between font-bold">
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                          🚀 당일 신고가 돌파 매수 로직 (9~10번 슬롯)
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-200 font-normal">
+                          대장주 돌파
+                        </span>
                       </div>
-                      <p className="text-[11px] text-slate-300 leading-relaxed font-normal">
-                        • <strong>5초</strong> 동안 <strong>+1.5%</strong> 급등 &amp; <strong>1,000만원</strong> 수급 시 자동 매수<br />
-                        • 감시익절 <strong className="text-rose-400">+3.0%</strong> 추적 시작 | 콜백 <strong className="text-blue-400">-1.0%</strong> | 손절 <strong className="text-blue-400">-2.0%</strong>
+
+                      {/* 감시 ON/OFF 토글 & 돌파 감시 봉 */}
+                      <div className="grid grid-cols-2 gap-2">
+                        {/* 당일 최고가 돌파 감시 스위치 */}
+                        <div className="bg-slate-900/90 p-2 rounded-lg border border-slate-800 flex items-center justify-between">
+                          <div>
+                            <span className="text-[11px] font-bold text-slate-200 block">신고가 감시</span>
+                            <span className="text-[9px] text-slate-400 block">09:00 고가 돌파</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setEditForm(prev => ({ ...prev, breakoutHighEnabled: !prev.breakoutHighEnabled }))}
+                            className={`px-2 py-0.8 rounded text-[11px] font-black border transition cursor-pointer ${
+                              editForm.breakoutHighEnabled !== false
+                                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                : 'bg-slate-800 text-slate-400 border-slate-700'
+                            }`}
+                          >
+                            {editForm.breakoutHighEnabled !== false ? 'ON' : 'OFF'}
+                          </button>
+                        </div>
+
+                        {/* 돌파 감시 봉 (1분봉 / 3분봉) */}
+                        <div className="bg-slate-900/90 p-2 rounded-lg border border-slate-800 flex items-center justify-between">
+                          <div>
+                            <span className="text-[11px] font-bold text-slate-200 block">수급 기준 봉</span>
+                            <span className="text-[9px] text-slate-400 block">거래대금 측정</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setEditForm(prev => ({ ...prev, breakoutCandleUnit: 1 }))}
+                              className={`px-2 py-0.8 rounded text-[10px] font-bold border transition cursor-pointer ${
+                                (editForm.breakoutCandleUnit || 1) === 1
+                                  ? 'bg-amber-500 text-black border-amber-400 font-black'
+                                  : 'bg-slate-800 text-slate-400 border-slate-700'
+                              }`}
+                            >
+                              1분봉
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditForm(prev => ({ ...prev, breakoutCandleUnit: 3 }))}
+                              className={`px-2 py-0.8 rounded text-[10px] font-bold border transition cursor-pointer ${
+                                editForm.breakoutCandleUnit === 3
+                                  ? 'bg-amber-500 text-black border-amber-400 font-black'
+                                  : 'bg-slate-800 text-slate-400 border-slate-700'
+                              }`}
+                            >
+                              3분봉
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 순간 최소 거래대금(억) 필터 */}
+                      <div className="bg-slate-900/90 p-2 rounded-lg border border-slate-800 flex items-center justify-between gap-2">
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-200 block">순간 최소 거래대금</label>
+                          <span className="text-[9px] text-slate-400 block">가짜 펌핑 방지 (돌파 봉 거래대금)</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={editForm.breakoutMinVolumeKrwEok !== undefined ? editForm.breakoutMinVolumeKrwEok : 5}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/[^0-9]/g, '');
+                              setEditForm(prev => ({ ...prev, breakoutMinVolumeKrwEok: val === '' ? '' : Number(val) }));
+                            }}
+                            className="w-16 bg-slate-950 border border-amber-500/50 rounded-lg py-1 px-2 text-right font-mono text-xs font-bold text-amber-300 focus:border-amber-400 focus:outline-none"
+                          />
+                          <span className="text-xs font-bold text-amber-400">억원 이상</span>
+                        </div>
+                      </div>
+
+                      <p className="text-[10px] text-amber-300/80 bg-amber-950/40 p-1.5 rounded-lg border border-amber-500/20 leading-tight">
+                        💡 매일 09:00 KST부터의 당일 최고가를 돌파하는 순간, 순간 {editForm.breakoutCandleUnit || 1}분봉 대금이 {editForm.breakoutMinVolumeKrwEok || 5}억원 이상 터질 때만 진짜 상승으로 보고 매수합니다.
                       </p>
                     </div>
                   )}
+
+                  {/* 🌊 [모드 C] 정배열 추세 스윙 조건창 (11~12번 슬롯용) */}
+                  {editForm.strategyMode === 'TREND_SWING' && (
+                    <div className="p-2.5 rounded-xl bg-sky-950/20 border border-sky-500/30 space-y-2.5">
+                      <div className="text-xs text-sky-300 flex items-center justify-between font-bold">
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span>
+                          🌊 정배열 추세 스윙 로직 (11~12번 슬롯)
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-200 font-normal">
+                          중기 추세 매매
+                        </span>
+                      </div>
+
+                      {/* 기준 봉 선택 (1일봉 / 4시간봉) */}
+                      <div className="bg-slate-900/90 p-2 rounded-lg border border-slate-800 flex items-center justify-between">
+                        <div>
+                          <span className="text-[11px] font-bold text-slate-200 block">기준 캔들 봉</span>
+                          <span className="text-[9px] text-slate-400 block">이평선 계산 주기</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setEditForm(prev => ({ ...prev, swingCandleUnit: 'days' }))}
+                            className={`px-2.5 py-1 rounded text-[10px] font-bold border transition cursor-pointer ${
+                              (editForm.swingCandleUnit || 'days') === 'days'
+                                ? 'bg-sky-500 text-black border-sky-400 font-black'
+                                : 'bg-slate-800 text-slate-400 border-slate-700'
+                            }`}
+                          >
+                            1일봉 (기본)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditForm(prev => ({ ...prev, swingCandleUnit: 'minutes/240' }))}
+                            className={`px-2.5 py-1 rounded text-[10px] font-bold border transition cursor-pointer ${
+                              editForm.swingCandleUnit === 'minutes/240'
+                                ? 'bg-sky-500 text-black border-sky-400 font-black'
+                                : 'bg-slate-800 text-slate-400 border-slate-700'
+                            }`}
+                          >
+                            4시간봉 (240분)
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 단기 및 장기 이동평균선(MA) 입력 */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800 text-center">
+                          <label className="text-[10px] text-sky-300 block mb-1 font-bold">단기 이평선 (Short MA)</label>
+                          <div className="flex items-center justify-center gap-1">
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={editForm.swingShortMa !== undefined ? editForm.swingShortMa : 5}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^0-9]/g, '');
+                                setEditForm(prev => ({ ...prev, swingShortMa: val === '' ? '' : Number(val) }));
+                              }}
+                              className="w-14 bg-slate-950 border border-sky-500/50 rounded-lg py-1 text-center font-mono text-xs font-bold text-sky-300 focus:border-sky-400 focus:outline-none"
+                            />
+                            <span className="text-[10px] text-slate-400 font-bold">선</span>
+                          </div>
+                        </div>
+
+                        <div className="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800 text-center">
+                          <label className="text-[10px] text-indigo-300 block mb-1 font-bold">장기 이평선 (Long MA)</label>
+                          <div className="flex items-center justify-center gap-1">
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={editForm.swingLongMa !== undefined ? editForm.swingLongMa : 20}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^0-9]/g, '');
+                                setEditForm(prev => ({ ...prev, swingLongMa: val === '' ? '' : Number(val) }));
+                              }}
+                              className="w-14 bg-slate-950 border border-indigo-500/50 rounded-lg py-1 text-center font-mono text-xs font-bold text-indigo-300 focus:border-indigo-400 focus:outline-none"
+                            />
+                            <span className="text-[10px] text-slate-400 font-bold">선</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-2 rounded-lg bg-sky-950/40 border border-sky-500/20 text-[10px] text-sky-200/90 space-y-1">
+                        <p className="font-bold flex items-center gap-1">
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>정배열 매수 &amp; 데드크로스 즉시 청산 안전장치</span>
+                        </p>
+                        <p className="text-slate-400 leading-tight">
+                          단기({editForm.swingShortMa || 5})선이 장기({editForm.swingLongMa || 20})선 위에 있는 상승 추세에만 탑승하며, 보유 중 단기선이 장기선을 하향 돌파(데드크로스)하면 즉시 시장가로 전량 청산합니다.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 🎯 [공통] 4. 다단(와이드) 트레일링 스탑 & 리스크 제어 (제안 4번) */}
+                  <div className="p-2.5 rounded-xl bg-purple-950/20 border border-purple-500/30 space-y-2">
+                    <div className="text-xs text-purple-300 flex items-center justify-between font-bold">
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
+                        🎯 다단(와이드) 트레일링 스탑 시스템
+                      </span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-200 font-normal">
+                        수익 극대화
+                      </span>
+                    </div>
+
+                    {/* 1단계 (타이트 방어) & 2단계 (대시세 와이드 방어) 그리드 */}
+                    <div className="grid grid-cols-2 gap-2">
+                      {/* 1단계: +10% 미만 잔파도 구간 */}
+                      <div className="bg-slate-900/90 p-2 rounded-lg border border-slate-800 space-y-1.5">
+                        <div className="flex items-center justify-between text-[10px] font-bold text-rose-300 border-b border-slate-800 pb-1">
+                          <span>1단계 (잔파도 방어)</span>
+                          <span className="text-[9px] text-slate-400">수익 10% 미만</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1 text-center">
+                          <div>
+                            <label className="text-[9px] text-slate-400 block mb-0.5">감시익절(+%)</label>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={editForm.trailingTier1TargetProfitPct !== undefined ? editForm.trailingTier1TargetProfitPct : 3.0}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^0-9.]/g, '');
+                                setEditForm(prev => ({ ...prev, trailingTier1TargetProfitPct: val }));
+                              }}
+                              className="w-full bg-slate-950 border border-rose-500/50 rounded-lg py-1 text-center font-mono text-xs font-bold text-rose-400 focus:border-rose-400 focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[9px] text-slate-400 block mb-0.5">콜백(-%)</label>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={editForm.trailingTier1CallbackPct !== undefined ? editForm.trailingTier1CallbackPct : 0.5}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^0-9.]/g, '');
+                                setEditForm(prev => ({ ...prev, trailingTier1CallbackPct: val }));
+                              }}
+                              className="w-full bg-slate-950 border border-blue-500/50 rounded-lg py-1 text-center font-mono text-xs font-bold text-blue-400 focus:border-blue-400 focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 2단계: +10% 이상 대시세 와이드 홀딩 */}
+                      <div className="bg-slate-900/90 p-2 rounded-lg border border-slate-800 space-y-1.5">
+                        <div className="flex items-center justify-between text-[10px] font-bold text-amber-300 border-b border-slate-800 pb-1">
+                          <span>2단계 (대시세 와이드)</span>
+                          <span className="text-[9px] text-amber-400 font-black">대박 코인 홀딩</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1 text-center">
+                          <div>
+                            <label className="text-[9px] text-slate-400 block mb-0.5">진입 허들(+%)</label>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={editForm.trailingTier2HurdlePct !== undefined ? editForm.trailingTier2HurdlePct : 10.0}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^0-9.]/g, '');
+                                setEditForm(prev => ({ ...prev, trailingTier2HurdlePct: val }));
+                              }}
+                              className="w-full bg-slate-950 border border-amber-500/50 rounded-lg py-1 text-center font-mono text-xs font-bold text-amber-400 focus:border-amber-400 focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[9px] text-slate-400 block mb-0.5">와이드 콜백(-%)</label>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={editForm.trailingTier2CallbackPct !== undefined ? editForm.trailingTier2CallbackPct : 3.0}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^0-9.]/g, '');
+                                setEditForm(prev => ({ ...prev, trailingTier2CallbackPct: val }));
+                              }}
+                              className="w-full bg-slate-950 border border-purple-500/50 rounded-lg py-1 text-center font-mono text-xs font-bold text-purple-300 focus:border-purple-400 focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 고정 손절선(-%) 인풋 바 */}
+                    <div className="bg-slate-900/90 p-2 rounded-lg border border-slate-800 flex items-center justify-between">
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-200 block">원금 손절선 (Stop-Loss)</label>
+                        <span className="text-[9px] text-slate-400 block">손실 제한 즉시 시장가 청산</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs font-bold text-blue-400">-</span>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={editForm.stopLossPct !== undefined ? editForm.stopLossPct : 2.0}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9.]/g, '');
+                            setEditForm(prev => ({ ...prev, stopLossPct: val }));
+                          }}
+                          className="w-16 bg-slate-950 border border-blue-500/50 rounded-lg py-1 text-center font-mono text-xs font-bold text-blue-400 focus:border-blue-400 focus:outline-none"
+                        />
+                        <span className="text-xs font-bold text-blue-400">%</span>
+                      </div>
+                    </div>
+                  </div>
 
                   {/* ⚙️ [알고리즘 4번] AI 동적 변동성 손절 모드 ON/OFF 토글 카드 */}
                   <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between gap-2 shadow-inner">
@@ -971,16 +1226,143 @@ export default function SlotManager({
                           </span>
                         </div>
                       ) : (
-                        <span className="text-[10px] font-mono text-emerald-400/80 block mt-0.5">
-                          레이더 상시 감시
+                        <span className={`text-[10px] font-mono font-bold block mt-0.5 ${
+                          isBreakout ? 'text-amber-400/90' : (isSwing ? 'text-sky-400/90' : 'text-emerald-400/90')
+                        }`}>
+                          {isBreakout ? '🚀 신고가 상시 감시' : (isSwing ? '🌊 추세스윙 상시 감시' : '⚡ 스캘핑 상시 감시')}
                         </span>
                       )}
                     </div>
                   </div>
 
-                  {/* 📊 신규 탑재: 전략 파라미터 미니 스펙 표 (최소한의 공간 활용 컴팩트 매트릭스) */}
+                  {/* 📊 신규 탑재: 전략 파라미터 미니 스펙 표 (전략 모드별 맞춤 출력) */}
                   {(() => {
+                    const isBreakout = (slot.strategyMode === 'BREAKOUT_DAY_HIGH');
+                    const isSwing = (slot.strategyMode === 'TREND_SWING');
                     const isSelf = (slot.strategyType === 'SELF');
+
+                    if (isBreakout) {
+                      const candleUnit = slot.breakoutCandleUnit || 1;
+                      const minVolEok = slot.breakoutMinVolumeKrwEok || 5;
+                      const t1Target = slot.trailingTier1TargetProfitPct !== undefined ? slot.trailingTier1TargetProfitPct : 3.0;
+                      const t1Cb = slot.trailingTier1CallbackPct !== undefined ? slot.trailingTier1CallbackPct : 0.5;
+                      const t2Hurdle = slot.trailingTier2HurdlePct !== undefined ? slot.trailingTier2HurdlePct : 10.0;
+                      const t2Cb = slot.trailingTier2CallbackPct !== undefined ? slot.trailingTier2CallbackPct : 3.0;
+                      const stopLoss = slot.stopLossPct !== undefined ? slot.stopLossPct : 2.0;
+
+                      return (
+                        <div className="rounded-xl bg-slate-950/80 border border-amber-500/40 overflow-hidden text-[10px] sm:text-[11px] font-mono shadow-inner shadow-amber-950/30">
+                          {/* 표 헤더 */}
+                          <div className="grid grid-cols-2 bg-slate-900/90 border-b border-amber-500/20 text-[10px] font-extrabold">
+                            <div className="px-2 py-1 flex items-center justify-between border-r border-slate-800/80 text-amber-300">
+                              <span className="flex items-center gap-1">🚀 당일 신고가 돌파</span>
+                            </div>
+                            <div className="px-2 py-1 flex items-center justify-between text-orange-300">
+                              <span className="flex items-center gap-1">🎯 와이드 트레일링</span>
+                            </div>
+                          </div>
+
+                          {/* 표 1행: 돌파 기준 vs 1단계 익절 */}
+                          <div className="grid grid-cols-2 border-b border-slate-800/50">
+                            <div className="px-2 py-1 border-r border-slate-800/50 flex items-center justify-between bg-slate-950/40">
+                              <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">돌파기준</span>
+                              <span className="font-bold text-amber-300">09:00 장중 최고가</span>
+                            </div>
+                            <div className="px-2 py-1 flex items-center justify-between bg-slate-950/40">
+                              <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">1단익절</span>
+                              <span className="font-bold text-rose-400">+{t1Target}% (-{t1Cb}%)</span>
+                            </div>
+                          </div>
+
+                          {/* 표 2행: 순간 수급 vs 2단계 와이드 */}
+                          <div className="grid grid-cols-2 border-b border-slate-800/50">
+                            <div className="px-2 py-1 border-r border-slate-800/50 flex items-center justify-between bg-slate-950/20">
+                              <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">순간수급</span>
+                              <span className="font-bold text-amber-200">{candleUnit}분봉 ≥ {minVolEok}억원</span>
+                            </div>
+                            <div className="px-2 py-1 flex items-center justify-between bg-slate-950/20">
+                              <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">2단와이드</span>
+                              <span className="font-bold text-orange-300">+{t2Hurdle}% (-{t2Cb}%)</span>
+                            </div>
+                          </div>
+
+                          {/* 표 3행: 시간 잠금 vs 손절선 */}
+                          <div className="grid grid-cols-2">
+                            <div className="px-2 py-1 border-r border-slate-800/50 flex items-center justify-between bg-slate-950/40">
+                              <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">시간잠금</span>
+                              <span className="font-bold text-amber-300">08:50~09:30 락</span>
+                            </div>
+                            <div className="px-2 py-1 flex items-center justify-between bg-slate-950/40">
+                              <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">손실제한</span>
+                              <span className="font-bold text-blue-400">-{stopLoss}% 시장가</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if (isSwing) {
+                      const candleUnitLabel = slot.swingCandleUnit === 'days' ? '1일봉 (1D)' : (slot.swingCandleUnit === 'minutes/240' ? '4시간봉 (240m)' : '60분봉');
+                      const shortMa = slot.swingShortMa || 5;
+                      const longMa = slot.swingLongMa || 20;
+                      const t1Target = slot.trailingTier1TargetProfitPct !== undefined ? slot.trailingTier1TargetProfitPct : 5.0;
+                      const t1Cb = slot.trailingTier1CallbackPct !== undefined ? slot.trailingTier1CallbackPct : 1.0;
+                      const t2Hurdle = slot.trailingTier2HurdlePct !== undefined ? slot.trailingTier2HurdlePct : 12.0;
+                      const t2Cb = slot.trailingTier2CallbackPct !== undefined ? slot.trailingTier2CallbackPct : 3.5;
+                      const stopLoss = slot.stopLossPct !== undefined ? slot.stopLossPct : 3.0;
+
+                      return (
+                        <div className="rounded-xl bg-slate-950/80 border border-sky-500/40 overflow-hidden text-[10px] sm:text-[11px] font-mono shadow-inner shadow-sky-950/30">
+                          {/* 표 헤더 */}
+                          <div className="grid grid-cols-2 bg-slate-900/90 border-b border-sky-500/20 text-[10px] font-extrabold">
+                            <div className="px-2 py-1 flex items-center justify-between border-r border-slate-800/80 text-sky-300">
+                              <span className="flex items-center gap-1">🌊 정배열 추세 스윙</span>
+                            </div>
+                            <div className="px-2 py-1 flex items-center justify-between text-indigo-300">
+                              <span className="flex items-center gap-1">🎯 스윙 익절 / 청산</span>
+                            </div>
+                          </div>
+
+                          {/* 표 1행: 정배열 vs 1단계 익절 */}
+                          <div className="grid grid-cols-2 border-b border-slate-800/50">
+                            <div className="px-2 py-1 border-r border-slate-800/50 flex items-center justify-between bg-slate-950/40">
+                              <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">이평선</span>
+                              <span className="font-bold text-sky-300">MA{shortMa} &gt; MA{longMa}</span>
+                            </div>
+                            <div className="px-2 py-1 flex items-center justify-between bg-slate-950/40">
+                              <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">1단익절</span>
+                              <span className="font-bold text-rose-400">+{t1Target}% (-{t1Cb}%)</span>
+                            </div>
+                          </div>
+
+                          {/* 표 2행: 기준봉 vs 2단계 와이드 */}
+                          <div className="grid grid-cols-2 border-b border-slate-800/50">
+                            <div className="px-2 py-1 border-r border-slate-800/50 flex items-center justify-between bg-slate-950/20">
+                              <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">기준봉</span>
+                              <span className="font-bold text-sky-200">{candleUnitLabel}</span>
+                            </div>
+                            <div className="px-2 py-1 flex items-center justify-between bg-slate-950/20">
+                              <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">2단와이드</span>
+                              <span className="font-bold text-indigo-300">+{t2Hurdle}% (-{t2Cb}%)</span>
+                            </div>
+                          </div>
+
+                          {/* 표 3행: 안전 청산 vs 손절선 */}
+                          <div className="grid grid-cols-2">
+                            <div className="px-2 py-1 border-r border-slate-800/50 flex items-center justify-between bg-slate-950/40">
+                              <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">안전청산</span>
+                              <span className="font-bold text-rose-400">데드크로스 즉시</span>
+                            </div>
+                            <div className="px-2 py-1 flex items-center justify-between bg-slate-950/40">
+                              <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">손실제한</span>
+                              <span className="font-bold text-blue-400">-{stopLoss}%</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Default: Mode A (초단타 스캘핑)
                     const surgeWindow = isSelf ? (slot.surgeWindowSeconds || 5) : 5;
                     const surgeRate = isSelf ? (slot.surgeRatePct !== undefined ? slot.surgeRatePct : 1.5) : 1.5;
                     const minVolKrw = isSelf ? (slot.surgeMinVolumeKrw !== undefined ? slot.surgeMinVolumeKrw : 10000000) : 10000000;
@@ -989,44 +1371,48 @@ export default function SlotManager({
                       : `${Math.round(minVolKrw / 10000).toLocaleString()}만원`;
                     const baseMode = isSelf ? (slot.surgeBaseMode || 'VWAP') : 'VWAP';
                     const targetProfit = isSelf 
-                      ? (slot.targetProfitPct !== undefined ? slot.targetProfitPct : (slot.trailingTargetProfitPct !== undefined ? slot.trailingTargetProfitPct : 3.0)) 
+                      ? (slot.trailingTier1TargetProfitPct !== undefined ? slot.trailingTier1TargetProfitPct : (slot.targetProfitPct !== undefined ? slot.targetProfitPct : 3.0)) 
                       : 3.0;
-                    const callback = isSelf ? (slot.trailingCallbackPct !== undefined ? slot.trailingCallbackPct : 1.0) : 1.0;
+                    const callback = isSelf 
+                      ? (slot.trailingTier1CallbackPct !== undefined ? slot.trailingTier1CallbackPct : (slot.trailingCallbackPct !== undefined ? slot.trailingCallbackPct : 0.5)) 
+                      : 0.5;
                     const stopLoss = isSelf ? (slot.stopLossPct !== undefined ? slot.stopLossPct : 2.0) : 2.0;
+                    const hurdle = slot.trailingTier2HurdlePct !== undefined ? slot.trailingTier2HurdlePct : 10.0;
+                    const wideCb = slot.trailingTier2CallbackPct !== undefined ? slot.trailingTier2CallbackPct : 3.0;
 
                     return (
-                      <div className="rounded-xl bg-slate-950/80 border border-slate-800/90 overflow-hidden text-[10px] sm:text-[11px] font-mono shadow-inner">
+                      <div className="rounded-xl bg-slate-950/80 border border-emerald-500/40 overflow-hidden text-[10px] sm:text-[11px] font-mono shadow-inner shadow-emerald-950/30">
                         {/* 표 헤더 */}
-                        <div className="grid grid-cols-2 bg-slate-900/90 border-b border-slate-800/80 text-[10px] font-extrabold">
-                          <div className="px-2 py-1 flex items-center justify-between border-r border-slate-800/80 text-amber-300">
-                            <span className="flex items-center gap-1">⚡ 급등 매수 기준</span>
+                        <div className="grid grid-cols-2 bg-slate-900/90 border-b border-emerald-500/20 text-[10px] font-extrabold">
+                          <div className="px-2 py-1 flex items-center justify-between border-r border-slate-800/80 text-emerald-400">
+                            <span className="flex items-center gap-1">⚡ 초단타 스캘핑</span>
                           </div>
-                          <div className="px-2 py-1 flex items-center justify-between text-indigo-300">
-                            <span className="flex items-center gap-1">🎯 익절 / 손절 기준</span>
+                          <div className="px-2 py-1 flex items-center justify-between text-teal-300">
+                            <span className="flex items-center gap-1">🎯 다단 트레일링 익절</span>
                           </div>
                         </div>
 
-                        {/* 표 1행: 감시/상승률 vs 목표익절 */}
+                        {/* 표 1행: 감시/상승률 vs 1단계 익절 */}
                         <div className="grid grid-cols-2 border-b border-slate-800/50">
                           <div className="px-2 py-1 border-r border-slate-800/50 flex items-center justify-between bg-slate-950/40">
                             <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">감시/급등</span>
-                            <span className="font-bold text-amber-300">{surgeWindow}초 / +{surgeRate}%</span>
+                            <span className="font-bold text-emerald-300">{surgeWindow}초 / +{surgeRate}%</span>
                           </div>
                           <div className="px-2 py-1 flex items-center justify-between bg-slate-950/40">
-                            <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">목표익절</span>
-                            <span className="font-bold text-rose-400">+{targetProfit}%</span>
+                            <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">1단익절</span>
+                            <span className="font-bold text-rose-400">+{targetProfit}% (-{callback}%)</span>
                           </div>
                         </div>
 
-                        {/* 표 2행: 최소수급 vs 콜백되돌림 */}
+                        {/* 표 2행: 최소수급 vs 2단계 와이드 */}
                         <div className="grid grid-cols-2 border-b border-slate-800/50">
                           <div className="px-2 py-1 border-r border-slate-800/50 flex items-center justify-between bg-slate-950/20">
                             <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">최소수급</span>
                             <span className="font-bold text-emerald-300">{minVolText}</span>
                           </div>
                           <div className="px-2 py-1 flex items-center justify-between bg-slate-950/20">
-                            <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">콜백하락</span>
-                            <span className="font-bold text-blue-400">-{callback}%</span>
+                            <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">2단와이드</span>
+                            <span className="font-bold text-purple-300">+{hurdle}% (-{wideCb}%)</span>
                           </div>
                         </div>
 
@@ -1034,7 +1420,7 @@ export default function SlotManager({
                         <div className="grid grid-cols-2">
                           <div className="px-2 py-1 border-r border-slate-800/50 flex items-center justify-between bg-slate-950/40">
                             <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">돌파기준</span>
-                            <span className="font-bold text-indigo-300">{baseMode}</span>
+                            <span className="font-bold text-teal-300">{baseMode}</span>
                           </div>
                           <div className="px-2 py-1 flex items-center justify-between bg-slate-950/40">
                             <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">손실제한</span>
@@ -1124,10 +1510,18 @@ export default function SlotManager({
                       ) : (
                         <>
                           <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400"></span>
+                            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                              isBreakout ? 'bg-amber-400' : (isSwing ? 'bg-sky-400' : 'bg-emerald-400')
+                            }`}></span>
+                            <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                              isBreakout ? 'bg-amber-400' : (isSwing ? 'bg-sky-400' : 'bg-emerald-400')
+                            }`}></span>
                           </span>
-                          <strong className="text-cyan-300">🟢 실시간 레이더 감시 중</strong>
+                          <strong className={
+                            isBreakout ? 'text-amber-300' : (isSwing ? 'text-sky-300' : 'text-emerald-300')
+                          }>
+                            {isBreakout ? '🚀 실시간 신고가 돌파 감시 중' : (isSwing ? '🌊 실시간 추세스윙 감시 중' : '⚡ 실시간 스캘핑 감시 중')}
+                          </strong>
                         </>
                       )}
                     </span>

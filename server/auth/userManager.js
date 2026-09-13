@@ -30,7 +30,7 @@ class UserManager {
         tier: 'VIP',
         approvalStatus: 'APPROVED',
         subscriptionExpiresAt: '2099-12-31T23:59:59Z',
-        maxSlots: 9,
+        maxSlots: 12,
         telegramChatId: '5618137472',
         isActive: true,
         hasApiKey: true,
@@ -49,7 +49,7 @@ class UserManager {
         tier: 'VIP',
         approvalStatus: 'APPROVED',
         subscriptionExpiresAt: '2026-10-15T00:00:00Z',
-        maxSlots: 9,
+        maxSlots: 12,
         telegramChatId: '5948452939',
         isActive: true,
         hasApiKey: true,
@@ -68,7 +68,7 @@ class UserManager {
         tier: 'VIP',
         approvalStatus: 'APPROVED',
         subscriptionExpiresAt: '2099-12-31T23:59:59Z',
-        maxSlots: 9,
+        maxSlots: 12,
         telegramChatId: '6123456789',
         isActive: true,
         hasApiKey: true,
@@ -125,7 +125,7 @@ class UserManager {
         tier: 'VIP',
         approvalStatus: 'APPROVED',
         subscriptionExpiresAt: '2026-10-06T00:00:00Z',
-        maxSlots: 9,
+        maxSlots: 12,
         telegramChatId: '6345678901',
         isActive: true,
         hasApiKey: true,
@@ -239,7 +239,7 @@ class UserManager {
         tier: 'VIP',
         approvalStatus: 'APPROVED',
         subscriptionExpiresAt: '2026-10-08T00:00:00Z',
-        maxSlots: 9,
+        maxSlots: 12,
         telegramChatId: '6789012345',
         isActive: true,
         hasApiKey: true,
@@ -296,7 +296,7 @@ class UserManager {
         tier: 'VIP',
         approvalStatus: 'APPROVED',
         subscriptionExpiresAt: '2026-10-05T00:00:00Z',
-        maxSlots: 9,
+        maxSlots: 12,
         telegramChatId: '6890123456',
         isActive: true,
         hasApiKey: true,
@@ -490,7 +490,7 @@ class UserManager {
     if (newTier === 'PRO') {
       user.maxSlots = 3;
     } else if (newTier === 'VIP') {
-      user.maxSlots = 5;
+      user.maxSlots = 12;
     } else {
       user.maxSlots = 1;
     }
@@ -514,7 +514,7 @@ class UserManager {
     user.role = newRole;
     if (newRole === 'ADMIN') {
       user.tier = 'VIP';
-      user.maxSlots = 5;
+      user.maxSlots = 12;
       user.subscriptionExpiresAt = '2099-12-31T23:59:59Z';
     } else {
       user.role = 'USER';

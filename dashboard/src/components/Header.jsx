@@ -12,7 +12,9 @@ import {
   LogOut, 
   Sliders,
   Volume2,
-  VolumeX
+  VolumeX,
+  Menu,
+  X
 } from 'lucide-react';
 import { soundService } from '../services/soundService';
 import { APP_VERSION } from '../version';
@@ -44,6 +46,7 @@ export default function Header({
   // 🔊 사운드 알림 활성화 상태 관리
   const [soundEnabled, setSoundEnabled] = useState(soundService.isEnabled());
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // 🏛️ 3단계 환경 감지: 🧪 연구실(로컬) | 🔬 실험실(호스팅 Staging) | 🏛️ 실서버(상용 Live)
   const isLocalLab = typeof window !== 'undefined' && (
@@ -114,7 +117,7 @@ export default function Header({
 
   return (
     <header className="border-b border-slate-800 bg-slate-950/90 backdrop-blur-md sticky top-0 z-40">
-      <div className="max-w-7xl w-full mx-auto px-2.5 sm:px-6 py-2 sm:py-2.5 flex items-center justify-between gap-2 sm:gap-4 flex-wrap sm:flex-nowrap">
+      <div className="app-container-80 px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between gap-2 flex-nowrap">
         
         {/* 좌측: 로고 & 👤 대표님 프로필 미니 위젯 (주황색 화살표 위치로 통합) */}
         <div className="flex items-center gap-2 sm:gap-3.5 shrink-0 min-w-0 max-w-full">
@@ -140,17 +143,17 @@ export default function Header({
 
               {/* 🏛️ 3단계 시각적 직관 배지: 🧪 연구실 | 🔬 실험실 | 🟢 실서버 */}
               {isLocalLab ? (
-                <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-purple-950/80 text-purple-300 font-black border border-purple-500/60 shadow-md shadow-purple-900/40 flex items-center gap-1 animate-pulse shrink-0" title="🧪 대표님 로컬 연구실(LAB) 개발 환경입니다.">
+                <span className="hidden sm:flex text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-purple-950/80 text-purple-300 font-black border border-purple-500/60 shadow-md shadow-purple-900/40 items-center gap-1 animate-pulse shrink-0" title="🧪 대표님 로컬 연구실(LAB) 개발 환경입니다.">
                   <span className="inline-block w-1.5 h-1.5 rounded-full bg-purple-400"></span>
                   🧪 연구실 (로컬)
                 </span>
               ) : isStagingLab ? (
-                <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-amber-950/90 text-amber-300 font-black border border-amber-500/70 shadow-md shadow-amber-900/50 flex items-center gap-1 animate-pulse shrink-0" title="🔬 운영자 실전 검증용 실험실(Staging) 환경입니다.">
+                <span className="hidden sm:flex text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-amber-950/90 text-amber-300 font-black border border-amber-500/70 shadow-md shadow-amber-900/50 items-center gap-1 animate-pulse shrink-0" title="🔬 운영자 실전 검증용 실험실(Staging) 환경입니다.">
                   <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400"></span>
                   🔬 실험실 (Staging)
                 </span>
               ) : (
-                <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 font-black border border-emerald-500/50 flex items-center gap-1 shrink-0" title="🟢 회원 실거래 상용 서버(LIVE)입니다.">
+                <span className="hidden sm:flex text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 font-black border border-emerald-500/50 items-center gap-1 shrink-0" title="🟢 회원 실거래 상용 서버(LIVE)입니다.">
                   <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                   LIVE 실서버
                 </span>
@@ -158,7 +161,7 @@ export default function Header({
 
               {/* 🛡️ [알고리즘 2번] BTC 하락 감지 매수 보호 가동 상태 배지 */}
               {btcProtection?.active ? (
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-950/90 border border-rose-500/80 text-[11px] font-black text-rose-200 shadow-lg shadow-rose-950/60 animate-pulse shrink-0">
+                <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-950/90 border border-rose-500/80 text-[11px] font-black text-rose-200 shadow-lg shadow-rose-950/60 animate-pulse shrink-0">
                   <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
@@ -177,7 +180,7 @@ export default function Header({
               {activeBuyRestriction?.isRestricted && (
                 <div 
                   onClick={onOpenMyPage}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-950/90 border border-rose-500/80 text-[11px] font-black text-rose-200 shadow-lg shadow-rose-950/60 animate-pulse shrink-0 cursor-pointer transition hover:bg-rose-900/90 active:scale-95" 
+                  className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-950/90 border border-rose-500/80 text-[11px] font-black text-rose-200 shadow-lg shadow-rose-950/60 animate-pulse shrink-0 cursor-pointer transition hover:bg-rose-900/90 active:scale-95" 
                   title={`🛑 [신규 매수 차단] ${activeBuyRestriction.activeBlock?.label || ''} (${activeBuyRestriction.activeBlock?.start}~${activeBuyRestriction.activeBlock?.end}) 가동 중 - 클릭 시 마이페이지 시간 설정으로 이동`}
                 >
                   <span className="relative flex h-2 w-2">
@@ -240,7 +243,7 @@ export default function Header({
                 </div>
 
                 <div className="text-[10px] text-slate-400 flex items-center gap-1.5 mt-0.2 whitespace-nowrap">
-                  <span>슬롯: <strong className="text-indigo-400">{user.maxSlots || 9}개</strong></span>
+                  <span>슬롯: <strong className="text-indigo-400">{user.maxSlots || 12}개</strong></span>
                   <span>•</span>
                   <span className="text-yellow-400 font-medium">
                     {isAdmin ? '평생 라이선스' : (isPending ? '승인 대기' : `D-${user.remainingDays}일`)}
@@ -251,113 +254,228 @@ export default function Header({
           )}
         </div>
 
-        {/* 우측: 대표님이 지정해 주신 핵심 메뉴 버튼 바 */}
-        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 w-full sm:w-auto justify-between sm:justify-end">
-          
-          {/* 1. 👤 마이페이지 */}
-          <button
-            onClick={onOpenMyPage}
-            className="px-2 py-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-indigo-950/60 hover:bg-indigo-900/70 border border-indigo-500/40 text-indigo-200 text-xs font-bold transition cursor-pointer flex items-center gap-1 shrink-0 active:scale-95"
-            title="마이페이지 & API 설정"
-          >
-            <User className="w-3.5 h-3.5 text-indigo-400" />
-            <span className="hidden sm:inline">마이페이지</span>
-            <span className="sm:hidden text-[11px]">마이</span>
-          </button>
-
-          {/* 2. 👑 회원관리 (운영자 / 개발자 / 관리자 전용) */}
-          {isPrivileged && (
+        {/* 우측: 데스크톱 메뉴 버튼 바 & 모바일 햄버거 메뉴 버튼 */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* 데스크톱 전용 메뉴 버튼 바 (md 이상에서만 표시) */}
+          <div className="hidden md:flex items-center gap-1 sm:gap-1.5 shrink-0 justify-end">
+            {/* 1. 👤 마이페이지 */}
             <button
-              onClick={onOpenAdmin}
-              className="px-2 py-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-amber-950/60 hover:bg-amber-900/70 border border-amber-500/40 text-amber-200 text-xs font-bold transition cursor-pointer flex items-center gap-1 shrink-0 active:scale-95"
-              title="회원 승인 및 등급 관리"
+              onClick={onOpenMyPage}
+              className="px-2 py-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-indigo-950/60 hover:bg-indigo-900/70 border border-indigo-500/40 text-indigo-200 text-xs font-bold transition cursor-pointer flex items-center gap-1 shrink-0 active:scale-95"
+              title="마이페이지 & API 설정"
             >
-              <Users className="w-3.5 h-3.5 text-amber-400" />
-              <span className="hidden sm:inline">회원관리</span>
-              <span className="sm:hidden text-[11px]">회원</span>
+              <User className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="hidden sm:inline">마이페이지</span>
+              <span className="sm:hidden text-[11px]">마이</span>
             </button>
-          )}
 
-          {/* 3. 📊 전략관리 (운영자 / 개발자 / 관리자 전용 - 1개 전략 튜닝 & 제외코인) */}
-          {isPrivileged && (
-            <button
-              onClick={onOpenOperatorDashboard}
-              className="px-2 py-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/70 border border-emerald-500/40 text-emerald-200 text-xs font-bold transition cursor-pointer flex items-center gap-1 shrink-0 active:scale-95"
-              title="전략 파라미터 및 제외코인 관리"
-            >
-              <BarChart3 className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="hidden sm:inline">전략관리</span>
-              <span className="sm:hidden text-[11px]">전략</span>
-            </button>
-          )}
-
-          {/* 📢 거래소 공지 & 신규 상장/상폐 현황판 버튼 */}
-          <button
-            onClick={onOpenNotice}
-            className="relative p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-cyan-950/60 hover:bg-cyan-900/70 border border-cyan-500/40 text-cyan-200 text-xs font-bold transition cursor-pointer flex items-center gap-1 shrink-0 active:scale-95"
-            title="업비트 공지 & 상장/폐지 종목 현황판"
-          >
-            <Bell className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="hidden md:inline">공지</span>
-            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping absolute -top-0.5 -right-0.5"></span>
-            <span className="w-2 h-2 rounded-full bg-cyan-400 absolute -top-0.5 -right-0.5"></span>
-          </button>
-
-          {/* 📖 매뉴얼 버튼 */}
-          <button
-            onClick={onOpenManual}
-            className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold transition cursor-pointer flex items-center gap-1 shrink-0 active:scale-95"
-            title="매뉴얼 & 개선 의견"
-          >
-            <BookOpen className="w-3.5 h-3.5 text-slate-400" />
-            <span className="hidden md:inline">매뉴얼</span>
-          </button>
-
-          {/* 🔊 사운드 알림 토글 버튼 */}
-          <button
-            onClick={toggleSound}
-            className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border text-xs font-bold transition cursor-pointer flex items-center gap-1 shrink-0 active:scale-95 ${
-              soundEnabled
-                ? 'bg-amber-950/40 hover:bg-amber-900/60 border-amber-500/40 text-amber-300'
-                : 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-500 hover:text-slate-300'
-            }`}
-            title={soundEnabled ? '실시간 소리 알림 켜짐 (클릭하여 끄기)' : '실시간 소리 알림 꺼짐 (클릭하여 켜기)'}
-          >
-            {soundEnabled ? (
-              <>
-                <Volume2 className="w-3.5 h-3.5 text-amber-400" />
-                <span className="hidden lg:inline text-[11px]">소리 ON</span>
-              </>
-            ) : (
-              <>
-                <VolumeX className="w-3.5 h-3.5 text-slate-500" />
-                <span className="hidden lg:inline text-[11px]">무음</span>
-              </>
+            {/* 2. 👑 회원관리 (운영자 / 개발자 / 관리자 전용) */}
+            {isPrivileged && (
+              <button
+                onClick={onOpenAdmin}
+                className="px-2 py-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-amber-950/60 hover:bg-amber-900/70 border border-amber-500/40 text-amber-200 text-xs font-bold transition cursor-pointer flex items-center gap-1 shrink-0 active:scale-95"
+                title="회원 승인 및 등급 관리"
+              >
+                <Users className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden sm:inline">회원관리</span>
+                <span className="sm:hidden text-[11px]">회원</span>
+              </button>
             )}
-          </button>
 
-          {/* 새로고침 */}
-          <button
-            onClick={handleRefreshClick}
-            className="p-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-emerald-400 transition cursor-pointer shrink-0 active:scale-95"
-            title="강력 새로고침 (최신 버전 강제 동기화)"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-emerald-400' : ''}`} />
-          </button>
+            {/* 3. 📊 전략관리 (운영자 / 개발자 / 관리자 전용 - 1개 전략 튜닝 & 제외코인) */}
+            {isPrivileged && (
+              <button
+                onClick={onOpenOperatorDashboard}
+                className="px-2 py-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/70 border border-emerald-500/40 text-emerald-200 text-xs font-bold transition cursor-pointer flex items-center gap-1 shrink-0 active:scale-95"
+                title="전략 파라미터 및 제외코인 관리"
+              >
+                <BarChart3 className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="hidden sm:inline">전략관리</span>
+                <span className="sm:hidden text-[11px]">전략</span>
+              </button>
+            )}
 
-          {/* 로그아웃 버튼 */}
-          {user && onLogout && (
+            {/* 📢 거래소 공지 & 신규 상장/상폐 현황판 버튼 */}
             <button
-              onClick={onLogout}
-              className="p-1.5 rounded-xl bg-slate-900 hover:bg-rose-950/60 border border-slate-800 hover:border-rose-500/40 text-slate-400 hover:text-rose-300 transition cursor-pointer shrink-0 active:scale-95"
-              title="로그아웃"
+              onClick={onOpenNotice}
+              className="relative p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-cyan-950/60 hover:bg-cyan-900/70 border border-cyan-500/40 text-cyan-200 text-xs font-bold transition cursor-pointer flex items-center gap-1 shrink-0 active:scale-95"
+              title="업비트 공지 & 상장/폐지 종목 현황판"
             >
-              <LogOut className="w-3.5 h-3.5" />
+              <Bell className="w-3.5 h-3.5 text-cyan-400" />
+              <span className="hidden md:inline">공지</span>
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping absolute -top-0.5 -right-0.5"></span>
+              <span className="w-2 h-2 rounded-full bg-cyan-400 absolute -top-0.5 -right-0.5"></span>
             </button>
-          )}
+
+            {/* 📖 매뉴얼 버튼 */}
+            <button
+              onClick={onOpenManual}
+              className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold transition cursor-pointer flex items-center gap-1 shrink-0 active:scale-95"
+              title="매뉴얼 & 개선 의견"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-slate-400" />
+              <span className="hidden md:inline">매뉴얼</span>
+            </button>
+
+            {/* 🔊 사운드 알림 토글 버튼 */}
+            <button
+              onClick={toggleSound}
+              className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border text-xs font-bold transition cursor-pointer flex items-center gap-1 shrink-0 active:scale-95 ${
+                soundEnabled
+                  ? 'bg-amber-950/40 hover:bg-amber-900/60 border-amber-500/40 text-amber-300'
+                  : 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-500 hover:text-slate-300'
+              }`}
+              title={soundEnabled ? '실시간 소리 알림 켜짐 (클릭하여 끄기)' : '실시간 소리 알림 꺼짐 (클릭하여 켜기)'}
+            >
+              {soundEnabled ? (
+                <>
+                  <Volume2 className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="hidden lg:inline text-[11px]">소리 ON</span>
+                </>
+              ) : (
+                <>
+                  <VolumeX className="w-3.5 h-3.5 text-slate-500" />
+                  <span className="hidden lg:inline text-[11px]">무음</span>
+                </>
+              )}
+            </button>
+
+            {/* 새로고침 */}
+            <button
+              onClick={handleRefreshClick}
+              className="p-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-emerald-400 transition cursor-pointer shrink-0 active:scale-95"
+              title="강력 새로고침 (최신 버전 강제 동기화)"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-emerald-400' : ''}`} />
+            </button>
+
+            {/* 로그아웃 버튼 */}
+            {user && onLogout && (
+              <button
+                onClick={onLogout}
+                className="p-1.5 rounded-xl bg-slate-900 hover:bg-rose-950/60 border border-slate-800 hover:border-rose-500/40 text-slate-400 hover:text-rose-300 transition cursor-pointer shrink-0 active:scale-95"
+                title="로그아웃"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* 🍔 모바일 전용 햄버거 메뉴 버튼 (md 미만 표시) */}
+          <button
+            type="button"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="md:hidden p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 transition cursor-pointer active:scale-95 shrink-0 flex items-center justify-center"
+            title="전체 메뉴 열기"
+            aria-label="메뉴 토글"
+          >
+            {isMobileMenuOpen ? <X className="w-5 h-5 text-rose-400" /> : <Menu className="w-5 h-5 text-emerald-400" />}
+          </button>
         </div>
 
       </div>
+
+      {/* 📱 모바일 드롭다운 메뉴 (삼선 메뉴 클릭 시 열림) */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden border-t border-slate-800/90 bg-slate-950/98 backdrop-blur-xl px-4 py-4 space-y-3 shadow-2xl animate-in slide-in-from-top-2 duration-200">
+          <div className="text-xs font-bold text-slate-400 px-1 mb-1">빠른 메뉴</div>
+          <div className="grid grid-cols-2 gap-2">
+            {/* 1. 마이페이지 */}
+            <button
+              onClick={() => { setIsMobileMenuOpen(false); onOpenMyPage(); }}
+              className="flex items-center gap-2 p-2.5 rounded-xl bg-indigo-950/50 border border-indigo-500/30 text-indigo-200 text-xs font-semibold hover:bg-indigo-900/60 transition text-left"
+            >
+              <User className="w-4 h-4 text-indigo-400 shrink-0" />
+              <span>마이페이지</span>
+            </button>
+
+            {/* 2. 회원관리 */}
+            {isPrivileged && (
+              <button
+                onClick={() => { setIsMobileMenuOpen(false); onOpenAdmin(); }}
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-950/50 border border-amber-500/30 text-amber-200 text-xs font-semibold hover:bg-amber-900/60 transition text-left"
+              >
+                <Users className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>회원관리</span>
+              </button>
+            )}
+
+            {/* 3. 전략관리 */}
+            {isPrivileged && (
+              <button
+                onClick={() => { setIsMobileMenuOpen(false); onOpenOperatorDashboard(); }}
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-950/50 border border-emerald-500/30 text-emerald-200 text-xs font-semibold hover:bg-emerald-900/60 transition text-left"
+              >
+                <BarChart3 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>전략관리</span>
+              </button>
+            )}
+
+            {/* 4. 거래소 공지 */}
+            <button
+              onClick={() => { setIsMobileMenuOpen(false); onOpenNotice(); }}
+              className="flex items-center gap-2 p-2.5 rounded-xl bg-cyan-950/50 border border-cyan-500/30 text-cyan-200 text-xs font-semibold hover:bg-cyan-900/60 transition text-left relative"
+            >
+              <Bell className="w-4 h-4 text-cyan-400 shrink-0" />
+              <span>거래소 공지</span>
+              <span className="w-2 h-2 rounded-full bg-cyan-400 absolute top-2 right-2"></span>
+            </button>
+
+            {/* 5. 매뉴얼 */}
+            <button
+              onClick={() => { setIsMobileMenuOpen(false); onOpenManual(); }}
+              className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-900/80 border border-slate-700/80 text-slate-200 text-xs font-semibold hover:bg-slate-800 transition text-left"
+            >
+              <BookOpen className="w-4 h-4 text-slate-400 shrink-0" />
+              <span>매뉴얼 안내</span>
+            </button>
+
+            {/* 6. 소리 알림 */}
+            <button
+              onClick={toggleSound}
+              className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-semibold transition text-left ${
+                soundEnabled
+                  ? 'bg-amber-950/40 border-amber-500/40 text-amber-300'
+                  : 'bg-slate-900/80 border-slate-800 text-slate-400'
+              }`}
+            >
+              {soundEnabled ? (
+                <>
+                  <Volume2 className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>소리 알림 ON</span>
+                </>
+              ) : (
+                <>
+                  <VolumeX className="w-4 h-4 text-slate-500 shrink-0" />
+                  <span>소리 알림 OFF</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2">
+            {/* 새로고침 */}
+            <button
+              onClick={() => { setIsMobileMenuOpen(false); handleRefreshClick(); }}
+              className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 text-xs font-bold hover:text-emerald-400 transition active:scale-95"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-emerald-400' : ''}`} />
+              <span>데이터 새로고침</span>
+            </button>
+
+            {/* 로그아웃 */}
+            {user && onLogout && (
+              <button
+                onClick={() => { setIsMobileMenuOpen(false); onLogout(); }}
+                className="flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-rose-950/50 border border-rose-500/40 text-rose-300 text-xs font-bold hover:bg-rose-900/60 transition active:scale-95"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>로그아웃</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </header>
   );
 }

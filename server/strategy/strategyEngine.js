@@ -3,6 +3,7 @@ const upbitClient = require('../upbit/upbitClient');
 const config = require('../config');
 const slotManager = require('./slotManager');
 const surgeDetector = require('./surgeDetector');
+const candleStrategyEngine = require('./candleStrategyEngine');
 
 class StrategyEngine {
   constructor() {
@@ -90,9 +91,9 @@ class StrategyEngine {
         return;
       }
 
-      const availableSlot = slotManager.getAvailableSlot(surge.market);
+      const availableSlot = slotManager.getAvailableSlot(surge.market, 'SCALPING');
       if (!availableSlot) {
-        console.log(`ℹ️ [급등 감지됨] ${surge.market}이나 현재 비어있는 사용 가능 슬롯이 없습니다.`);
+        console.log(`ℹ️ [초단타 급등 감지됨] ${surge.market}이나 현재 비어있는 스캘핑(1~8번) 슬롯이 없습니다.`);
         return;
       }
 
@@ -260,6 +261,103 @@ class StrategyEngine {
     // 2. 슬롯 이벤트 전파
     slotManager.onSlotEvent((event) => {
       this.emitSignal(event);
+    });
+
+    // 3. 🕯️ 캔들 전략 엔진 (9~12번 슬롯 전용) 시작 및 이벤트 리스너 등록
+    candleStrategyEngine.start();
+    candleStrategyEngine.onEvent(async (event) => {
+      if (!this.isRunning) return;
+
+      if (event.type === 'BREAKOUT_BUY_SIGNAL') {
+        const slot = slotManager.getSlotById(event.slotId);
+        if (!slot || slot.positionStatus !== 'IDLE') return;
+
+        const tradeAmount = Math.max(Number(slot.tradeAmountKrw || 50000), 5000);
+        console.log(`🚀 [신고가 돌파 매수 승인] Slot ${event.slotId} ${event.market} | ${tradeAmount.toLocaleString()}원 시장가 매수`);
+
+        this.emitSignal({
+          type: 'BREAKOUT_BUY_TRIGGERED',
+          slotId: event.slotId,
+          slotName: slot.name,
+          market: event.market,
+          currentPrice: event.currentPrice,
+          dayHigh: event.dayHigh,
+          reason: event.reason
+        });
+
+        try {
+          await this.executeTrade({
+            type: 'BUY',
+            slotId: event.slotId,
+            market: event.market,
+            amount: tradeAmount,
+            price: event.currentPrice
+          }, 'CANDLE_BREAKOUT_AUTO_BUY');
+        } catch (err) {
+          console.error(`❌ [신고가 돌파 매수 실패] ${event.market}:`, err.message);
+          slotManager.clearPosition(event.slotId);
+        }
+
+      } else if (event.type === 'SWING_BUY_SIGNAL') {
+        const slot = slotManager.getSlotById(event.slotId);
+        if (!slot || slot.positionStatus !== 'IDLE') return;
+
+        const tradeAmount = Math.max(Number(slot.tradeAmountKrw || 100000), 5000);
+        console.log(`🌊 [정배열 스윙 매수 승인] Slot ${event.slotId} ${event.market} | ${tradeAmount.toLocaleString()}원 시장가 매수`);
+
+        this.emitSignal({
+          type: 'SWING_BUY_TRIGGERED',
+          slotId: event.slotId,
+          slotName: slot.name,
+          market: event.market,
+          currentPrice: event.currentPrice,
+          candleUnit: event.candleUnit,
+          shortMa: event.shortMa,
+          longMa: event.longMa,
+          reason: event.reason
+        });
+
+        try {
+          await this.executeTrade({
+            type: 'BUY',
+            slotId: event.slotId,
+            market: event.market,
+            amount: tradeAmount,
+            price: event.currentPrice
+          }, 'CANDLE_SWING_AUTO_BUY');
+        } catch (err) {
+          console.error(`❌ [정배열 스윙 매수 실패] ${event.market}:`, err.message);
+          slotManager.clearPosition(event.slotId);
+        }
+
+      } else if (event.type === 'SWING_EXIT_SIGNAL') {
+        const slot = slotManager.getSlotById(event.slotId);
+        if (!slot || !slot.position || slot.positionStatus === 'IDLE') return;
+
+        console.log(`🚨 [스윙 데드크로스 시장가 청산 집행] Slot ${event.slotId} ${event.market}`);
+
+        this.emitSignal({
+          type: 'SWING_DEAD_CROSS_EXIT_TRIGGERED',
+          slotId: event.slotId,
+          market: event.market,
+          shortMa: event.shortMa,
+          longMa: event.longMa,
+          reason: event.reason
+        });
+
+        try {
+          await this.executeTrade({
+            type: 'SELL',
+            slotId: event.slotId,
+            market: event.market,
+            volume: slot.position.entryVolume,
+            price: event.currentPrice,
+            reason: event.reason
+          }, 'SWING_DEAD_CROSS_EXIT');
+        } catch (err) {
+          console.error(`❌ [스윙 데드크로스 시장가 청산 실패] ${event.market}:`, err.message);
+        }
+      }
     });
   }
 

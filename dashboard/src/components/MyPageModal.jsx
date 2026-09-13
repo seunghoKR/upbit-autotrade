@@ -956,9 +956,11 @@ export default function MyPageModal({
           {/* TAB 3: 📊 슬롯별 전략 설정 및 실시간 성과 매트릭스 (운영자표 통합) */}
           {/* ========================================================= */}
           {activeTab === 'SLOT_REPORT' && isApproved && (() => {
-            const processedSlotsData = Array.from({ length: 9 }, (_, idx) => {
+            const maxSlotsCount = Math.max(12, (slots || []).length);
+            const processedSlotsData = Array.from({ length: maxSlotsCount }, (_, idx) => {
               const sId = idx + 1;
               const liveSlot = (slots || []).find(s => s.slotId === sId);
+              const inferredMode = liveSlot?.strategyMode || (sId >= 11 ? 'TREND_SWING' : (sId >= 9 ? 'BREAKOUT_DAY_HIGH' : 'SCALPING'));
               
               if (liveSlot) {
                 const trades = (liveSlot.totalTrades !== undefined && liveSlot.totalTrades !== null) ? Number(liveSlot.totalTrades) : 0;
@@ -969,14 +971,15 @@ export default function MyPageModal({
                 return {
                   slotId: sId,
                   name: liveSlot.slotName || `${sId}번 슬롯`,
+                  strategyMode: inferredMode,
                   isEnabled: Boolean(liveSlot.isEnabled !== false),
                   targetMarket: liveSlot.targetMarket || '전체종목',
-                  windowSeconds: liveSlot.surgeWindowSeconds || 5,
-                  ratePct: liveSlot.surgeRatePct || 1.5,
-                  minVol: liveSlot.surgeMinVolumeKrw || 10000000,
-                  baseMode: liveSlot.surgeBaseMode || 'VWAP',
-                  targetProfit: liveSlot.targetProfitPct || liveSlot.trailingTargetProfitPct || 3.0,
-                  callback: liveSlot.trailingCallbackPct || 1.0,
+                  windowSeconds: inferredMode === 'BREAKOUT_DAY_HIGH' ? `${liveSlot.breakoutCandleUnit || 1}분봉` : (inferredMode === 'TREND_SWING' ? (liveSlot.swingCandleUnit === 'days' ? '일봉' : '4시간봉') : `${liveSlot.surgeWindowSeconds || 5}초`),
+                  ratePct: inferredMode === 'BREAKOUT_DAY_HIGH' ? '신고가' : (inferredMode === 'TREND_SWING' ? '정배열' : `+${liveSlot.surgeRatePct || 1.5}%`),
+                  minVolText: inferredMode === 'BREAKOUT_DAY_HIGH' ? `${liveSlot.breakoutMinVolumeKrwEok || 5}억원` : (inferredMode === 'TREND_SWING' ? '-' : `${Math.round((liveSlot.surgeMinVolumeKrw || 10000000) / 10000).toLocaleString()}만원`),
+                  baseMode: inferredMode === 'BREAKOUT_DAY_HIGH' ? '09:00고가' : (inferredMode === 'TREND_SWING' ? `MA${liveSlot.swingShortMa || 5}>${liveSlot.swingLongMa || 20}` : (liveSlot.surgeBaseMode || 'VWAP')),
+                  targetProfit: liveSlot.trailingTier1TargetProfitPct || liveSlot.targetProfitPct || liveSlot.trailingTargetProfitPct || 3.0,
+                  callback: liveSlot.trailingTier1CallbackPct || liveSlot.trailingCallbackPct || 0.5,
                   stopLoss: liveSlot.stopLossPct || 2.0,
                   trades,
                   wins,
@@ -987,14 +990,15 @@ export default function MyPageModal({
               return {
                 slotId: sId,
                 name: `${sId}번 슬롯`,
+                strategyMode: inferredMode,
                 isEnabled: false,
                 targetMarket: '전체종목',
-                windowSeconds: 5,
-                ratePct: 1.5,
-                minVol: 10000000,
-                baseMode: 'VWAP',
+                windowSeconds: inferredMode === 'BREAKOUT_DAY_HIGH' ? '1분봉' : (inferredMode === 'TREND_SWING' ? '일봉' : '5초'),
+                ratePct: inferredMode === 'BREAKOUT_DAY_HIGH' ? '신고가' : (inferredMode === 'TREND_SWING' ? '정배열' : '+1.5%'),
+                minVolText: inferredMode === 'BREAKOUT_DAY_HIGH' ? '5억원' : (inferredMode === 'TREND_SWING' ? '-' : '1,000만원'),
+                baseMode: inferredMode === 'BREAKOUT_DAY_HIGH' ? '09:00고가' : (inferredMode === 'TREND_SWING' ? 'MA5>20' : 'VWAP'),
                 targetProfit: 3.0,
-                callback: 1.0,
+                callback: 0.5,
                 stopLoss: 2.0,
                 trades: 0,
                 wins: 0,
@@ -1010,7 +1014,7 @@ export default function MyPageModal({
             const activeSlotsCount = processedSlotsData.filter(s => s.isEnabled).length;
 
             const handleResetAll = async () => {
-              if (window.confirm('🚨 [전 슬롯 통계 초기화]\n1번부터 9번까지 모든 슬롯의 누적 거래횟수, 승률, 실현손익을 0으로 초기화하시겠습니까?')) {
+              if (window.confirm('🚨 [전 슬롯 통계 초기화]\n1번부터 12번까지 모든 슬롯의 누적 거래횟수, 승률, 실현손익을 0으로 초기화하시겠습니까?')) {
                 if (onResetAllSlotStats) {
                   await onResetAllSlotStats();
                 }
@@ -1080,7 +1084,7 @@ export default function MyPageModal({
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-center space-y-0.5">
                     <span className="text-[10px] text-slate-400 font-medium block">가동 슬롯</span>
-                    <span className="text-sm font-black text-emerald-400 font-mono">{activeSlotsCount} / 9개 ON</span>
+                    <span className="text-sm font-black text-emerald-400 font-mono">{activeSlotsCount} / {processedSlotsData.length}개 ON</span>
                   </div>
                   <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-center space-y-0.5">
                     <span className="text-[10px] text-slate-400 font-medium block">총 거래 횟수</span>
@@ -1116,11 +1120,11 @@ export default function MyPageModal({
                         </tr>
                         <tr className="border-b border-slate-800 bg-slate-900/90 text-slate-400 text-[10px] font-bold">
                           <th className="py-2 px-2.5 text-slate-300">슬롯</th>
-                          <th className="py-2 px-2 text-center">감시시간</th>
-                          <th className="py-2 px-2 text-center">상승률</th>
-                          <th className="py-2 px-2 text-right">최소거래대금</th>
-                          <th className="py-2 px-1.5 text-center">기준</th>
-                          <th className="py-2 px-2 text-center">감시익절</th>
+                          <th className="py-2 px-2 text-center">기준/주기</th>
+                          <th className="py-2 px-2 text-center">조건/상승률</th>
+                          <th className="py-2 px-2 text-right">최소수급</th>
+                          <th className="py-2 px-1.5 text-center">진입기준</th>
+                          <th className="py-2 px-2 text-center">1단익절</th>
                           <th className="py-2 px-1.5 text-center">콜백</th>
                           <th className="py-2 px-1.5 text-center border-r border-slate-800">손절</th>
                           <th className="py-2 px-2.5 text-center bg-slate-900/70 text-slate-300">거래횟수</th>
@@ -1141,11 +1145,18 @@ export default function MyPageModal({
                                 isHighTraffic ? 'bg-indigo-950/15' : (idx % 2 === 0 ? 'bg-slate-950/40' : 'bg-slate-900/30')
                               }`}
                             >
-                              {/* 슬롯 번호 */}
+                              {/* 슬롯 번호 & 전략 뱃지 */}
                               <td className="py-2 px-2.5 font-bold text-slate-200 flex items-center justify-between gap-1.5">
                                 <div className="flex items-center gap-1.5">
                                   <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${s.isEnabled ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
                                   <span className="font-sans font-bold">{s.name}</span>
+                                  {s.strategyMode === 'TREND_SWING' ? (
+                                    <span className="text-[9px] px-1 py-0.2 rounded bg-sky-500/20 text-sky-300 font-sans font-bold border border-sky-500/30">🌊 스윙</span>
+                                  ) : s.strategyMode === 'BREAKOUT_DAY_HIGH' ? (
+                                    <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 font-sans font-bold border border-amber-500/30">🚀 돌파</span>
+                                  ) : (
+                                    <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-sans font-bold border border-emerald-500/30">⚡ 스캘핑</span>
+                                  )}
                                 </div>
                                 {(s.trades > 0 || s.profit !== 0) && (
                                   <button
@@ -1163,18 +1174,18 @@ export default function MyPageModal({
                                   </button>
                                 )}
                               </td>
-                              {/* 감시시간 */}
-                              <td className="py-2 px-2 text-center text-slate-300">{s.windowSeconds}초</td>
-                              {/* 상승률 */}
-                              <td className="py-2 px-2 text-center text-amber-300 font-bold">+{s.ratePct}%</td>
-                              {/* 최소거래대금 */}
+                              {/* 기준/주기 */}
+                              <td className="py-2 px-2 text-center text-slate-300">{s.windowSeconds}</td>
+                              {/* 조건/상승률 */}
+                              <td className="py-2 px-2 text-center text-amber-300 font-bold">{s.ratePct}</td>
+                              {/* 최소수급 */}
                               <td className="py-2 px-2 text-right text-slate-300">
-                                {(s.minVol / 10000).toLocaleString()}만원
+                                {s.minVolText}
                               </td>
-                              {/* 돌파기준 */}
+                              {/* 진입기준 */}
                               <td className="py-2 px-1.5 text-center">
                                 <span className={`text-[9px] px-1 py-0.2 rounded font-bold ${
-                                  s.baseMode === 'VWAP' ? 'bg-indigo-500/20 text-indigo-300' : 'bg-cyan-500/20 text-cyan-300'
+                                  s.strategyMode === 'TREND_SWING' ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30' : (s.strategyMode === 'BREAKOUT_DAY_HIGH' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-indigo-500/20 text-indigo-300')
                                 }`}>
                                   {s.baseMode}
                                 </span>
@@ -1221,7 +1232,7 @@ export default function MyPageModal({
                         <tr className="bg-slate-900 border-t-2 border-slate-700 font-bold text-slate-200">
                           <td className="py-2.5 px-2.5 font-black text-amber-300">전체 합계 &amp; 평균</td>
                           <td colSpan="7" className="py-2.5 px-2 text-center text-slate-500 text-[10px] border-r border-slate-800">
-                            9개 멀티 슬롯 통합 운용
+                            12개 멀티 슬롯 통합 운용
                           </td>
                           <td className="py-2.5 px-2.5 text-center font-black text-purple-300 bg-purple-950/40">
                             {totalTradesSum}회
@@ -1680,7 +1691,7 @@ export default function MyPageModal({
                 <div className="flex items-center gap-2">
                   <Crown className="w-4 h-4 text-amber-400" />
                   <span className="text-xs text-slate-300 font-bold">
-                    현재 이용 플랜: <strong className="text-amber-400">{user?.role === 'DEVELOPER' ? '👑 개발자 최고권한' : user?.tier}</strong> ({user?.maxSlots || 9}슬롯)
+                    현재 이용 플랜: <strong className="text-amber-400">{user?.role === 'DEVELOPER' ? '👑 개발자 최고권한' : user?.tier}</strong> ({user?.maxSlots || 12}슬롯)
                   </span>
                 </div>
                 <span className="text-xs text-indigo-300 bg-indigo-500/10 border border-indigo-500/30 px-2.5 py-0.5 rounded-full font-semibold">
@@ -1725,7 +1736,7 @@ export default function MyPageModal({
                     <h5 className="font-extrabold text-white text-sm mt-1">VIP 마스터</h5>
                     <div className="text-base sm:text-lg font-black text-amber-300 mt-0.5">2,000,000원 <span className="text-xs font-normal text-slate-400">/ 월</span></div>
                     <ul className="text-[11px] text-slate-300 space-y-1 mt-2">
-                      <li>✓ 9개 슬롯 풀 가동</li>
+                      <li>✓ 12개 슬롯 풀 가동 (3대 멀티 전략)</li>
                       <li>✓ 초단타 &amp; 긴급매도</li>
                       <li>✓ 1:1 전용 기술지원</li>
                     </ul>

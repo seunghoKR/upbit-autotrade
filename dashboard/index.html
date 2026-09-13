@@ -25,6 +25,23 @@
       code, pre, .font-mono {
         font-family: 'JetBrains Mono', monospace;
       }
+      /* 🌟 80% PC 와이드 레이아웃 컨테이너 (모바일 100% / 태블릿 92% / PC 정확히 80%) */
+      .app-container-80 {
+        width: 100%;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      @media (min-width: 640px) {
+        .app-container-80 {
+          width: 92%;
+        }
+      }
+      @media (min-width: 1024px) {
+        .app-container-80 {
+          width: 80% !important;
+          max-width: 1560px !important;
+        }
+      }
     </style>
   </head>
   <body class="bg-[#0B0E14] text-slate-100 antialiased selection:bg-purple-500 selection:text-white min-h-screen">

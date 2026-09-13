@@ -33,3 +33,24 @@ input[type="number"]:focus, input[type="text"]:focus {
 .glow-green {
   box-shadow: 0 0 20px rgba(34, 197, 94, 0.25);
 }
+
+/* 🌟 화면 80% 와이드 레이아웃 컨테이너 (모바일 100% / 태블릿 92% / PC 정확히 80%) */
+.app-container-80 {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (min-width: 640px) {
+  .app-container-80 {
+    width: 92%;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-container-80 {
+    width: 80% !important;
+    max-width: 1560px;
+  }
+}
+

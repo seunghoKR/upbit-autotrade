@@ -88,40 +88,25 @@ export default function BalanceCard({
 
   return (
     <div className="space-y-2">
-      {/* 1. 상단 실시간 레이더 & 실계좌 인증 상태 바 */}
-      <div className="flex items-center justify-between px-3.5 py-1.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-[11px] flex-wrap gap-2 shadow-sm">
-        <div className="flex items-center gap-3 text-emerald-300 font-medium flex-wrap">
-          {/* 🟢 실시간 레이더 전종목 감시 상태 */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span className="font-bold text-white">실시간 레이더 가동 중</span>
-            <span className="text-emerald-400/80 font-mono">({marketCount || 134}개 전종목 실시간 감시)</span>
-          </div>
-
-          {hasRealAccounts && (
-            <>
-              <span className="text-slate-600 hidden sm:inline">•</span>
-              <div className="flex items-center gap-1.5 text-emerald-300 font-medium truncate shrink-0">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span className="truncate">업비트 실계좌 <strong>{processedCoins.length}개 보유</strong> 실시간 동기화됨</span>
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2 font-mono text-[10px] shrink-0">
-          {serverIp && (
-            <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-              IP: {serverIp}
-            </span>
-          )}
-          <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-bold">
-            v{APP_VERSION}
+      {/* 1. 상단 실시간 레이더 감시 상태 바 (IP 및 버전 중복 제거, 간결화) */}
+      <div className="flex items-center justify-between px-3.5 py-1.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-[11px] gap-2 shadow-sm">
+        <div className="flex items-center gap-2 text-emerald-300 font-medium">
+          <span className="relative flex h-2 w-2 shrink-0">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span className="font-bold text-white text-xs sm:text-sm">
+            실시간 <strong className="text-emerald-400 font-mono font-black">{marketCount || 288}개</strong> 전종목 감시 중
           </span>
         </div>
+
+        {hasRealAccounts && (
+          <div className="flex items-center gap-1.5 text-emerald-300/90 text-[11px] font-medium shrink-0">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="hidden sm:inline">업비트 실계좌 연동됨</span>
+            <span className="sm:hidden">실계좌</span>
+          </div>
+        )}
       </div>
 
       {/* 2-A. 모바일 전용 초슬림 통합 자산 카드 (md:hidden) */}
