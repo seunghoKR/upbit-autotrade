@@ -448,9 +448,10 @@ try {
             ];
             for ($s = 1; $s <= 12; $s++) {
                 $m = $markets[$s] ?? 'KRW-BTC';
-                $isEnabled = ($s <= $assignedSlots) ? 1 : 0;
+                // 🛡️ 안전 제1원칙: 모든 신규 슬롯은 기본 가동 중지(OFF)로 생성 (사용자가 명시적으로 켤 때만 가동)
+                $isEnabled = 0;
                 $slotStmt = $pdo->prepare("INSERT INTO nurioh_slots (user_id, slot_id, slot_name, is_enabled, target_market, trade_amount_krw, strategy_type) 
-                    VALUES (?, ?, ?, ?, ?, 0, 'RECOMMENDED') ON DUPLICATE KEY UPDATE is_enabled=VALUES(is_enabled)");
+                    VALUES (?, ?, ?, ?, ?, 0, 'RECOMMENDED') ON DUPLICATE KEY UPDATE slot_name=VALUES(slot_name)");
                 $slotStmt->execute([$userId, $s, "{$s}번 슬롯", $isEnabled, $m]);
             }
 
@@ -921,6 +922,10 @@ try {
             try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `use_whale_tick_filter` TINYINT(1) DEFAULT 1"); } catch (Exception $e) {}
             try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `whale_min_amount_krw` BIGINT DEFAULT 10000000"); } catch (Exception $e) {}
             try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `use_orderbook_filter` TINYINT(1) DEFAULT 1"); } catch (Exception $e) {}
+            // 🛡️ [안전 조치] 신규 확장으로 자동 켜졌던 미사용(IDLE) 슬롯들을 안전하게 OFF 처리
+            try { $pdo->exec("UPDATE nurioh_slots SET is_enabled = 0 WHERE position_status = 'IDLE' AND slot_id IN (10, 11, 12)"); } catch (Exception $e) {}
+            // 🛡️ [개발자/대표님 계정 안전 보장] 미사용(IDLE) 슬롯들을 전부 OFF로 전환하여 불필요한 자동 매수 방지
+            try { $pdo->exec("UPDATE nurioh_slots SET is_enabled = 0 WHERE user_id IN (SELECT id FROM nurioh_users WHERE role='DEVELOPER' OR email='leeshkr@kakao.com') AND position_status = 'IDLE'"); } catch (Exception $e) {}
         }
 
         $uStmt = $pdo->prepare("SELECT role, tier, max_slots FROM nurioh_users WHERE id = ?");
@@ -935,7 +940,8 @@ try {
         for ($s = 1; $s <= 12; $s++) {
             if (!in_array($s, $existingSlotIds, true)) {
                 $m = $defaultMarkets[$s] ?? 'KRW-BTC';
-                $isEnabled = ($s <= $maxSlots) ? 1 : 0;
+                // 🛡️ 안전 제1원칙: 자가 치유로 자동 보충되는 신규 슬롯은 기본 OFF (0) 상태로 생성!
+                $isEnabled = 0;
                 $stratMode = ($s <= 8) ? 'SCALPING' : (($s <= 10) ? 'BREAKOUT_DAY_HIGH' : 'TREND_SWING');
                 $slotInsert = $pdo->prepare("INSERT INTO nurioh_slots 
                     (user_id, slot_id, slot_name, is_enabled, target_market, trade_amount_krw, strategy_type, strategy_mode, target_profit_pct, trailing_callback_pct, stop_loss_pct, position_status) 
@@ -1369,12 +1375,9 @@ try {
         $stmt = $pdo->prepare("UPDATE nurioh_users SET role = ?, tier = ?, max_slots = ?, approval_status = ?, subscription_expires_at = ? WHERE id = ?");
         $stmt->execute([$role, $tier, $slots, $approvalStatus, $expires, $targetUserId]);
 
-        // 🔄 회원의 슬롯 활성화 상태(is_enabled)도 즉시 동기화
-        for ($s = 1; $s <= 12; $s++) {
-            $isEnabled = ($s <= $slots) ? 1 : 0;
-            $slotUpd = $pdo->prepare("UPDATE nurioh_slots SET is_enabled = ? WHERE user_id = ? AND slot_id = ?");
-            $slotUpd->execute([$isEnabled, $targetUserId, $s]);
-        }
+        // 🛡️ 허용 슬롯 개수 초과 슬롯만 안전하게 비활성화(OFF) 처리 (기존 슬롯 임의 강제 ON 금지!)
+        $pdo->prepare("UPDATE nurioh_slots SET is_enabled = 0 WHERE user_id = ? AND slot_id > ?")
+            ->execute([$targetUserId, $slots]);
 
         echo json_encode([
             'success' => true,
@@ -1588,7 +1591,7 @@ try {
             $tradeAmount = isset($input['tradeAmountKrw']) ? (float)$input['tradeAmountKrw'] : (float)($existingSlot['trade_amount_krw'] ?? 50000);
             
             // isEnabled 파라미터 정밀 불리언/정수 변환 (명시적 OFF/ON 처리)
-            $isEnabled = $existingSlot ? (int)$existingSlot['is_enabled'] : 1;
+            $isEnabled = $existingSlot ? (int)$existingSlot['is_enabled'] : 0;
             if (isset($input['isEnabled'])) {
                 $val = $input['isEnabled'];
                 $isEnabled = ($val === true || $val === 1 || $val === '1' || $val === 'true') ? 1 : 0;
