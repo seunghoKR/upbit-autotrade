@@ -472,10 +472,44 @@ export default function App() {
               highestPrice: highestPrice,
               highestProfitPct: highestProfitPct,
               targetMarket: (isRecentlyUpdated && currentLocalSlot?.targetMarket) ? currentLocalSlot.targetMarket : (s.targetMarket || 'KRW-BTC'),
+              strategyMode: (isRecentlyUpdated && currentLocalSlot?.strategyMode)
+                ? currentLocalSlot.strategyMode
+                : (s.strategyMode || s.strategy_mode || (s.slotId <= 8 ? 'SCALPING' : (s.slotId <= 10 ? 'BREAKOUT_DAY_HIGH' : 'TREND_SWING'))),
+              surgeBaseMode: (isRecentlyUpdated && currentLocalSlot?.surgeBaseMode)
+                ? currentLocalSlot.surgeBaseMode
+                : (s.surgeBaseMode || s.surge_base_mode || 'VWAP'),
+              breakoutHighEnabled: (isRecentlyUpdated && currentLocalSlot?.breakoutHighEnabled !== undefined)
+                ? Boolean(currentLocalSlot.breakoutHighEnabled)
+                : Boolean(s.breakoutHighEnabled !== undefined ? s.breakoutHighEnabled : (s.breakout_high_enabled !== undefined ? s.breakout_high_enabled : true)),
+              breakoutCandleUnit: (isRecentlyUpdated && currentLocalSlot?.breakoutCandleUnit)
+                ? currentLocalSlot.breakoutCandleUnit
+                : (s.breakoutCandleUnit || s.breakout_candle_unit || 1),
+              breakoutMinVolumeKrwEok: (isRecentlyUpdated && currentLocalSlot?.breakoutMinVolumeKrwEok !== undefined)
+                ? currentLocalSlot.breakoutMinVolumeKrwEok
+                : (s.breakoutMinVolumeKrwEok !== undefined ? s.breakoutMinVolumeKrwEok : (s.breakout_min_volume_krw_eok !== undefined ? s.breakout_min_volume_krw_eok : 5)),
+              swingCandleUnit: (isRecentlyUpdated && currentLocalSlot?.swingCandleUnit)
+                ? currentLocalSlot.swingCandleUnit
+                : (s.swingCandleUnit || s.swing_candle_unit || 'days'),
+              swingShortMa: (isRecentlyUpdated && currentLocalSlot?.swingShortMa)
+                ? currentLocalSlot.swingShortMa
+                : (s.swingShortMa || s.swing_short_ma || 5),
+              swingLongMa: (isRecentlyUpdated && currentLocalSlot?.swingLongMa)
+                ? currentLocalSlot.swingLongMa
+                : (s.swingLongMa || s.swing_long_ma || 20),
+              useWideTrailing: (isRecentlyUpdated && currentLocalSlot?.useWideTrailing !== undefined)
+                ? Boolean(currentLocalSlot.useWideTrailing)
+                : Boolean(s.useWideTrailing !== undefined ? s.useWideTrailing : (s.use_wide_trailing !== undefined ? s.use_wide_trailing : true)),
+              trailingTier1TargetProfitPct: parseFloat(s.trailingTier1TargetProfitPct !== undefined ? s.trailingTier1TargetProfitPct : (s.trailing_tier1_target_profit_pct !== undefined ? s.trailing_tier1_target_profit_pct : (s.targetProfitPct || 3.0))),
+              trailingTier1CallbackPct: parseFloat(s.trailingTier1CallbackPct !== undefined ? s.trailingTier1CallbackPct : (s.trailing_tier1_callback_pct !== undefined ? s.trailing_tier1_callback_pct : (s.trailingCallbackPct || 0.5))),
+              trailingTier2HurdlePct: parseFloat(s.trailingTier2HurdlePct !== undefined ? s.trailingTier2HurdlePct : (s.trailing_tier2_hurdle_pct !== undefined ? s.trailing_tier2_hurdle_pct : 10.0)),
+              trailingTier2CallbackPct: parseFloat(s.trailingTier2CallbackPct !== undefined ? s.trailingTier2CallbackPct : (s.trailing_tier2_callback_pct !== undefined ? s.trailing_tier2_callback_pct : 3.0)),
               targetProfitPct: parseFloat(s.targetProfitPct !== undefined ? s.targetProfitPct : (s.target_profit_pct !== undefined ? s.target_profit_pct : (s.trailingTargetProfitPct !== undefined ? s.trailingTargetProfitPct : 3.0))),
               trailingTargetProfitPct: parseFloat(s.trailingTargetProfitPct !== undefined ? s.trailingTargetProfitPct : (s.trailing_target_profit_pct !== undefined ? s.trailing_target_profit_pct : (s.targetProfitPct !== undefined ? s.targetProfitPct : 3.0))),
               trailingCallbackPct: parseFloat(s.trailingCallbackPct !== undefined ? s.trailingCallbackPct : (s.trailing_callback_pct !== undefined ? s.trailing_callback_pct : 1.0)),
-              stopLossPct: parseFloat(s.stopLossPct !== undefined ? s.stopLossPct : (s.stop_loss_pct !== undefined ? s.stop_loss_pct : 2.0))
+              stopLossPct: parseFloat(s.stopLossPct !== undefined ? s.stopLossPct : (s.stop_loss_pct !== undefined ? s.stop_loss_pct : 2.0)),
+              totalTrades: Number(s.totalTrades !== undefined ? s.totalTrades : (s.total_trades || 0)),
+              winTrades: Number(s.winTrades !== undefined ? s.winTrades : (s.win_trades || 0)),
+              totalRealizedProfitKrw: Number(s.totalRealizedProfitKrw !== undefined ? s.totalRealizedProfitKrw : (s.total_realized_profit_krw || 0))
             };
           });
           let finalNormalized = normalizedSlots;

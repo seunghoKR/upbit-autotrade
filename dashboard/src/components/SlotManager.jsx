@@ -791,6 +791,44 @@ export default function SlotManager({
                                 />
                               </div>
                             </div>
+
+                            {/* 돌파 기준가 모드 (단기 평균가 VWAP vs 최저가 MIN) */}
+                            <div className="space-y-1 pt-1 border-t border-amber-500/20">
+                              <div className="flex items-center justify-between">
+                                <label className="text-[10px] text-amber-200/80 block font-bold">돌파 기준가 산출 방식</label>
+                                <span className="text-[9px] text-slate-400">급등 시작 기준선</span>
+                              </div>
+                              <div className="grid grid-cols-2 gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => setEditForm(prev => ({ ...prev, surgeBaseMode: 'VWAP' }))}
+                                  className={`py-1 px-1.5 rounded-lg text-[10px] font-bold border transition flex items-center justify-center gap-1 cursor-pointer ${
+                                    (editForm.surgeBaseMode || 'VWAP') === 'VWAP'
+                                      ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50 shadow-sm'
+                                      : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
+                                  }`}
+                                >
+                                  <span>📊 단기 평균가 (VWAP)</span>
+                                  {(editForm.surgeBaseMode || 'VWAP') === 'VWAP' && (
+                                    <Check className="w-3 h-3 text-indigo-400" />
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditForm(prev => ({ ...prev, surgeBaseMode: 'MIN' }))}
+                                  className={`py-1 px-1.5 rounded-lg text-[10px] font-bold border transition flex items-center justify-center gap-1 cursor-pointer ${
+                                    editForm.surgeBaseMode === 'MIN'
+                                      ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 shadow-sm'
+                                      : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
+                                  }`}
+                                >
+                                  <span>📉 최저가 (MIN)</span>
+                                  {editForm.surgeBaseMode === 'MIN' && (
+                                    <Check className="w-3 h-3 text-cyan-400" />
+                                  )}
+                                </button>
+                              </div>
+                            </div>
                           </div>
 
                           {/* 3중 안심 필터 */}

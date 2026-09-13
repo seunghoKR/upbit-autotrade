@@ -922,10 +922,17 @@ try {
             try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `use_whale_tick_filter` TINYINT(1) DEFAULT 1"); } catch (Exception $e) {}
             try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `whale_min_amount_krw` BIGINT DEFAULT 10000000"); } catch (Exception $e) {}
             try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `use_orderbook_filter` TINYINT(1) DEFAULT 1"); } catch (Exception $e) {}
-            // 🛡️ [안전 조치] 신규 확장으로 자동 켜졌던 미사용(IDLE) 슬롯들을 안전하게 OFF 처리
-            try { $pdo->exec("UPDATE nurioh_slots SET is_enabled = 0 WHERE position_status = 'IDLE' AND slot_id IN (10, 11, 12)"); } catch (Exception $e) {}
-            // 🛡️ [개발자/대표님 계정 안전 보장] 미사용(IDLE) 슬롯들을 전부 OFF로 전환하여 불필요한 자동 매수 방지
-            try { $pdo->exec("UPDATE nurioh_slots SET is_enabled = 0 WHERE user_id IN (SELECT id FROM nurioh_users WHERE role='DEVELOPER' OR email='leeshkr@kakao.com') AND position_status = 'IDLE'"); } catch (Exception $e) {}
+            try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `breakout_high_enabled` TINYINT(1) DEFAULT 1"); } catch (Exception $e) {}
+            try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `breakout_candle_unit` INT DEFAULT 1"); } catch (Exception $e) {}
+            try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `breakout_min_volume_krw_eok` INT DEFAULT 5"); } catch (Exception $e) {}
+            try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `swing_candle_unit` VARCHAR(20) DEFAULT 'days'"); } catch (Exception $e) {}
+            try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `swing_short_ma` INT DEFAULT 5"); } catch (Exception $e) {}
+            try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `swing_long_ma` INT DEFAULT 20"); } catch (Exception $e) {}
+            try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `use_wide_trailing` TINYINT(1) DEFAULT 1"); } catch (Exception $e) {}
+            try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `trailing_tier1_target_profit_pct` DECIMAL(5,2) DEFAULT 3.00"); } catch (Exception $e) {}
+            try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `trailing_tier1_callback_pct` DECIMAL(5,2) DEFAULT 0.50"); } catch (Exception $e) {}
+            try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `trailing_tier2_hurdle_pct` DECIMAL(5,2) DEFAULT 10.00"); } catch (Exception $e) {}
+            try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `trailing_tier2_callback_pct` DECIMAL(5,2) DEFAULT 3.00"); } catch (Exception $e) {}
         }
 
         $uStmt = $pdo->prepare("SELECT role, tier, max_slots FROM nurioh_users WHERE id = ?");
@@ -1087,6 +1094,17 @@ try {
                 'whaleMinAmountKrw' => (float)($s['whale_min_amount_krw'] ?? 10000000),
                 'useOrderbookFilter' => (bool)($s['use_orderbook_filter'] ?? true),
                 'surgeBaseMode' => ($s['surge_base_mode'] ?? 'VWAP') ?: 'VWAP',
+                'breakoutHighEnabled' => (bool)($s['breakout_high_enabled'] ?? true),
+                'breakoutCandleUnit' => (int)($s['breakout_candle_unit'] ?? 1),
+                'breakoutMinVolumeKrwEok' => (int)($s['breakout_min_volume_krw_eok'] ?? 5),
+                'swingCandleUnit' => $s['swing_candle_unit'] ?? 'days',
+                'swingShortMa' => (int)($s['swing_short_ma'] ?? 5),
+                'swingLongMa' => (int)($s['swing_long_ma'] ?? 20),
+                'useWideTrailing' => (bool)($s['use_wide_trailing'] ?? true),
+                'trailingTier1TargetProfitPct' => (float)($s['trailing_tier1_target_profit_pct'] ?? ($s['target_profit_pct'] ?? 3.0)),
+                'trailingTier1CallbackPct' => (float)($s['trailing_tier1_callback_pct'] ?? ($s['trailing_callback_pct'] ?? 0.5)),
+                'trailingTier2HurdlePct' => (float)($s['trailing_tier2_hurdle_pct'] ?? 10.0),
+                'trailingTier2CallbackPct' => (float)($s['trailing_tier2_callback_pct'] ?? 3.0),
                 'targetProfitPct' => (float)($s['target_profit_pct'] ?? 3.0),
                 'trailingCallbackPct' => (float)($s['trailing_callback_pct'] ?? 1.0),
                 'stopLossPct' => (float)($s['stop_loss_pct'] ?? 2.0),
@@ -1099,6 +1117,7 @@ try {
                 'highestProfitPct' => $hasPos ? (float)($s['highest_profit_pct'] ?? 0) : 0,
                 'totalTrades' => (int)($s['total_trades'] ?? 0),
                 'winTrades' => (int)($s['win_trades'] ?? 0),
+                'totalRealizedProfitKrw' => $realizedProfit,
             ];
         }
 
@@ -1609,6 +1628,17 @@ try {
             $whaleMinAmountKrw = isset($input['whaleMinAmountKrw']) ? abs((float)$input['whaleMinAmountKrw']) : (float)($existingSlot['whale_min_amount_krw'] ?? 10000000);
             $useOrderbookFilter = isset($input['useOrderbookFilter']) ? ((bool)$input['useOrderbookFilter'] ? 1 : 0) : (int)($existingSlot['use_orderbook_filter'] ?? 1);
             $surgeBaseMode = isset($input['surgeBaseMode']) ? (in_array(strtoupper($input['surgeBaseMode']), ['VWAP', 'MIN'], true) ? strtoupper($input['surgeBaseMode']) : 'VWAP') : ($existingSlot['surge_base_mode'] ?? 'VWAP');
+            $breakoutHighEnabled = isset($input['breakoutHighEnabled']) ? ((bool)$input['breakoutHighEnabled'] ? 1 : 0) : (int)($existingSlot['breakout_high_enabled'] ?? 1);
+            $breakoutCandleUnit = isset($input['breakoutCandleUnit']) ? max(1, (int)$input['breakoutCandleUnit']) : (int)($existingSlot['breakout_candle_unit'] ?? 1);
+            $breakoutMinVolumeKrwEok = isset($input['breakoutMinVolumeKrwEok']) ? max(1, (int)$input['breakoutMinVolumeKrwEok']) : (int)($existingSlot['breakout_min_volume_krw_eok'] ?? 5);
+            $swingCandleUnit = isset($input['swingCandleUnit']) ? trim((string)$input['swingCandleUnit']) : ($existingSlot['swing_candle_unit'] ?? 'days');
+            $swingShortMa = isset($input['swingShortMa']) ? max(1, (int)$input['swingShortMa']) : (int)($existingSlot['swing_short_ma'] ?? 5);
+            $swingLongMa = isset($input['swingLongMa']) ? max(1, (int)$input['swingLongMa']) : (int)($existingSlot['swing_long_ma'] ?? 20);
+            $useWideTrailing = isset($input['useWideTrailing']) ? ((bool)$input['useWideTrailing'] ? 1 : 0) : (int)($existingSlot['use_wide_trailing'] ?? 1);
+            $trailingTier1TargetProfitPct = isset($input['trailingTier1TargetProfitPct']) ? abs((float)$input['trailingTier1TargetProfitPct']) : (float)($existingSlot['trailing_tier1_target_profit_pct'] ?? ($existingSlot['target_profit_pct'] ?? 3.0));
+            $trailingTier1CallbackPct = isset($input['trailingTier1CallbackPct']) ? abs((float)$input['trailingTier1CallbackPct']) : (float)($existingSlot['trailing_tier1_callback_pct'] ?? ($existingSlot['trailing_callback_pct'] ?? 0.5));
+            $trailingTier2HurdlePct = isset($input['trailingTier2HurdlePct']) ? abs((float)$input['trailingTier2HurdlePct']) : (float)($existingSlot['trailing_tier2_hurdle_pct'] ?? 10.0);
+            $trailingTier2CallbackPct = isset($input['trailingTier2CallbackPct']) ? abs((float)$input['trailingTier2CallbackPct']) : (float)($existingSlot['trailing_tier2_callback_pct'] ?? 3.0);
             $targetProfitPct = isset($input['targetProfitPct']) ? abs((float)$input['targetProfitPct']) : (float)($existingSlot['target_profit_pct'] ?? 3.0);
             $trailingCallbackPct = isset($input['trailingCallbackPct']) ? abs((float)$input['trailingCallbackPct']) : (float)($existingSlot['trailing_callback_pct'] ?? 1.0);
             $stopLossPct = isset($input['stopLossPct']) ? abs((float)$input['stopLossPct']) : (float)($existingSlot['stop_loss_pct'] ?? 2.0);
@@ -1631,6 +1661,17 @@ try {
                     whale_min_amount_krw = ?,
                     use_orderbook_filter = ?,
                     surge_base_mode = ?,
+                    breakout_high_enabled = ?,
+                    breakout_candle_unit = ?,
+                    breakout_min_volume_krw_eok = ?,
+                    swing_candle_unit = ?,
+                    swing_short_ma = ?,
+                    swing_long_ma = ?,
+                    use_wide_trailing = ?,
+                    trailing_tier1_target_profit_pct = ?,
+                    trailing_tier1_callback_pct = ?,
+                    trailing_tier2_hurdle_pct = ?,
+                    trailing_tier2_callback_pct = ?,
                     target_profit_pct = ?,
                     trailing_callback_pct = ?,
                     stop_loss_pct = ?,
@@ -1652,6 +1693,17 @@ try {
                     $whaleMinAmountKrw,
                     $useOrderbookFilter,
                     $surgeBaseMode,
+                    $breakoutHighEnabled,
+                    $breakoutCandleUnit,
+                    $breakoutMinVolumeKrwEok,
+                    $swingCandleUnit,
+                    $swingShortMa,
+                    $swingLongMa,
+                    $useWideTrailing,
+                    $trailingTier1TargetProfitPct,
+                    $trailingTier1CallbackPct,
+                    $trailingTier2HurdlePct,
+                    $trailingTier2CallbackPct,
                     $targetProfitPct,
                     $trailingCallbackPct,
                     $stopLossPct,
@@ -1661,8 +1713,8 @@ try {
                 ]);
             } else {
                 $stmt = $pdo->prepare("INSERT INTO nurioh_slots 
-                    (user_id, slot_id, slot_name, is_enabled, target_market, trade_amount_krw, strategy_type, strategy_mode, surge_window_seconds, surge_rate_pct, surge_min_volume_krw, surge_volume_mode, surge_min_volume_rate_pct, use_reverse_alignment_filter, use_whale_tick_filter, whale_min_amount_krw, use_orderbook_filter, surge_base_mode, target_profit_pct, trailing_callback_pct, stop_loss_pct, use_atr_stop_loss, position_status) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'IDLE')");
+                    (user_id, slot_id, slot_name, is_enabled, target_market, trade_amount_krw, strategy_type, strategy_mode, surge_window_seconds, surge_rate_pct, surge_min_volume_krw, surge_volume_mode, surge_min_volume_rate_pct, use_reverse_alignment_filter, use_whale_tick_filter, whale_min_amount_krw, use_orderbook_filter, surge_base_mode, breakout_high_enabled, breakout_candle_unit, breakout_min_volume_krw_eok, swing_candle_unit, swing_short_ma, swing_long_ma, use_wide_trailing, trailing_tier1_target_profit_pct, trailing_tier1_callback_pct, trailing_tier2_hurdle_pct, trailing_tier2_callback_pct, target_profit_pct, trailing_callback_pct, stop_loss_pct, use_atr_stop_loss, position_status) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'IDLE')");
                 $stmt->execute([
                     $userId,
                     $slotId,
@@ -1682,6 +1734,17 @@ try {
                     $whaleMinAmountKrw,
                     $useOrderbookFilter,
                     $surgeBaseMode,
+                    $breakoutHighEnabled,
+                    $breakoutCandleUnit,
+                    $breakoutMinVolumeKrwEok,
+                    $swingCandleUnit,
+                    $swingShortMa,
+                    $swingLongMa,
+                    $useWideTrailing,
+                    $trailingTier1TargetProfitPct,
+                    $trailingTier1CallbackPct,
+                    $trailingTier2HurdlePct,
+                    $trailingTier2CallbackPct,
                     $targetProfitPct,
                     $trailingCallbackPct,
                     $stopLossPct,
