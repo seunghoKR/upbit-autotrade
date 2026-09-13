@@ -1846,7 +1846,7 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen ${getThemeBgClass()} text-slate-100 selection:bg-emerald-500 selection:text-black flex flex-col font-sans pb-12 transition-colors duration-500`}>
+    <div className={`min-h-screen ${getThemeBgClass()} text-slate-100 selection:bg-emerald-500 selection:text-black flex flex-col font-sans pb-12 transition-colors duration-500 w-full max-w-full overflow-x-hidden`}>
       {/* 글로벌 네비게이션 헤더 */}
       <Header
         user={currentUser}
@@ -1869,12 +1869,12 @@ export default function App() {
 
       {/* 🏛️ [연구실/실험실 전용 상단 띠 배너] 운영자/개발자 사전 체험 전용 안내 */}
       {isStagingLab ? (
-        <div className="bg-gradient-to-r from-amber-600/90 via-orange-600/90 to-amber-700/90 text-white px-4 py-2 border-b border-amber-400/50 shadow-md">
-          <div className="app-container-80 px-3 sm:px-4 flex items-center justify-between text-xs sm:text-sm font-bold">
-            <div className="flex items-center gap-2">
-              <span className="text-base animate-bounce">🔬</span>
-              <span>[실험실 v{APP_VERSION}] 운영자 전용 사전 검증 공간입니다.</span>
-              <span className="hidden md:inline text-amber-100/90 font-normal text-xs">
+        <div className="bg-gradient-to-r from-amber-600/90 via-orange-600/90 to-amber-700/90 text-white px-4 py-2 border-b border-amber-400/50 shadow-md w-full max-w-full overflow-hidden">
+          <div className="app-container-80 px-3 sm:px-4 flex items-center justify-between text-xs sm:text-sm font-bold gap-2 min-w-0 max-w-full">
+            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 truncate">
+              <span className="text-base animate-bounce shrink-0">🔬</span>
+              <span className="truncate">[실험실 v{APP_VERSION}] 운영자 전용 사전 검증 공간입니다.</span>
+              <span className="hidden md:inline text-amber-100/90 font-normal text-xs shrink-0">
                 (실서버 적용 전 신규 기능과 UI를 직접 테스트해 보세요. 개발자/운영자 승인 후 실서버로 배포됩니다.)
               </span>
             </div>
@@ -1884,12 +1884,12 @@ export default function App() {
           </div>
         </div>
       ) : isLocalLab ? (
-        <div className="bg-gradient-to-r from-purple-900/90 via-indigo-900/90 to-purple-950/90 text-white px-4 py-2 border-b border-purple-400/50 shadow-md">
-          <div className="app-container-80 px-3 sm:px-4 flex items-center justify-between text-xs sm:text-sm font-bold">
-            <div className="flex items-center gap-2">
-              <span className="text-base animate-bounce">🧪</span>
-              <span>[연구실 v{APP_VERSION}] 대표님 로컬 연구 및 개발 전용 공간입니다.</span>
-              <span className="hidden md:inline text-purple-200/90 font-normal text-xs">
+        <div className="bg-gradient-to-r from-purple-900/90 via-indigo-900/90 to-purple-950/90 text-white px-4 py-2 border-b border-purple-400/50 shadow-md w-full max-w-full overflow-hidden">
+          <div className="app-container-80 px-3 sm:px-4 flex items-center justify-between text-xs sm:text-sm font-bold gap-2 min-w-0 max-w-full">
+            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 truncate">
+              <span className="text-base animate-bounce shrink-0">🧪</span>
+              <span className="truncate">[연구실 v{APP_VERSION}] 대표님 로컬 연구 및 개발 전용 공간입니다.</span>
+              <span className="hidden md:inline text-purple-200/90 font-normal text-xs shrink-0">
                 (코드가 실시간으로 반영되는 로컬 테스트베드입니다.)
               </span>
             </div>
@@ -1901,7 +1901,7 @@ export default function App() {
       ) : null}
 
       {/* 메인 콘텐츠 영역 (PC 모드: 화면 너비의 80% 고정 레이아웃, 가로 4열 x 세로 3행) */}
-      <main className="flex-1 app-container-80 px-3 sm:px-4 py-4 sm:py-6 space-y-6">
+      <main className="flex-1 app-container-80 px-3 sm:px-4 py-4 sm:py-6 space-y-6 max-w-full min-w-0">
         {/* 계좌 잔고 요약 카드 */}
         <BalanceCard 
           accounts={accounts} 

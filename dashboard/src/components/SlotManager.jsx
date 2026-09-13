@@ -268,9 +268,9 @@ export default function SlotManager({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 max-w-full min-w-0">
       {/* 1. 상단 슬롯 헤더 & 1~12번 슬롯 탭 네비게이션 통합 바 (1줄 콤팩트 디자인) */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl backdrop-blur-md">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl backdrop-blur-md max-w-full min-w-0">
         <div className="flex items-center gap-2 shrink-0">
           <div className="p-1.5 sm:p-2 rounded-xl bg-gradient-to-tr from-emerald-500/20 via-teal-500/15 to-indigo-500/20 border border-emerald-500/30 text-emerald-400">
             <Layers className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
@@ -287,7 +287,7 @@ export default function SlotManager({
 
         {/* 2. 1~12번 슬롯 탭 버튼 바 */}
         {displaySlots.length > 1 && (
-          <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto pb-0.5 lg:pb-0 scrollbar-none">
+          <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto pb-0.5 lg:pb-0 scrollbar-none max-w-full min-w-0">
             {displaySlots.map((slot) => {
               const isSelected = (selectedSlotId === slot.slotId);
               const hasPosition = (slot.positionStatus === 'IN_POSITION' || slot.positionStatus === 'HOLDING' || slot.positionStatus === 'TRAILING_ACTIVE') || Boolean(slot.entryPrice && slot.entryPrice > 0);
@@ -387,7 +387,7 @@ export default function SlotManager({
               key={slot.slotId}
               id={`slot-card-${slot.slotId}`}
               onClick={() => handleSlotNavClick(slot.slotId)}
-              className={`rounded-2xl p-3.5 sm:p-4 border transition-all duration-300 scroll-mt-24 cursor-pointer relative overflow-hidden flex flex-col justify-between min-h-[300px] select-none ${
+              className={`rounded-2xl p-3.5 sm:p-4 pt-4 sm:pt-4.5 border transition-all duration-300 scroll-mt-24 cursor-pointer relative overflow-hidden flex flex-col justify-between min-h-[300px] select-none max-w-full min-w-0 ${
                 displaySlots.length === 1 ? 'max-w-xl w-full ' : ''
               }${
                 !slot.isEnabled
@@ -412,7 +412,7 @@ export default function SlotManager({
               }`}
             >
               {/* 🌟 전략 모드별 상단 컬러 악센트 라인 (카드 상단 가로 줄) */}
-              <div className={`h-2 w-[calc(100%+1.75rem)] sm:w-[calc(100%+2rem)] -mt-3.5 sm:-mt-4 -mx-3.5 sm:-mx-4 mb-3 shrink-0 ${
+              <div className={`absolute top-0 left-0 right-0 h-1.5 sm:h-2 shrink-0 ${
                 !slot.isEnabled
                   ? 'bg-slate-700'
                   : isSwing
@@ -1480,36 +1480,36 @@ export default function SlotManager({
                   </div>
                 ) : (
                   <>
-                    <span className="text-[11px] text-slate-400 flex items-center gap-1.5">
+                    <span className="text-[11px] text-slate-400 flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
                       {!slot.isEnabled ? (
                         <>
-                          <span className="w-2 h-2 rounded-full bg-slate-600"></span>
-                          <strong className="text-slate-500">⏸️ 슬롯 가동 중지됨 (감시 중단)</strong>
+                          <span className="w-2 h-2 rounded-full bg-slate-600 shrink-0"></span>
+                          <strong className="text-slate-500 truncate">⏸️ 슬롯 가동 중지됨</strong>
                         </>
                       ) : hasPosition ? (
                         <>
-                          <span className="relative flex h-2 w-2">
+                          <span className="relative flex h-2 w-2 shrink-0">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                           </span>
-                          <strong className="text-emerald-300">🎯 실시간 수익 추적 중</strong>
+                          <strong className="text-emerald-300 truncate">🎯 실시간 수익 추적 중</strong>
                         </>
                       ) : isSurgeCounting ? (
                         <>
-                          <span className="relative flex h-2 w-2">
+                          <span className="relative flex h-2 w-2 shrink-0">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
                           </span>
-                          <strong className="text-amber-300 animate-pulse">⚡ 급등 포착! 자동 매수 대기</strong>
+                          <strong className="text-amber-300 animate-pulse truncate">⚡ 급등 포착! 자동 매수 대기</strong>
                         </>
                       ) : isZeroAmount ? (
                         <>
-                          <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-                          <strong className="text-amber-400/90">매수금액 설정 대기 (0원)</strong>
+                          <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0"></span>
+                          <strong className="text-amber-400/90 truncate">매수금액 설정 대기 (0원)</strong>
                         </>
                       ) : (
                         <>
-                          <span className="relative flex h-2 w-2">
+                          <span className="relative flex h-2 w-2 shrink-0">
                             <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
                               isBreakout ? 'bg-amber-400' : (isSwing ? 'bg-sky-400' : 'bg-emerald-400')
                             }`}></span>
@@ -1517,10 +1517,10 @@ export default function SlotManager({
                               isBreakout ? 'bg-amber-400' : (isSwing ? 'bg-sky-400' : 'bg-emerald-400')
                             }`}></span>
                           </span>
-                          <strong className={
+                          <strong className={`truncate ${
                             isBreakout ? 'text-amber-300' : (isSwing ? 'text-sky-300' : 'text-emerald-300')
-                          }>
-                            {isBreakout ? '🚀 실시간 신고가 돌파 감시 중' : (isSwing ? '🌊 실시간 추세스윙 감시 중' : '⚡ 실시간 스캘핑 감시 중')}
+                          }`}>
+                            {isBreakout ? '🚀 신고가 돌파 감시 중' : (isSwing ? '🌊 추세스윙 감시 중' : '⚡ 스캘핑 감시 중')}
                           </strong>
                         </>
                       )}

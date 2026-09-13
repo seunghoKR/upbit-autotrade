@@ -87,15 +87,15 @@ export default function BalanceCard({
   const isPositive = totalProfitRate >= 0;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 max-w-full min-w-0">
       {/* 1. 상단 실시간 레이더 감시 상태 바 (IP 및 버전 중복 제거, 간결화) */}
-      <div className="flex items-center justify-between px-3.5 py-1.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-[11px] gap-2 shadow-sm">
-        <div className="flex items-center gap-2 text-emerald-300 font-medium">
+      <div className="flex items-center justify-between px-3.5 py-1.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-[11px] gap-2 shadow-sm max-w-full min-w-0">
+        <div className="flex items-center gap-2 text-emerald-300 font-medium min-w-0 truncate">
           <span className="relative flex h-2 w-2 shrink-0">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
           </span>
-          <span className="font-bold text-white text-xs sm:text-sm">
+          <span className="font-bold text-white text-xs sm:text-sm truncate">
             실시간 <strong className="text-emerald-400 font-mono font-black">{marketCount || 288}개</strong> 전종목 감시 중
           </span>
         </div>
@@ -110,11 +110,11 @@ export default function BalanceCard({
       </div>
 
       {/* 2-A. 모바일 전용 초슬림 통합 자산 카드 (md:hidden) */}
-      <div className="md:hidden bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 backdrop-blur-md shadow-lg space-y-3">
+      <div className="md:hidden bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 backdrop-blur-md shadow-lg space-y-3 max-w-full min-w-0">
         {/* 상단 2분할 그리드: [총 평가 자산] | [주문 가능 원화] */}
         <div className="grid grid-cols-2 gap-2.5 divide-x divide-slate-800">
           {/* 총 평가 자산 */}
-          <div className="pr-2 space-y-1">
+          <div className="pr-2 space-y-1 min-w-0">
             <div className="flex items-center justify-between text-[11px] text-slate-400">
               <span>총 평가 자산</span>
               <span className={`text-[10px] font-bold font-mono px-1.5 py-0.2 rounded ${
@@ -123,7 +123,7 @@ export default function BalanceCard({
                 {isPositive ? `+${totalProfitRate.toFixed(1)}%` : `${totalProfitRate.toFixed(1)}%`}
               </span>
             </div>
-            <div className="text-lg font-black font-mono text-white tracking-tight">
+            <div className="text-lg font-black font-mono text-white tracking-tight truncate">
               {Math.round(totalAssets).toLocaleString()} <span className="text-[10px] font-normal text-slate-400">원</span>
             </div>
             <div className="text-[10px] text-slate-400 truncate">
@@ -134,17 +134,17 @@ export default function BalanceCard({
           </div>
 
           {/* 주문 가능 원화 */}
-          <div className="pl-2 space-y-1">
+          <div className="pl-2 space-y-1 min-w-0">
             <div className="flex items-center justify-between text-[11px] text-slate-400">
               <span>주문 가능 원화</span>
               <span className="text-[10px] font-mono text-cyan-400 font-bold">
                 {totalAssets > 0 ? ((activeKrwBalance / totalAssets) * 100).toFixed(0) : 0}%
               </span>
             </div>
-            <div className="text-lg font-black font-mono text-white tracking-tight">
+            <div className="text-lg font-black font-mono text-white tracking-tight truncate">
               {Math.round(activeKrwBalance).toLocaleString()} <span className="text-[10px] font-normal text-slate-400">원</span>
             </div>
-            <div className="text-[10px] text-slate-400">
+            <div className="text-[10px] text-slate-400 truncate">
               보유 코인: <strong className="text-purple-400">{processedCoins.length}종목</strong>
             </div>
           </div>
@@ -152,7 +152,7 @@ export default function BalanceCard({
 
         {/* 하단 1줄: 보유 코인 가로 스크롤 미니 칩 */}
         {processedCoins.length > 0 && (
-          <div className="pt-2 border-t border-slate-800/80 flex items-center gap-1.5 overflow-x-auto text-[10px] pb-0.5">
+          <div className="pt-2 border-t border-slate-800/80 flex items-center gap-1.5 overflow-x-auto text-[10px] pb-0.5 max-w-full min-w-0">
             <span className="text-slate-500 shrink-0">보유:</span>
             {processedCoins.map(coin => (
               <span key={coin.currency} className="px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 font-mono text-[10px] flex items-center gap-1 shrink-0">

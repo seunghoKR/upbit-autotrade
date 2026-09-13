@@ -116,24 +116,24 @@ export default function Header({
     : user.nickname;
 
   return (
-    <header className="border-b border-slate-800 bg-slate-950/90 backdrop-blur-md sticky top-0 z-40">
-      <div className="app-container-80 px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between gap-2 flex-nowrap">
+    <header className="border-b border-slate-800 bg-slate-950/90 backdrop-blur-md sticky top-0 z-40 w-full max-w-full overflow-x-hidden">
+      <div className="app-container-80 px-2.5 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between gap-1.5 sm:gap-2 flex-nowrap w-full min-w-0">
         
         {/* 좌측: 로고 & 👤 대표님 프로필 미니 위젯 (주황색 화살표 위치로 통합) */}
-        <div className="flex items-center gap-2 sm:gap-3.5 shrink-0 min-w-0 max-w-full">
+        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1 overflow-hidden">
           {/* 로고 */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl overflow-hidden shadow-md shadow-emerald-500/20 border border-emerald-500/30 flex items-center justify-center bg-slate-950 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+            <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-xl overflow-hidden shadow-md shadow-emerald-500/20 border border-emerald-500/30 flex items-center justify-center bg-slate-950 shrink-0">
               <img 
                 src="/assets/logos/nurioh_logo.png" 
                 alt="NURIOH" 
                 className="w-full h-full object-cover"
               />
             </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <div className="flex items-center gap-1">
-                <h1 className="text-base sm:text-lg font-black text-white tracking-tight whitespace-nowrap">NURIOH</h1>
-                <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
+            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+              <div className="flex items-center gap-0.5 sm:gap-1">
+                <h1 className="text-sm sm:text-lg font-black text-white tracking-tight whitespace-nowrap">NURIOH</h1>
+                <span className="hidden xs:inline text-[9px] sm:text-[10px] px-1 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
                   AI
                 </span>
               </div>
@@ -143,17 +143,17 @@ export default function Header({
 
               {/* 🏛️ 3단계 시각적 직관 배지: 🧪 연구실 | 🔬 실험실 | 🟢 실서버 */}
               {isLocalLab ? (
-                <span className="hidden sm:flex text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-purple-950/80 text-purple-300 font-black border border-purple-500/60 shadow-md shadow-purple-900/40 items-center gap-1 animate-pulse shrink-0" title="🧪 대표님 로컬 연구실(LAB) 개발 환경입니다.">
+                <span className="hidden md:flex text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-purple-950/80 text-purple-300 font-black border border-purple-500/60 shadow-md shadow-purple-900/40 items-center gap-1 animate-pulse shrink-0" title="🧪 대표님 로컬 연구실(LAB) 개발 환경입니다.">
                   <span className="inline-block w-1.5 h-1.5 rounded-full bg-purple-400"></span>
                   🧪 연구실 (로컬)
                 </span>
               ) : isStagingLab ? (
-                <span className="hidden sm:flex text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-amber-950/90 text-amber-300 font-black border border-amber-500/70 shadow-md shadow-amber-900/50 items-center gap-1 animate-pulse shrink-0" title="🔬 운영자 실전 검증용 실험실(Staging) 환경입니다.">
+                <span className="hidden md:flex text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-amber-950/90 text-amber-300 font-black border border-amber-500/70 shadow-md shadow-amber-900/50 items-center gap-1 animate-pulse shrink-0" title="🔬 운영자 실전 검증용 실험실(Staging) 환경입니다.">
                   <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400"></span>
                   🔬 실험실 (Staging)
                 </span>
               ) : (
-                <span className="hidden sm:flex text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 font-black border border-emerald-500/50 items-center gap-1 shrink-0" title="🟢 회원 실거래 상용 서버(LIVE)입니다.">
+                <span className="hidden md:flex text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 font-black border border-emerald-500/50 items-center gap-1 shrink-0" title="🟢 회원 실거래 상용 서버(LIVE)입니다.">
                   <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                   LIVE 실서버
                 </span>
@@ -195,30 +195,30 @@ export default function Header({
           </div>
 
           {/* 세로 구분선 */}
-          <div className="h-6 w-px bg-slate-800 hidden xs:block" />
+          <div className="h-5 sm:h-6 w-px bg-slate-800 shrink-0" />
 
           {/* 👤 프로필 미니 위젯 (상단 헤더 좌측에 슬림하게 안착) */}
           {user && (
-            <div className="flex items-center gap-1.5 sm:gap-2 bg-slate-900/90 border border-slate-800/90 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl shadow-inner min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 bg-slate-900/90 border border-slate-800/90 px-1.5 sm:px-2.5 py-0.5 sm:py-1.5 rounded-xl shadow-inner min-w-0 flex-1 max-w-[150px] xs:max-w-[190px] sm:max-w-none">
               <div className="relative shrink-0">
                 <img
                   src={user.profileImage || 'https://t1.kakaocdn.net/together_image/common/avatar/avatar.png'}
                   alt=""
-                  className="w-7 h-7 sm:w-7.5 sm:h-7.5 rounded-lg border border-slate-700 object-cover"
+                  className="w-6 h-6 sm:w-7.5 sm:h-7.5 rounded-lg border border-slate-700 object-cover"
                 />
                 {isAdmin && (
-                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-500 text-black flex items-center justify-center text-[7px] font-bold shadow">
+                  <span className="absolute -top-1 -right-1 w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full bg-amber-500 text-black flex items-center justify-center text-[6px] sm:text-[7px] font-bold shadow">
                     👑
                   </span>
                 )}
               </div>
 
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 flex-nowrap">
-                  <span className="font-bold text-xs text-slate-100 whitespace-nowrap truncate max-w-[120px] sm:max-w-[160px]">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1 sm:gap-1.5 flex-nowrap">
+                  <span className="font-bold text-[11px] sm:text-xs text-slate-100 whitespace-nowrap truncate max-w-[60px] xs:max-w-[90px] sm:max-w-[160px]">
                     {displayName}
                   </span>
-                  <span className={`text-[9px] sm:text-[10px] font-bold px-1.5 py-0.2 rounded-full border shrink-0 whitespace-nowrap ${
+                  <span className={`text-[8px] sm:text-[10px] font-bold px-1 sm:px-1.5 py-0.2 rounded-full border shrink-0 whitespace-nowrap ${
                     user.role === 'DEVELOPER'
                       ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm'
                       : (user.role === 'OPERATOR' || user.role === 'ADMIN')
@@ -242,10 +242,10 @@ export default function Header({
                   )}
                 </div>
 
-                <div className="text-[10px] text-slate-400 flex items-center gap-1.5 mt-0.2 whitespace-nowrap">
+                <div className="text-[9px] sm:text-[10px] text-slate-400 flex items-center gap-1 mt-0.2 whitespace-nowrap truncate">
                   <span>슬롯: <strong className="text-indigo-400">{user.maxSlots || 12}개</strong></span>
-                  <span>•</span>
-                  <span className="text-yellow-400 font-medium">
+                  <span className="hidden xs:inline">•</span>
+                  <span className="hidden xs:inline text-yellow-400 font-medium">
                     {isAdmin ? '평생 라이선스' : (isPending ? '승인 대기' : `D-${user.remainingDays}일`)}
                   </span>
                 </div>
