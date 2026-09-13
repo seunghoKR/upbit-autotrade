@@ -39,7 +39,7 @@ export default function Header({
 }) {
   const role = user?.role || 'USER';
   const tier = user?.tier || 'FREE_TRIAL';
-  const isPrivileged = (role === 'OPERATOR' || role === 'ADMIN' || role === 'DEVELOPER');
+  const isPrivileged = (role === 'OPERATOR' || role === 'ADMIN' || role === 'DEVELOPER' || tier === 'VIP');
   const isAdmin = (role === 'ADMIN' || role === 'DEVELOPER');
   const isPending = user?.approvalStatus === 'PENDING' && !isAdmin;
 
@@ -243,7 +243,7 @@ export default function Header({
                 </div>
 
                 <div className="text-[9px] sm:text-[10px] text-slate-400 flex items-center gap-1 mt-0.2 whitespace-nowrap truncate">
-                  <span>슬롯: <strong className="text-indigo-400">{user.maxSlots || 12}개</strong></span>
+                  <span>슬롯: <strong className="text-indigo-400">{(isPrivileged ? 12 : (user.maxSlots || 12))}개</strong></span>
                   <span className="hidden xs:inline">•</span>
                   <span className="hidden xs:inline text-yellow-400 font-medium">
                     {isAdmin ? '평생 라이선스' : (isPending ? '승인 대기' : `D-${user.remainingDays}일`)}

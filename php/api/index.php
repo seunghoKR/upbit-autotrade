@@ -526,7 +526,7 @@ try {
             'role' => $isDeveloper ? 'DEVELOPER' : $user['role'],
             'tier' => $isDeveloper ? 'VIP' : $user['tier'],
             'approvalStatus' => $isDeveloper ? 'APPROVED' : ($user['approval_status'] ?? 'PENDING'),
-            'maxSlots' => $isDeveloper ? 9 : (int)$user['max_slots'],
+            'maxSlots' => $isDeveloper ? 12 : (int)($user['max_slots'] ?: 12),
             'remainingDays' => $remainingDays,
             'hasApiKey' => $hasApiKey,
             'autoTrading' => $autoTrading,
@@ -753,7 +753,7 @@ try {
                 'role' => $isDeveloper ? 'DEVELOPER' : $user['role'],
                 'tier' => $isDeveloper ? 'VIP' : $user['tier'],
                 'approvalStatus' => $isDeveloper ? 'APPROVED' : ($user['approval_status'] ?? 'PENDING'),
-                'maxSlots' => $isDeveloper ? 9 : (int)$user['max_slots'],
+                'maxSlots' => $isDeveloper ? 12 : (int)($user['max_slots'] ?: 12),
                 'remainingDays' => $remainingDays,
                 'hasApiKey' => $hasApiKey,
                 'autoTrading' => $autoTrading,
@@ -895,20 +895,25 @@ try {
             ];
         }
 
-        $slotStmt = $pdo->prepare("SELECT * FROM nurioh_slots WHERE user_id = ? AND slot_id <= 9 ORDER BY slot_id ASC");
+        $slotStmt = $pdo->prepare("SELECT * FROM nurioh_slots WHERE user_id = ? AND slot_id <= 12 ORDER BY slot_id ASC");
         $slotStmt->execute([$userId]);
         $slots = $slotStmt->fetchAll() ?: [];
 
         $defaultMarkets = [
             1 => 'KRW-BTC', 2 => 'KRW-ETH', 3 => 'KRW-SOL',
             4 => 'KRW-XRP', 5 => 'KRW-DOGE', 6 => 'KRW-ADA',
-            7 => 'KRW-AVAX', 8 => 'KRW-DOT', 9 => 'KRW-NEAR'
+            7 => 'KRW-AVAX', 8 => 'KRW-DOT', 9 => 'KRW-NEAR',
+            10 => 'KRW-LINK', 11 => 'KRW-STX', 12 => 'KRW-SUI'
         ];
 
-        // 🛡️ 슬롯 자가 치유(Self-Healing): 1~9번 중 누락된 슬롯을 감지하여 즉시 자동 보충 생성
+        // 🛡️ 슬롯 자가 치유(Self-Healing): 1~12번 중 누락된 슬롯을 감지하여 즉시 자동 보충 생성
         static $quantColumnsEnsured = false;
         if (!$quantColumnsEnsured) {
             $quantColumnsEnsured = true;
+            try { $pdo->exec("UPDATE nurioh_users SET max_slots = 12 WHERE role IN ('ADMIN', 'DEVELOPER', 'OPERATOR') OR tier = 'VIP' OR email IN ('leeshkr@kakao.com', 'ceo@nurioh.com')"); } catch (Exception $e) {}
+            try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `strategy_mode` VARCHAR(30) DEFAULT 'SCALPING'"); } catch (Exception $e) {}
+            try { $pdo->exec("UPDATE nurioh_slots SET strategy_mode = 'BREAKOUT_DAY_HIGH' WHERE slot_id IN (9, 10) AND (strategy_mode IS NULL OR strategy_mode = 'SCALPING')"); } catch (Exception $e) {}
+            try { $pdo->exec("UPDATE nurioh_slots SET strategy_mode = 'TREND_SWING' WHERE slot_id IN (11, 12) AND (strategy_mode IS NULL OR strategy_mode = 'SCALPING')"); } catch (Exception $e) {}
             try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `surge_volume_mode` VARCHAR(10) DEFAULT 'RATE'"); } catch (Exception $e) {}
             try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `surge_min_volume_rate_pct` DECIMAL(6,4) DEFAULT 0.0500"); } catch (Exception $e) {}
             try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `use_reverse_alignment_filter` TINYINT(1) DEFAULT 1"); } catch (Exception $e) {}
@@ -920,19 +925,21 @@ try {
         $uStmt = $pdo->prepare("SELECT role, tier, max_slots FROM nurioh_users WHERE id = ?");
         $uStmt->execute([$userId]);
         $uData = $uStmt->fetch();
-        $maxSlots = max(1, (int)($uData['max_slots'] ?? 9));
+        $isPrivilegedUser = ($uData && (in_array($uData['role'], ['DEVELOPER', 'ADMIN', 'OPERATOR']) || $uData['tier'] === 'VIP'));
+        $maxSlots = $isPrivilegedUser ? 12 : max(1, (int)($uData['max_slots'] ?? 12));
 
         $existingSlotIds = array_map(function($row) { return (int)$row['slot_id']; }, $slots);
         $needsReload = false;
 
-        for ($s = 1; $s <= 9; $s++) {
+        for ($s = 1; $s <= 12; $s++) {
             if (!in_array($s, $existingSlotIds, true)) {
                 $m = $defaultMarkets[$s] ?? 'KRW-BTC';
                 $isEnabled = ($s <= $maxSlots) ? 1 : 0;
+                $stratMode = ($s <= 8) ? 'SCALPING' : (($s <= 10) ? 'BREAKOUT_DAY_HIGH' : 'TREND_SWING');
                 $slotInsert = $pdo->prepare("INSERT INTO nurioh_slots 
-                    (user_id, slot_id, slot_name, is_enabled, target_market, trade_amount_krw, strategy_type, target_profit_pct, trailing_callback_pct, stop_loss_pct, position_status) 
-                    VALUES (?, ?, ?, ?, ?, 10000, 'RECOMMENDED', 3.0, 1.0, 2.0, 'IDLE')");
-                $slotInsert->execute([$userId, $s, "{$s}번 슬롯", $isEnabled, $m]);
+                    (user_id, slot_id, slot_name, is_enabled, target_market, trade_amount_krw, strategy_type, strategy_mode, target_profit_pct, trailing_callback_pct, stop_loss_pct, position_status) 
+                    VALUES (?, ?, ?, ?, ?, 10000, 'RECOMMENDED', ?, 3.0, 1.0, 2.0, 'IDLE')");
+                $slotInsert->execute([$userId, $s, "{$s}번 슬롯", $isEnabled, $m, $stratMode]);
                 $needsReload = true;
             }
         }
@@ -1062,6 +1069,7 @@ try {
                 'targetMarket' => $s['target_market'],
                 'tradeAmountKrw' => (float)$s['trade_amount_krw'],
                 'strategyType' => $s['strategy_type'] ?: 'RECOMMENDED',
+                'strategyMode' => $s['strategy_mode'] ?? (($slotId <= 8) ? 'SCALPING' : (($slotId <= 10) ? 'BREAKOUT_DAY_HIGH' : 'TREND_SWING')),
                 'surgeWindowSeconds' => (int)($s['surge_window_seconds'] ?? 5),
                 'surgeRatePct' => (float)($s['surge_rate_pct'] ?? 1.5),
                 'surgeMinVolumeKrw' => (float)($s['surge_min_volume_krw'] ?? 10000000),
@@ -1342,11 +1350,11 @@ try {
 
         // 슬롯 수 및 만료일 계산
         if ($role === 'OPERATOR') {
-            $slots = 9;
+            $slots = 12;
             $tier = 'VIP';
             $expires = '2099-12-31 23:59:59';
         } else if ($tier === 'VIP') {
-            $slots = 9;
+            $slots = 12;
             $expires = date('Y-m-d H:i:s', strtotime("+{$addDays} days"));
         } else if ($tier === 'PRO') {
             $slots = 3;
@@ -1361,7 +1369,7 @@ try {
         $stmt->execute([$role, $tier, $slots, $approvalStatus, $expires, $targetUserId]);
 
         // 🔄 회원의 슬롯 활성화 상태(is_enabled)도 즉시 동기화
-        for ($s = 1; $s <= 9; $s++) {
+        for ($s = 1; $s <= 12; $s++) {
             $isEnabled = ($s <= $slots) ? 1 : 0;
             $slotUpd = $pdo->prepare("UPDATE nurioh_slots SET is_enabled = ? WHERE user_id = ? AND slot_id = ?");
             $slotUpd->execute([$isEnabled, $targetUserId, $s]);
@@ -1562,7 +1570,12 @@ try {
             $checkStmt->execute([$userId, $slotId]);
             $existingSlot = $checkStmt->fetch();
 
-            $defaultMarkets = [1 => 'KRW-BTC', 2 => 'KRW-ETH', 3 => 'KRW-SOL', 4 => 'KRW-XRP', 5 => 'KRW-DOGE', 6 => 'KRW-ADA', 7 => 'KRW-AVAX', 8 => 'KRW-DOT', 9 => 'KRW-NEAR'];
+            $defaultMarkets = [
+                1 => 'KRW-BTC', 2 => 'KRW-ETH', 3 => 'KRW-SOL',
+                4 => 'KRW-XRP', 5 => 'KRW-DOGE', 6 => 'KRW-ADA',
+                7 => 'KRW-AVAX', 8 => 'KRW-DOT', 9 => 'KRW-NEAR',
+                10 => 'KRW-LINK', 11 => 'KRW-STX', 12 => 'KRW-SUI'
+            ];
             $defaultMkt = $defaultMarkets[$slotId] ?? 'KRW-BTC';
 
             $targetMarket = $input['targetMarket'] ?? $existingSlot['target_market'] ?? $defaultMkt;
@@ -1581,6 +1594,7 @@ try {
             }
 
             $strategyType = $input['strategyType'] ?? $existingSlot['strategy_type'] ?? 'RECOMMENDED';
+            $strategyMode = $input['strategyMode'] ?? $existingSlot['strategy_mode'] ?? (($slotId <= 8) ? 'SCALPING' : (($slotId <= 10) ? 'BREAKOUT_DAY_HIGH' : 'TREND_SWING'));
             $surgeWindowSeconds = isset($input['surgeWindowSeconds']) ? max(1, abs((int)$input['surgeWindowSeconds'])) : (int)($existingSlot['surge_window_seconds'] ?? 5);
             $surgeRatePct = isset($input['surgeRatePct']) ? abs((float)$input['surgeRatePct']) : (float)($existingSlot['surge_rate_pct'] ?? 1.5);
             $surgeMinVolumeKrw = isset($input['surgeMinVolumeKrw']) ? abs((float)$input['surgeMinVolumeKrw']) : (float)($existingSlot['surge_min_volume_krw'] ?? 10000000);
@@ -1602,6 +1616,7 @@ try {
                     trade_amount_krw = ?, 
                     is_enabled = ?,
                     strategy_type = ?,
+                    strategy_mode = ?,
                     surge_window_seconds = ?,
                     surge_rate_pct = ?,
                     surge_min_volume_krw = ?,
@@ -1622,6 +1637,7 @@ try {
                     $tradeAmount, 
                     $isEnabled, 
                     $strategyType,
+                    $strategyMode,
                     $surgeWindowSeconds,
                     $surgeRatePct,
                     $surgeMinVolumeKrw,
@@ -1641,8 +1657,8 @@ try {
                 ]);
             } else {
                 $stmt = $pdo->prepare("INSERT INTO nurioh_slots 
-                    (user_id, slot_id, slot_name, is_enabled, target_market, trade_amount_krw, strategy_type, surge_window_seconds, surge_rate_pct, surge_min_volume_krw, surge_volume_mode, surge_min_volume_rate_pct, use_reverse_alignment_filter, use_whale_tick_filter, whale_min_amount_krw, use_orderbook_filter, surge_base_mode, target_profit_pct, trailing_callback_pct, stop_loss_pct, use_atr_stop_loss, position_status) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'IDLE')");
+                    (user_id, slot_id, slot_name, is_enabled, target_market, trade_amount_krw, strategy_type, strategy_mode, surge_window_seconds, surge_rate_pct, surge_min_volume_krw, surge_volume_mode, surge_min_volume_rate_pct, use_reverse_alignment_filter, use_whale_tick_filter, whale_min_amount_krw, use_orderbook_filter, surge_base_mode, target_profit_pct, trailing_callback_pct, stop_loss_pct, use_atr_stop_loss, position_status) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'IDLE')");
                 $stmt->execute([
                     $userId,
                     $slotId,
@@ -1651,6 +1667,7 @@ try {
                     $targetMarket,
                     $tradeAmount,
                     $strategyType,
+                    $strategyMode,
                     $surgeWindowSeconds,
                     $surgeRatePct,
                     $surgeMinVolumeKrw,

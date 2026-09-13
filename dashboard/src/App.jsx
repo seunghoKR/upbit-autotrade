@@ -298,8 +298,20 @@ export default function App() {
 
   // 회원 등급에 따른 슬롯 개수 제한 적용 (Free: 1개, Pro: 3개, VIP/운영자/개발자: 12개)
   const isPrivileged = (currentUser?.role === 'OPERATOR' || currentUser?.role === 'DEVELOPER' || currentUser?.role === 'ADMIN' || currentUser?.tier === 'VIP');
-  const maxSlotsAllowed = isPrivileged ? 12 : (currentUser?.tier === 'PRO' ? 3 : 1);
-  const effectiveSlots = (slots && slots.length > 0) ? slots : DEFAULT_SLOTS;
+  // 🛡️ 개발자/운영자/VIP 모드에서는 서버에서 9개만 오더라도 DEFAULT_SLOTS로 12개까지 즉시 자동 보충!
+  const filledSlots = (() => {
+    const base = (slots && slots.length > 0) ? [...slots] : [...DEFAULT_SLOTS];
+    if (isPrivileged && base.length < 12) {
+      DEFAULT_SLOTS.forEach(def => {
+        if (!base.some(s => s.slotId === def.slotId)) {
+          base.push(def);
+        }
+      });
+      base.sort((a, b) => a.slotId - b.slotId);
+    }
+    return base;
+  })();
+  const effectiveSlots = filledSlots;
   const visibleSlots = effectiveSlots.slice(0, maxSlotsAllowed);
 
   // 현재 선택된 슬롯 및 대상 마켓
@@ -349,13 +361,18 @@ export default function App() {
       }
 
       if (userRes && userRes.user) {
+        const isUserPrivileged = (userRes.user.role === 'DEVELOPER' || userRes.user.role === 'ADMIN' || userRes.user.role === 'OPERATOR' || userRes.user.tier === 'VIP');
+        const sanitizedUser = {
+          ...userRes.user,
+          maxSlots: isUserPrivileged ? 12 : (userRes.user.tier === 'PRO' ? 3 : (userRes.user.maxSlots || 1))
+        };
         const isRemembered = localStorage.getItem('nurioh_remember_me') === 'true';
         if (isRemembered) {
-          localStorage.setItem('nurioh_user_profile', JSON.stringify(userRes.user));
-          localStorage.setItem('nurioh_user_id', String(userRes.user.id));
+          localStorage.setItem('nurioh_user_profile', JSON.stringify(sanitizedUser));
+          localStorage.setItem('nurioh_user_id', String(sanitizedUser.id));
         } else {
-          sessionStorage.setItem('nurioh_user_profile', JSON.stringify(userRes.user));
-          sessionStorage.setItem('nurioh_user_id', String(userRes.user.id));
+          sessionStorage.setItem('nurioh_user_profile', JSON.stringify(sanitizedUser));
+          sessionStorage.setItem('nurioh_user_id', String(sanitizedUser.id));
         }
 
         setCurrentUser(prev => {
@@ -363,14 +380,14 @@ export default function App() {
           const override = devModeRef.current;
           if (override) {
             return {
-              ...userRes.user,
+              ...sanitizedUser,
               tier: override.tier,
               role: override.role,
               maxSlots: override.maxSlots,
               remainingDays: override.remainingDays
             };
           }
-          return userRes.user;
+          return sanitizedUser;
         });
 
         // ⏰ 신규 매수 제한 시간대 서버 프로필 동기화
@@ -460,9 +477,21 @@ export default function App() {
               stopLossPct: parseFloat(s.stopLossPct !== undefined ? s.stopLossPct : (s.stop_loss_pct !== undefined ? s.stop_loss_pct : 2.0))
             };
           });
-          setSlots(normalizedSlots);
+          let finalNormalized = normalizedSlots;
+          const isUserPrivileged = (currentUserRef.current?.role === 'OPERATOR' || currentUserRef.current?.role === 'DEVELOPER' || currentUserRef.current?.role === 'ADMIN' || currentUserRef.current?.tier === 'VIP');
+          if (isUserPrivileged || normalizedSlots.length < 12) {
+            const merged = [...normalizedSlots];
+            DEFAULT_SLOTS.forEach(defSlot => {
+              if (!merged.some(s => s.slotId === defSlot.slotId)) {
+                merged.push(defSlot);
+              }
+            });
+            merged.sort((a, b) => a.slotId - b.slotId);
+            finalNormalized = merged;
+          }
+          setSlots(finalNormalized);
           try {
-            localStorage.setItem('nurioh_cached_slots', JSON.stringify(normalizedSlots));
+            localStorage.setItem('nurioh_cached_slots', JSON.stringify(finalNormalized));
           } catch (e) {}
         }
         if (status.pendingApproval) setPendingApproval(status.pendingApproval);
