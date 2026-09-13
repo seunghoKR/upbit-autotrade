@@ -399,7 +399,7 @@ try {
 
     // 🧹 더미 테스트 계정 정리 및 대표님 단일 계정 확정
     $pdo->exec("DELETE FROM nurioh_users WHERE kakao_id = 'kakao_test_12345'");
-    $pdo->exec("UPDATE nurioh_users SET role='DEVELOPER', tier='VIP', max_slots=9, approval_status='APPROVED', subscription_expires_at='2099-12-31 23:59:59' WHERE email='leeshkr@kakao.com' OR id=1");
+    $pdo->exec("UPDATE nurioh_users SET role='DEVELOPER', tier='VIP', max_slots=12, approval_status='APPROVED', subscription_expires_at='2099-12-31 23:59:59' WHERE email='leeshkr@kakao.com' OR id=1");
 
     // 1. POST auth/kakao : 로그인 / 회원가입
     if ($path === 'auth/kakao' && $method === 'POST') {
@@ -413,13 +413,13 @@ try {
         $profileImage = trim((string)($input['profileImage'] ?? ''));
 
         if (!$nickname || $nickname === '??') {
-            $nickname = $name ?: ($email ? explode('@', $email)[0] : '누리오 회원');
+            $nickname = '이승호 대표님';
         }
 
-        $isDeveloper = in_array(strtolower($email), $developerEmails, true) || $kakaoId === 'admin_nurioh_ceo' || str_contains($kakaoId, '5059461126') || $email === 'leeshkr@kakao.com';
+        $isDeveloper = in_array(strtolower($email), $developerEmails, true) || $email === 'leeshkr@kakao.com';
         $assignedRole = $isDeveloper ? 'DEVELOPER' : 'USER';
         $assignedTier = $isDeveloper ? 'VIP' : 'FREE_TRIAL';
-        $assignedSlots = $isDeveloper ? 9 : 1;
+        $assignedSlots = $isDeveloper ? 12 : 1;
         $assignedApproval = $isDeveloper ? 'APPROVED' : 'PENDING';
         $assignedExpires = $isDeveloper ? '2099-12-31 23:59:59' : date('Y-m-d H:i:s', strtotime('+3 days'));
 
@@ -443,9 +443,10 @@ try {
             $markets = [
                 1 => 'KRW-BTC', 2 => 'KRW-ETH', 3 => 'KRW-SOL',
                 4 => 'KRW-XRP', 5 => 'KRW-DOGE', 6 => 'KRW-ADA',
-                7 => 'KRW-AVAX', 8 => 'KRW-DOT', 9 => 'KRW-NEAR'
+                7 => 'KRW-AVAX', 8 => 'KRW-DOT', 9 => 'KRW-NEAR',
+                10 => 'KRW-LINK', 11 => 'KRW-STX', 12 => 'KRW-SUI'
             ];
-            for ($s = 1; $s <= 9; $s++) {
+            for ($s = 1; $s <= 12; $s++) {
                 $m = $markets[$s] ?? 'KRW-BTC';
                 $isEnabled = ($s <= $assignedSlots) ? 1 : 0;
                 $slotStmt = $pdo->prepare("INSERT INTO nurioh_slots (user_id, slot_id, slot_name, is_enabled, target_market, trade_amount_krw, strategy_type) 
@@ -482,7 +483,7 @@ try {
                 $newImg,
                 $isDeveloper ? 'DEVELOPER' : ($user['role'] ?: 'USER'),
                 $isDeveloper ? 'VIP' : ($user['tier'] ?: 'FREE_TRIAL'),
-                $isDeveloper ? 9 : ($user['max_slots'] ?: 1),
+                $isDeveloper ? 12 : ($user['max_slots'] ?: 1),
                 $isDeveloper ? 'APPROVED' : ($user['approval_status'] ?: 'PENDING'),
                 $isDeveloper ? '2099-12-31 23:59:59' : $user['subscription_expires_at'],
                 $user['id']
@@ -563,7 +564,7 @@ try {
         $isDev = in_array(strtolower($email ?: $user['email']), $developerEmails, true) || $user['role'] === 'DEVELOPER' || $user['email'] === 'leeshkr@kakao.com' || $userId === 1;
         $newRole = $isDev ? 'DEVELOPER' : ($user['role'] ?: 'USER');
         $newTier = $isDev ? 'VIP' : ($user['tier'] ?: 'FREE_TRIAL');
-        $newSlots = $isDev ? 9 : ($user['max_slots'] ?: 1);
+        $newSlots = $isDev ? 12 : ($user['max_slots'] ?: 1);
         $newApproval = $isDev ? 'APPROVED' : ($user['approval_status'] === 'APPROVED' ? 'APPROVED' : 'PENDING');
         $newExpires = $isDev ? '2099-12-31 23:59:59' : $user['subscription_expires_at'];
 
@@ -707,14 +708,14 @@ try {
         }
 
         $isDeveloper = in_array(strtolower($user['email'] ?? ''), $developerEmails, true) || ($user['email'] ?? '') === 'leeshkr@kakao.com' || ($user['role'] ?? '') === 'DEVELOPER' || $userId === 1;
-        if ($isDeveloper && ($user['role'] !== 'DEVELOPER' || (int)$user['max_slots'] !== 9 || $user['approval_status'] !== 'APPROVED')) {
+        if ($isDeveloper && ($user['role'] !== 'DEVELOPER' || (int)$user['max_slots'] !== 12 || $user['approval_status'] !== 'APPROVED')) {
             $realNick = ($user['nickname'] === '??') ? '이승호 대표님' : $user['nickname'];
-            $pdo->prepare("UPDATE nurioh_users SET nickname = ?, role='DEVELOPER', tier='VIP', max_slots=9, approval_status='APPROVED', subscription_expires_at='2099-12-31 23:59:59' WHERE id = ?")
+            $pdo->prepare("UPDATE nurioh_users SET nickname = ?, role='DEVELOPER', tier='VIP', max_slots=12, approval_status='APPROVED', subscription_expires_at='2099-12-31 23:59:59' WHERE id = ?")
                 ->execute([$realNick, $user['id']]);
             $user['nickname'] = $realNick;
             $user['role'] = 'DEVELOPER';
             $user['tier'] = 'VIP';
-            $user['max_slots'] = 9;
+            $user['max_slots'] = 12;
             $user['approval_status'] = 'APPROVED';
         }
 
@@ -1953,7 +1954,8 @@ try {
             $defaultMarkets = [
                 1 => 'KRW-BTC', 2 => 'KRW-ETH', 3 => 'KRW-SOL',
                 4 => 'KRW-XRP', 5 => 'KRW-DOGE', 6 => 'KRW-ADA',
-                7 => 'KRW-AVAX', 8 => 'KRW-DOT', 9 => 'KRW-NEAR'
+                7 => 'KRW-AVAX', 8 => 'KRW-DOT', 9 => 'KRW-NEAR',
+                10 => 'KRW-LINK', 11 => 'KRW-STX', 12 => 'KRW-SUI'
             ];
             $defMkt = $defaultMarkets[$slotId] ?? 'KRW-BTC';
 
@@ -2040,7 +2042,12 @@ try {
         $isProfit = $profitPct >= 0;
 
         // 슬롯 초기화 및 실현 손익 통계 누적
-        $defaultMarkets = [1 => 'KRW-BTC', 2 => 'KRW-ETH', 3 => 'KRW-SOL', 4 => 'KRW-XRP', 5 => 'KRW-DOGE', 6 => 'KRW-ADA', 7 => 'KRW-AVAX', 8 => 'KRW-DOT', 9 => 'KRW-NEAR'];
+        $defaultMarkets = [
+            1 => 'KRW-BTC', 2 => 'KRW-ETH', 3 => 'KRW-SOL', 
+            4 => 'KRW-XRP', 5 => 'KRW-DOGE', 6 => 'KRW-ADA', 
+            7 => 'KRW-AVAX', 8 => 'KRW-DOT', 9 => 'KRW-NEAR',
+            10 => 'KRW-LINK', 11 => 'KRW-STX', 12 => 'KRW-SUI'
+        ];
         $defMkt = $defaultMarkets[$slotId] ?? 'KRW-BTC';
 
         $pdo->prepare("UPDATE nurioh_slots SET 
