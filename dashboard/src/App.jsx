@@ -312,6 +312,7 @@ export default function App() {
     return base;
   })();
   const effectiveSlots = filledSlots;
+  const maxSlotsAllowed = isPrivileged ? 12 : (currentUser?.tier === 'PRO' ? 3 : (currentUser?.maxSlots || 1));
   const visibleSlots = effectiveSlots.slice(0, maxSlotsAllowed);
 
   // 현재 선택된 슬롯 및 대상 마켓
