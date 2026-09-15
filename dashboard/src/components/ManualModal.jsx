@@ -164,7 +164,7 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
                   <span>🌟 글로벌 제어 타워 &amp; 3대 신규 핵심 엔진 (제안서 1~3부 실전 탑재)</span>
                 </h4>
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
-                  v3.4.1 NEW
+                  v3.5.0 NEW
                 </span>
               </div>
 
