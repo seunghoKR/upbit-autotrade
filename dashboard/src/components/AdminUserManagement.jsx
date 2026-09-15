@@ -540,7 +540,7 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
                               ) : isVip ? (
                                 <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded-md font-bold whitespace-nowrap flex items-center gap-1">
                                   <Crown className="w-2.5 h-2.5 text-amber-400" />
-                                  <span>VIP (9슬롯)</span>
+                                  <span>VIP (12슬롯)</span>
                                 </span>
                               ) : isPro ? (
                                 <span className="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 px-1.5 py-0.5 rounded-md font-bold whitespace-nowrap flex items-center gap-1">
@@ -706,7 +706,7 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
                                     handleUpdateUser(
                                       user.id, 
                                       { tier: 'VIP', role: 'USER', approvalStatus: 'APPROVED', addDays: 30 }, 
-                                      `회원 #${user.id} (${user.name || user.nickname})님이 [VIP 플랜 (9슬롯, +30일)]으로 변경되었습니다.`
+                                      `회원 #${user.id} (${user.name || user.nickname})님이 [VIP 플랜 (12슬롯, +30일)]으로 변경되었습니다.`
                                     );
                                   } else if (val === 'OPERATOR') {
                                     handleUpdateUser(
@@ -744,7 +744,7 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
                               >
                                 <option value="FREE_TRIAL" className="bg-slate-900 text-slate-200">🟢 무료 (1슬롯)</option>
                                 <option value="PRO" className="bg-slate-900 text-indigo-300">🔵 PRO 플랜 (3슬롯)</option>
-                                <option value="VIP" className="bg-slate-900 text-amber-300">🟡 VIP 플랜 (9슬롯)</option>
+                                <option value="VIP" className="bg-slate-900 text-amber-300">🟡 VIP 플랜 (12슬롯)</option>
                                 {isOperator && (
                                   <option value="OPERATOR" className="bg-slate-900 text-purple-300">👑 운영자</option>
                                 )}
