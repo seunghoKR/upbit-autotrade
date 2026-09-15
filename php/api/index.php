@@ -399,7 +399,7 @@ try {
 
     // 🧹 더미 테스트 계정 정리 및 대표님 단일 계정 확정
     $pdo->exec("DELETE FROM nurioh_users WHERE kakao_id = 'kakao_test_12345'");
-    $pdo->exec("UPDATE nurioh_users SET role='DEVELOPER', tier='VIP', max_slots=12, approval_status='APPROVED', subscription_expires_at='2099-12-31 23:59:59' WHERE email='leeshkr@kakao.com' OR id=1");
+    $pdo->exec("UPDATE nurioh_users SET nickname='이승호 대표님', role='DEVELOPER', tier='VIP', max_slots=12, approval_status='APPROVED', subscription_expires_at='2099-12-31 23:59:59' WHERE email='leeshkr@kakao.com' OR id=3 OR id=1");
 
     // 1. POST auth/kakao : 로그인 / 회원가입
     if ($path === 'auth/kakao' && $method === 'POST') {

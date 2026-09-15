@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_BASE = '/api';
+const API_BASE = (typeof window !== 'undefined' && window.location.pathname.startsWith('/lab'))
+  ? '/lab/api'
+  : '/api';
 
 // ==========================================
 // 회원 인증 & SaaS API
