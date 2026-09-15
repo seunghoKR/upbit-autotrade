@@ -24,7 +24,8 @@ import {
   RefreshCw,
   AlertTriangle,
   Crown,
-  Copy
+  Copy,
+  Activity
 } from 'lucide-react';
 import { APP_VERSION } from '../version';
 
