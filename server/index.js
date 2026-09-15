@@ -8,6 +8,8 @@ const upbitClient = require('./upbit/upbitClient');
 const upbitWs = require('./upbit/upbitWs');
 const strategyEngine = require('./strategy/strategyEngine');
 const slotManager = require('./strategy/slotManager');
+const marketScheduler = require('./strategy/marketScheduler');
+const orderQueue = require('./strategy/orderQueue');
 const indicators = require('./strategy/indicators');
 const userManager = require('./auth/userManager');
 const telegramBot = require('./telegram/bot');
@@ -237,6 +239,9 @@ app.get('/api/status', async (req, res) => {
       accountError,
       slots,
       btcProtection: strategyEngine.btcProtection,
+      scheduler: marketScheduler.getStatus(),
+      dailyKillSwitch: strategyEngine.dailyKillSwitch,
+      orderQueue: orderQueue.getStatus(),
       serverIp: '49.171.41.10',
       pendingApproval: strategyEngine.pendingApproval,
       tradeHistory: strategyEngine.tradeHistory
@@ -244,6 +249,68 @@ app.get('/api/status', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// ==========================================
+// 3-1. 3단계 장세 스케줄러 & 일일 킬 스위치 API (제안서 1, 2, 3부)
+// ==========================================
+
+// 장세 스케줄러 상태 조회
+app.get('/api/scheduler', (req, res) => {
+  res.json({ success: true, ...marketScheduler.getStatus() });
+});
+
+// 장세 프리셋 즉시 수동 적용 (포지션 무결성 유지)
+app.post('/api/scheduler/switch', (req, res) => {
+  const { presetKey } = req.body;
+  if (!presetKey) return res.status(400).json({ success: false, error: 'presetKey가 필요합니다.' });
+  const success = marketScheduler.applyPreset(presetKey, 'MANUAL_USER');
+  if (success) {
+    broadcast({ type: 'SLOTS_UPDATED', slots: slotManager.getSlots(livePriceMap) });
+    broadcast({ type: 'SCHEDULER_UPDATED', scheduler: marketScheduler.getStatus() });
+    res.json({ success: true, scheduler: marketScheduler.getStatus() });
+  } else {
+    res.status(400).json({ success: false, error: '유효하지 않은 프리셋 키입니다.' });
+  }
+});
+
+// 장세 시간표 업데이트
+app.post('/api/scheduler/timetable', (req, res) => {
+  const { timeTable } = req.body;
+  if (!timeTable) return res.status(400).json({ success: false, error: 'timeTable 객체가 필요합니다.' });
+  marketScheduler.updateTimeTable(timeTable);
+  broadcast({ type: 'SCHEDULER_UPDATED', scheduler: marketScheduler.getStatus() });
+  res.json({ success: true, scheduler: marketScheduler.getStatus() });
+});
+
+// 글로벌 전략 모드 전환 (MODE_A 하이브리드 vs MODE_B 방망이 분할)
+app.post('/api/scheduler/mode', (req, res) => {
+  const { mode } = req.body;
+  const success = marketScheduler.setGlobalStrategyMode(mode);
+  if (success) {
+    broadcast({ type: 'SLOTS_UPDATED', slots: slotManager.getSlots(livePriceMap) });
+    broadcast({ type: 'SCHEDULER_UPDATED', scheduler: marketScheduler.getStatus() });
+    res.json({ success: true, scheduler: marketScheduler.getStatus() });
+  } else {
+    res.status(400).json({ success: false, error: '유효하지 않은 전략 모드입니다. (MODE_A 또는 MODE_B)' });
+  }
+});
+
+// 일일 킬 스위치 설정 업데이트 및 수동 해제
+app.post('/api/killswitch/config', (req, res) => {
+  const { enabled, maxLossPct, resetTriggered, totalCapitalKrw } = req.body;
+  if (enabled !== undefined) strategyEngine.dailyKillSwitch.enabled = Boolean(enabled);
+  if (maxLossPct !== undefined) strategyEngine.dailyKillSwitch.maxLossPct = Math.abs(Number(maxLossPct));
+  if (totalCapitalKrw !== undefined) strategyEngine.dailyKillSwitch.totalCapitalKrw = Number(totalCapitalKrw);
+  if (resetTriggered) {
+    strategyEngine.dailyKillSwitch.isTriggered = false;
+    strategyEngine.dailyKillSwitch.dailyRealizedProfitKrw = 0;
+    console.log('🔓 [일일 킬 스위치 수동 해제] 사용자에 의해 신규 매수 차단이 해제되었습니다.');
+  }
+
+  strategyEngine.checkDailyKillSwitch();
+  broadcast({ type: 'KILL_SWITCH_UPDATED', dailyKillSwitch: strategyEngine.dailyKillSwitch });
+  res.json({ success: true, dailyKillSwitch: strategyEngine.dailyKillSwitch });
 });
 
 // 슬롯 관리 API

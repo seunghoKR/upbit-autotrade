@@ -103,6 +103,8 @@ class SlotManager {
         swingCandleUnit: slot.swingCandleUnit || 'days',
         swingShortMa: slot.swingShortMa || 5,
         swingLongMa: slot.swingLongMa || 20,
+        min24hAccTradePriceKrw: slot.min24hAccTradePriceKrw !== undefined ? Number(slot.min24hAccTradePriceKrw) : 10000000000,
+        pendingPreset: slot.pendingPreset || null,
         dynamicStopLossPct: hasPos ? (slot.position.dynamicStopLossPct || null) : null,
         totalTrades: slot.totalTrades || 0,
         winTrades: slot.winTrades || 0,
@@ -139,6 +141,7 @@ class SlotManager {
     if (updateData.swingCandleUnit !== undefined) slot.swingCandleUnit = updateData.swingCandleUnit;
     if (updateData.swingShortMa !== undefined) slot.swingShortMa = Number(updateData.swingShortMa);
     if (updateData.swingLongMa !== undefined) slot.swingLongMa = Number(updateData.swingLongMa);
+    if (updateData.min24hAccTradePriceKrw !== undefined) slot.min24hAccTradePriceKrw = Number(updateData.min24hAccTradePriceKrw);
 
     if (updateData.totalTrades !== undefined) slot.totalTrades = Number(updateData.totalTrades);
     if (updateData.winTrades !== undefined) slot.winTrades = Number(updateData.winTrades);
@@ -257,6 +260,16 @@ class SlotManager {
     slot.position = null;
     slot.reservedSurge = null;
     slot.targetMarket = null; // 포지션 청산 완료 시 다시 전종목 급등 포착 대기 상태로 복귀
+
+    // 🛡️ [포지션 무결성 State Preservation]
+    // 청산 완료로 빈 슬롯이 되었을 때, 대기 중이던 장세 프리셋(pendingPreset)이 있다면 즉시 슬롯 파라미터로 자동 적용!
+    if (slot.pendingPreset && slot.pendingPreset.params) {
+      console.log(`🎯 [포지션 무결성 달성] Slot ${slotId} 청산 완료 ➔ 대기 중이던 프리셋 [${slot.pendingPreset.presetName}]으로 자동 갱신!`);
+      Object.keys(slot.pendingPreset.params).forEach(k => {
+        slot[k] = slot.pendingPreset.params[k];
+      });
+      slot.pendingPreset = null;
+    }
 
     console.log(`🧹 [Slot ${slotId}] Position Cleared -> 전종목 급등 포착 대기 모드로 복귀.`);
     this.emitSlotEvent({ type: 'SLOT_POSITION_CLEARED', slotId, slot });

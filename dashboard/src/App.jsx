@@ -3,6 +3,7 @@ import Header from './components/Header';
 import BalanceCard from './components/BalanceCard';
 import ChartView from './components/ChartView';
 import SlotManager from './components/SlotManager';
+import GlobalControlPanel from './components/GlobalControlPanel';
 import PanicSellModal from './components/PanicSellModal';
 import BrandShowcaseBanner from './components/BrandShowcaseBanner';
 import TwoFactorModal from './components/TwoFactorModal';
@@ -50,7 +51,12 @@ import {
   rejectTrade,
   getUserProfile,
   loginWithKakao,
-  registerApiKey
+  registerApiKey,
+  getSchedulerStatus,
+  switchSchedulerPreset,
+  updateSchedulerTimetable,
+  switchStrategyMode,
+  updateKillSwitchConfig
 } from './services/api';
 import { upbitClientEngine } from './services/upbitWsService';
 
@@ -248,6 +254,11 @@ export default function App() {
   // 🛡️ [알고리즘 2번] 비트코인 커플링 매수 보호 실시간 상태 ({ active: boolean, dropRate: number, reason: string })
   const [btcProtection, setBtcProtection] = useState(null);
 
+  // ⏰ [제안서 2부] 3단계 장세 스케줄러 상태
+  const [schedulerData, setSchedulerData] = useState(null);
+  // 🛡️ [제안서 1부/3부] 일일 킬 스위치 상태
+  const [killSwitchData, setKillSwitchData] = useState(null);
+
   // ⚡ 각 슬롯별 독립적인 실시간 급등 감지 3초 카운트다운 상태 ({ [slotId]: countdownData })
   const [pendingSurgeCountdowns, setPendingSurgeCountdowns] = useState({});
   const countdownTimersRef = useRef({});
@@ -411,6 +422,8 @@ export default function App() {
         if (status.settings) setSettings(status.settings);
         if (status.accounts) setAccounts(status.accounts);
         if (status.btcProtection) setBtcProtection(status.btcProtection);
+        if (status.scheduler) setSchedulerData(status.scheduler);
+        if (status.dailyKillSwitch) setKillSwitchData(status.dailyKillSwitch);
         if (status.accountError) setAccountError(status.accountError);
         else setAccountError(null);
         if (status.slots && Array.isArray(status.slots) && status.slots.length > 0) {
@@ -1839,6 +1852,50 @@ export default function App() {
     setPendingApproval(null);
   };
 
+  // ⏰ [제안서 2부] 3단계 장세 프리셋 수동 전환
+  const handleSwitchPreset = async (presetKey) => {
+    try {
+      const res = await switchSchedulerPreset(presetKey);
+      if (res?.scheduler) setSchedulerData(res.scheduler);
+      await loadData();
+    } catch (err) {
+      alert('프리셋 전환 실패: ' + err.message);
+    }
+  };
+
+  // ⏰ 장세 시간표 수정
+  const handleUpdateTimetable = async (newTimetable) => {
+    try {
+      const res = await updateSchedulerTimetable(newTimetable);
+      if (res?.scheduler) setSchedulerData(res.scheduler);
+      await loadData();
+    } catch (err) {
+      alert('시간표 수정 실패: ' + err.message);
+    }
+  };
+
+  // 🔀 [제안서 1부] 전략 모드 (A모드 하이브리드 vs B모드 방망이 분할) 전환
+  const handleSwitchStrategyMode = async (mode) => {
+    try {
+      const res = await switchStrategyMode(mode);
+      if (res?.scheduler) setSchedulerData(res.scheduler);
+      await loadData();
+    } catch (err) {
+      alert('전략 모드 전환 실패: ' + err.message);
+    }
+  };
+
+  // 🛡️ [제안서 1부/3부] 일일 킬 스위치 설정
+  const handleUpdateKillSwitch = async (config) => {
+    try {
+      const res = await updateKillSwitchConfig(config);
+      if (res?.dailyKillSwitch) setKillSwitchData(res.dailyKillSwitch);
+      await loadData();
+    } catch (err) {
+      alert('킬스위치 설정 실패: ' + err.message);
+    }
+  };
+
   // 🌟 로그인 전: 서비스 소개 랜딩페이지 표출
   if (!currentUser) {
     return (
@@ -1966,6 +2023,17 @@ export default function App() {
 
       {/* 메인 콘텐츠 영역 (PC 모드: 화면 너비의 80% 고정 레이아웃, 가로 4열 x 세로 3행) */}
       <main className="flex-1 app-container-80 px-3 sm:px-4 py-4 sm:py-6 space-y-6 max-w-full min-w-0">
+        {/* ⚡ [제안서 1~3부] 글로벌 통합 제어 타워 (3단계 장세 스케줄러 & 일일 킬 스위치 & 전략 모드) */}
+        <GlobalControlPanel
+          schedulerData={schedulerData}
+          killSwitchData={killSwitchData}
+          onSwitchPreset={handleSwitchPreset}
+          onUpdateTimetable={handleUpdateTimetable}
+          onSwitchMode={handleSwitchStrategyMode}
+          onUpdateKillSwitch={handleUpdateKillSwitch}
+          isDevMode={currentUser?.role === 'DEVELOPER' || currentUser?.role === 'ADMIN'}
+        />
+
         {/* 계좌 잔고 요약 카드 */}
         <BalanceCard 
           accounts={accounts} 

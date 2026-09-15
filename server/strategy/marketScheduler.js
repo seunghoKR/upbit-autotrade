@@ -1,0 +1,384 @@
+/**
+ * NURIOH TRADER - Market Scheduler & Preset Engine (3단계 장세 스케줄러 및 포지션 무결성 엔진)
+ * 
+ * [제안서 2부 핵심 요구사항 반영]
+ * 1. 3가지 장세 프리셋 자동 스위칭:
+ *    ① Preset_Morning (09:00 ~ 12:00): 09:00 리셋 직후 오전 경주마/돌파 중심
+ *    ② Preset_Afternoon (12:00 ~ 21:00): 거래량 감소 시간대 오후 횡보 방어/스윙 중심
+ *    ③ Preset_Night (21:00 ~ 08:50): 미 증시 개장 전후 야간 단기 트레일링/방망이 단축
+ * 2. 포지션 무결성 (State Preservation):
+ *    - 대기 중(IDLE)인 슬롯은 즉시 새 프리셋 적용
+ *    - 보유 중(ACTIVE/IN_POSITION)인 슬롯은 기존 진입 룰을 청산 시까지 100% 보호
+ *    - 매도 완료 후 빈 슬롯이 되는 순간 현재 장세 프리셋으로 자동 갱신
+ * 3. 24시간 누적 거래대금 (100억 이상) 스윙 필터 기본 활성화
+ */
+
+const slotManager = require('./slotManager');
+
+class MarketScheduler {
+  constructor() {
+    this.isEnabled = true;
+    this.currentPresetKey = 'MORNING'; // MORNING | AFTERNOON | NIGHT | CUSTOM
+    this.timer = null;
+    this.listeners = new Set();
+
+    // 사용자가 대시보드에서 커스텀 변경 가능한 시간표 (KST 기준)
+    this.timeTable = {
+      MORNING_START: '08:50',   // 08:50~12:00
+      AFTERNOON_START: '12:00', // 12:00~21:00
+      NIGHT_START: '21:00'      // 21:00~익일 08:50
+    };
+
+    // 글로벌 모드: 'MODE_A' (하이브리드: 1~8 스캘핑, 9~12 스윙) | 'MODE_B' (방망이 분할: 전슬롯 돌파/스윙)
+    this.globalStrategyMode = 'MODE_A';
+
+    // 3가지 장세 기본 프리셋 템플릿
+    this.presets = {
+      // ① Preset_Morning (오전 경주마/돌파 중심)
+      MORNING: {
+        name: '오전 경주마 돌파 (Preset_Morning)',
+        description: '09:00 리셋 직후 활발한 수급과 당일 돌파 코인 집중 공략',
+        // 1~8번 슬롯 세팅
+        scalping: {
+          useWideTrailing: true,
+          trailingTier1TargetProfitPct: 3.5,
+          trailingTier1CallbackPct: 0.5,
+          trailingTier2HurdlePct: 8.0,
+          trailingTier2CallbackPct: 2.0,
+          stopLossPct: 2.0,
+          surgeRatePct: 1.8,
+          surgeMinVolumeKrw: 15000000
+        },
+        // 9~10번 돌파 슬롯 세팅
+        breakout: {
+          breakoutHighEnabled: true,
+          breakoutCandleUnit: 1,
+          breakoutMinVolumeKrwEok: 5, // 1분봉 5억 이상
+          trailingTier1TargetProfitPct: 4.0,
+          trailingTier1CallbackPct: 0.8,
+          trailingTier2HurdlePct: 10.0,
+          trailingTier2CallbackPct: 2.5,
+          stopLossPct: 2.5
+        },
+        // 11~12번 스윙 슬롯 세팅
+        swing: {
+          swingCandleUnit: 'days',
+          swingShortMa: 5,
+          swingLongMa: 20,
+          min24hAccTradePriceKrw: 10000000000, // 24시간 100억 이상
+          trailingTier1TargetProfitPct: 7.0,
+          trailingTier1CallbackPct: 1.5,
+          trailingTier2HurdlePct: 15.0,
+          trailingTier2CallbackPct: 4.0,
+          stopLossPct: 3.5
+        }
+      },
+
+      // ② Preset_Afternoon (오후 횡보 방어 / 스윙 중심)
+      AFTERNOON: {
+        name: '오후 횡보 방어 (Preset_Afternoon)',
+        description: '거래량 감소 시간대 뇌동매매 방어 및 슬리피지/스윙 추세 집중',
+        scalping: {
+          useWideTrailing: true,
+          trailingTier1TargetProfitPct: 2.0,
+          trailingTier1CallbackPct: 0.4,
+          trailingTier2HurdlePct: 6.0,
+          trailingTier2CallbackPct: 1.5,
+          stopLossPct: 1.5,
+          surgeRatePct: 2.5, // 진입 허들 상향
+          surgeMinVolumeKrw: 20000000
+        },
+        breakout: {
+          breakoutHighEnabled: true,
+          breakoutCandleUnit: 3, // 3분봉으로 안정성 강화
+          breakoutMinVolumeKrwEok: 10, // 3분봉 10억 이상
+          trailingTier1TargetProfitPct: 3.0,
+          trailingTier1CallbackPct: 0.6,
+          trailingTier2HurdlePct: 8.0,
+          trailingTier2CallbackPct: 2.0,
+          stopLossPct: 2.0
+        },
+        swing: {
+          swingCandleUnit: 'minutes/240', // 4시간봉
+          swingShortMa: 5,
+          swingLongMa: 20,
+          min24hAccTradePriceKrw: 15000000000, // 24시간 150억 이상 메이저 중심
+          trailingTier1TargetProfitPct: 5.0,
+          trailingTier1CallbackPct: 1.0,
+          trailingTier2HurdlePct: 12.0,
+          trailingTier2CallbackPct: 3.0,
+          stopLossPct: 2.5
+        }
+      },
+
+      // ③ Preset_Night (야간 변동성 / 방망이 단축 세팅)
+      NIGHT: {
+        name: '야간 단기 트레일링 (Preset_Night)',
+        description: '미 증시 개장 전후 급변동 대응, 방망이 단축 및 타이트 트레일링',
+        scalping: {
+          useWideTrailing: true,
+          trailingTier1TargetProfitPct: 2.0,
+          trailingTier1CallbackPct: 0.3, // 타이트 콜백
+          trailingTier2HurdlePct: 5.0,
+          trailingTier2CallbackPct: 1.2,
+          stopLossPct: 1.8,
+          surgeRatePct: 2.0,
+          surgeMinVolumeKrw: 25000000
+        },
+        breakout: {
+          breakoutHighEnabled: true,
+          breakoutCandleUnit: 1,
+          breakoutMinVolumeKrwEok: 8,
+          trailingTier1TargetProfitPct: 2.5,
+          trailingTier1CallbackPct: 0.5,
+          trailingTier2HurdlePct: 7.0,
+          trailingTier2CallbackPct: 1.8,
+          stopLossPct: 2.0
+        },
+        swing: {
+          swingCandleUnit: 'minutes/240',
+          swingShortMa: 5,
+          swingLongMa: 20,
+          min24hAccTradePriceKrw: 20000000000, // 200억 이상 고유동성
+          trailingTier1TargetProfitPct: 4.5,
+          trailingTier1CallbackPct: 0.8,
+          trailingTier2HurdlePct: 10.0,
+          trailingTier2CallbackPct: 2.5,
+          stopLossPct: 2.5
+        }
+      }
+    };
+  }
+
+  start() {
+    if (this.timer) clearInterval(this.timer);
+
+    console.log('⏰ [MarketScheduler] 3단계 장세 자동 스케줄러 가동');
+    // 1분마다 KST 시간 점검 및 스위칭
+    this.timer = setInterval(() => this.checkSchedule(), 60000);
+    // 가동 즉시 현재 시간에 맞는 프리셋 확인 및 적용
+    this.checkSchedule();
+  }
+
+  stop() {
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+    console.log('⏰ [MarketScheduler] 장세 스케줄러 정지');
+  }
+
+  onSchedulerEvent(listener) {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  emit(event) {
+    for (const listener of this.listeners) {
+      try {
+        listener(event);
+      } catch (err) {
+        console.error('MarketScheduler listener error:', err);
+      }
+    }
+  }
+
+  /**
+   * 현재 KST 시각에 해당하는 프리셋 키 반환
+   */
+  determineCurrentPresetKey() {
+    const now = new Date();
+    const curMin = now.getHours() * 60 + now.getMinutes();
+
+    const [mH, mM] = this.timeTable.MORNING_START.split(':').map(Number);
+    const [aH, aM] = this.timeTable.AFTERNOON_START.split(':').map(Number);
+    const [nH, nM] = this.timeTable.NIGHT_START.split(':').map(Number);
+
+    const mMin = mH * 60 + mM;
+    const aMin = aH * 60 + aM;
+    const nMin = nH * 60 + nM;
+
+    // 08:50 ~ 12:00 -> MORNING
+    // 12:00 ~ 21:00 -> AFTERNOON
+    // 21:00 ~ 08:50 -> NIGHT
+    if (curMin >= mMin && curMin < aMin) {
+      return 'MORNING';
+    } else if (curMin >= aMin && curMin < nMin) {
+      return 'AFTERNOON';
+    } else {
+      return 'NIGHT';
+    }
+  }
+
+  /**
+   * 스케줄 체크 및 필요 시 프리셋 자동 전환
+   */
+  checkSchedule() {
+    if (!this.isEnabled) return;
+
+    const targetPresetKey = this.determineCurrentPresetKey();
+    if (targetPresetKey !== this.currentPresetKey) {
+      console.log(`🔄 [MarketScheduler] 시간대 감지 변경: ${this.currentPresetKey} ➔ ${targetPresetKey}`);
+      this.applyPreset(targetPresetKey, 'AUTO_TIME_SCHEDULE');
+    }
+  }
+
+  /**
+   * 프리셋 적용 (포지션 무결성 State Preservation 100% 준수)
+   * @param {string} presetKey - 'MORNING' | 'AFTERNOON' | 'NIGHT'
+   * @param {string} triggerSource - 'AUTO_TIME_SCHEDULE' | 'MANUAL_USER'
+   */
+  applyPreset(presetKey, triggerSource = 'MANUAL_USER') {
+    const preset = this.presets[presetKey];
+    if (!preset) return false;
+
+    this.currentPresetKey = presetKey;
+    console.log(`🎯 [MarketScheduler] 프리셋 [${preset.name}] 적용 시작 (사유: ${triggerSource})`);
+
+    let immediateUpdatedCount = 0;
+    let preservedCount = 0;
+
+    // 1~12번 슬롯 순회
+    for (const slot of slotManager.slots) {
+      // 🛡️ 포지션 무결성 검증:
+      // 이미 매수 완료(IN_POSITION)이거나 주문 대기 중(RESERVED_BUY)인 슬롯은
+      // 기존 진입 룰을 유지하여 끝까지 보호하고, 다음 매도 완료 시 적용되도록 대기(pendingPreset) 등록
+      const hasActivePosition = slot.positionStatus !== 'IDLE' && slot.position && slot.position.entryPrice > 0;
+
+      const targetParams = this.extractParamsForSlot(slot.slotId, slot.strategyMode, preset);
+
+      if (hasActivePosition) {
+        slot.pendingPreset = {
+          presetKey,
+          presetName: preset.name,
+          params: targetParams,
+          registeredAt: new Date().toISOString()
+        };
+        preservedCount++;
+        console.log(`🛡️ [포지션 무결성 보호] Slot ${slot.slotId} (${slot.name}) 코인 보유 중(${slot.targetMarket}) -> 청산 시까지 기존 룰 유지 (대기 프리셋 등록됨)`);
+      } else {
+        // 대기 중(IDLE)인 슬롯은 즉시 갱신
+        this.updateSlotParams(slot, targetParams);
+        slot.pendingPreset = null;
+        immediateUpdatedCount++;
+      }
+    }
+
+    this.emit({
+      type: 'PRESET_APPLIED',
+      presetKey,
+      presetName: preset.name,
+      triggerSource,
+      immediateUpdatedCount,
+      preservedCount,
+      timestamp: new Date().toISOString()
+    });
+
+    console.log(`✅ [MarketScheduler] 프리셋 전환 완료: 즉시 적용 ${immediateUpdatedCount}개 / 기존 포지션 보호 대기 ${preservedCount}개`);
+    return true;
+  }
+
+  /**
+   * 슬롯 타입 및 ID에 맞춘 파라미터 추출 (A모드 / B모드 분기 반영)
+   */
+  extractParamsForSlot(slotId, strategyMode, preset) {
+    // B모드(방망이 분할 모드)일 경우
+    if (this.globalStrategyMode === 'MODE_B') {
+      if (slotId <= 8) {
+        // 1~8번: 돌파 단기 타겟 (1단 5% 익절 후 즉시 청산, 2단 진입 방지 트릭)
+        return {
+          strategyMode: 'BREAKOUT_DAY_HIGH',
+          breakoutHighEnabled: true,
+          breakoutCandleUnit: 1,
+          breakoutMinVolumeKrwEok: 5,
+          useWideTrailing: false, // 2단 진입 방지 단일 익절
+          targetProfitPct: 5.0,
+          trailingTier1TargetProfitPct: 5.0,
+          trailingTier1CallbackPct: 0.5,
+          trailingTier2HurdlePct: 999.0, // 2단 차단
+          trailingTier2CallbackPct: 99.0,
+          stopLossPct: 2.0
+        };
+      } else {
+        // 9~12번: 10~20% 장기 타겟 와이드 트레일링
+        return {
+          strategyMode: slotId <= 10 ? 'BREAKOUT_DAY_HIGH' : 'TREND_SWING',
+          breakoutHighEnabled: true,
+          breakoutCandleUnit: 3,
+          breakoutMinVolumeKrwEok: 8,
+          swingCandleUnit: 'days',
+          swingShortMa: 5,
+          swingLongMa: 20,
+          min24hAccTradePriceKrw: 10000000000,
+          useWideTrailing: true,
+          trailingTier1TargetProfitPct: 10.0,
+          trailingTier1CallbackPct: 2.0,
+          trailingTier2HurdlePct: 20.0,
+          trailingTier2CallbackPct: 5.0,
+          stopLossPct: 3.5
+        };
+      }
+    }
+
+    // A모드 (하이브리드: 1~8 스캘핑, 9~10 돌파, 11~12 스윙)
+    if (slotId <= 8) {
+      return {
+        strategyMode: 'SCALPING',
+        ...preset.scalping
+      };
+    } else if (slotId <= 10) {
+      return {
+        strategyMode: 'BREAKOUT_DAY_HIGH',
+        ...preset.breakout
+      };
+    } else {
+      return {
+        strategyMode: 'TREND_SWING',
+        ...preset.swing
+      };
+    }
+  }
+
+  updateSlotParams(slot, params) {
+    if (!params) return;
+    Object.keys(params).forEach(k => {
+      slot[k] = params[k];
+    });
+  }
+
+  /**
+   * 글로벌 전략 모드 전환 (A모드 하이브리드 vs B모드 방망이 분할)
+   */
+  setGlobalStrategyMode(mode) {
+    if (mode !== 'MODE_A' && mode !== 'MODE_B') return false;
+    this.globalStrategyMode = mode;
+    console.log(`🔀 [전략 모드 변경] ${mode === 'MODE_A' ? 'A모드 (하이브리드: 1~8 스캘핑 + 9~12 돌파/스윙)' : 'B모드 (방망이 분할: 전슬롯 돌파/스윙)'} 선택됨`);
+    // 즉시 현재 시간대 프리셋 재적용
+    this.applyPreset(this.currentPresetKey, 'STRATEGY_MODE_SWITCH');
+    return true;
+  }
+
+  /**
+   * 시간표 업데이트
+   */
+  updateTimeTable(newTable) {
+    if (newTable.MORNING_START) this.timeTable.MORNING_START = newTable.MORNING_START;
+    if (newTable.AFTERNOON_START) this.timeTable.AFTERNOON_START = newTable.AFTERNOON_START;
+    if (newTable.NIGHT_START) this.timeTable.NIGHT_START = newTable.NIGHT_START;
+    console.log('⏰ [MarketScheduler] 시간표 갱신:', this.timeTable);
+    this.checkSchedule();
+  }
+
+  getStatus() {
+    return {
+      isEnabled: this.isEnabled,
+      currentPresetKey: this.currentPresetKey,
+      currentPresetName: this.presets[this.currentPresetKey]?.name || this.currentPresetKey,
+      globalStrategyMode: this.globalStrategyMode,
+      timeTable: this.timeTable,
+      presets: this.presets
+    };
+  }
+}
+
+module.exports = new MarketScheduler();

@@ -219,3 +219,33 @@ export const syncUpbitWarningMarkets = async () => {
   return res.data;
 };
 
+// ==========================================
+// 3단계 장세 스케줄러 & 일일 킬 스위치 API (제안서 1~3부)
+// ==========================================
+
+export const getSchedulerStatus = async () => {
+  const res = await axios.get(`${API_BASE}/scheduler`);
+  return res.data;
+};
+
+export const switchSchedulerPreset = async (presetKey) => {
+  const res = await axios.post(`${API_BASE}/scheduler/switch`, { presetKey });
+  return res.data;
+};
+
+export const updateSchedulerTimetable = async (timeTable) => {
+  const res = await axios.post(`${API_BASE}/scheduler/timetable`, { timeTable });
+  return res.data;
+};
+
+export const switchStrategyMode = async (mode) => {
+  const res = await axios.post(`${API_BASE}/scheduler/mode`, { mode });
+  return res.data;
+};
+
+export const updateKillSwitchConfig = async (config) => {
+  const res = await axios.post(`${API_BASE}/killswitch/config`, config);
+  return res.data;
+};
+
+

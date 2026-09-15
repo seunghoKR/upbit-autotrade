@@ -4,6 +4,8 @@ const config = require('../config');
 const slotManager = require('./slotManager');
 const surgeDetector = require('./surgeDetector');
 const candleStrategyEngine = require('./candleStrategyEngine');
+const orderQueue = require('./orderQueue');
+const marketScheduler = require('./marketScheduler');
 
 class StrategyEngine {
   constructor() {
@@ -15,6 +17,16 @@ class StrategyEngine {
     this.signalListeners = new Set();
     this.lastSignalTime = 0;
     this.signalCooldownMs = 10000; // 동일 급등 10초 쿨다운
+
+    // 🛡️ [제안서 1부 3번] 일일 킬 스위치 (급락장 대비 당일 누적 최대 손실 시 익일 09시까지 매수 하드 차단)
+    this.dailyKillSwitch = {
+      enabled: true,
+      maxLossPct: 10.0, // 일일 누적 -10% 이상 손실 시 차단
+      isTriggered: false,
+      dailyRealizedProfitKrw: 0,
+      totalCapitalKrw: 1000000, // 일일 손실률 산출용 기준 시드 (100만원)
+      dateStr: this.getKstTradingDate()
+    };
 
     // 🛡️ 비트코인 커플링 하락 방어 상태
     this.btcBuffer = []; // KRW-BTC 틱 버퍼 (5분)
@@ -28,6 +40,68 @@ class StrategyEngine {
     };
 
     this.initSurgeAndSlots();
+
+    // ⏰ [제안서 2부] 3단계 장세 스케줄러 자동 가동 및 이벤트 연동
+    marketScheduler.start();
+    marketScheduler.onSchedulerEvent((event) => {
+      this.emitSignal({
+        type: 'SCHEDULER_EVENT',
+        ...event,
+        message: `⏰ [장세 스케줄러] ${event.presetName} 프리셋으로 자동 스위칭되었습니다.`
+      });
+    });
+
+    // 📥 주문 큐 이벤트 연동
+    orderQueue.onOrderEvent((event) => {
+      this.emitSignal(event);
+    });
+  }
+
+  getKstTradingDate() {
+    const now = new Date();
+    const kstHour = now.getHours();
+    const adjusted = new Date(now);
+    if (kstHour < 9) {
+      adjusted.setDate(adjusted.getDate() - 1);
+    }
+    return adjusted.toISOString().slice(0, 10);
+  }
+
+  /**
+   * 🛡️ 일일 킬 스위치 상태 점검 (09:00 기준 날짜 변경 시 자동 리셋)
+   */
+  checkDailyKillSwitch() {
+    const todayStr = this.getKstTradingDate();
+    if (this.dailyKillSwitch.dateStr !== todayStr) {
+      // 09:00 KST 새로운 매매일 시작 -> 킬스위치 초기화
+      this.dailyKillSwitch.dateStr = todayStr;
+      this.dailyKillSwitch.dailyRealizedProfitKrw = 0;
+      this.dailyKillSwitch.isTriggered = false;
+      console.log(`🌅 [09:00 KST 일일 정산 리셋] 날짜: ${todayStr} -> 일일 킬스위치 정상 초기화 완료.`);
+    }
+
+    if (!this.dailyKillSwitch.enabled) return false;
+
+    // 누적 손실률 계산
+    const capital = Number(this.dailyKillSwitch.totalCapitalKrw) || 1000000;
+    const lossPct = (this.dailyKillSwitch.dailyRealizedProfitKrw / capital) * 100;
+
+    if (lossPct <= -Math.abs(Number(this.dailyKillSwitch.maxLossPct) || 10.0)) {
+      if (!this.dailyKillSwitch.isTriggered) {
+        this.dailyKillSwitch.isTriggered = true;
+        console.warn(`🚨 [일일 킬 스위치 긴급 발동] 당일 누적 손실률(${lossPct.toFixed(2)}%)이 제한치(-${this.dailyKillSwitch.maxLossPct}%)에 도달하여 익일 09시까지 모든 신규 매수를 하드 차단합니다!`);
+        this.emitSignal({
+          type: 'DAILY_KILL_SWITCH_TRIGGERED',
+          lossPct: Number(lossPct.toFixed(2)),
+          maxLossPct: this.dailyKillSwitch.maxLossPct,
+          profitKrw: this.dailyKillSwitch.dailyRealizedProfitKrw,
+          message: `🚨 [일일 킬 스위치 발동] 당일 누적 손실률 ${lossPct.toFixed(2)}% 도달로 신규 매수가 익일 09시까지 완전 차단되었습니다.`
+        });
+      }
+      return true;
+    }
+
+    return false;
   }
 
   initSurgeAndSlots() {
@@ -357,6 +431,10 @@ class StrategyEngine {
         } catch (err) {
           console.error(`❌ [스윙 데드크로스 시장가 청산 실패] ${event.market}:`, err.message);
         }
+      } else if (event.type === 'SUSTAIN_CHECK_STARTED') {
+        this.emitSignal(event);
+      } else if (event.type === 'SUSTAIN_CHECK_DROPPED') {
+        this.emitSignal(event);
       }
     });
   }
@@ -593,15 +671,27 @@ class StrategyEngine {
   async executeTrade(signal, triggerType) {
     try {
       console.log(`🚀 Executing Trade [${signal.type}] for ${signal.market} (${signal.slotId ? `Slot ${signal.slotId}` : 'No Slot'}) triggered by ${triggerType}`);
+
+      // 🛡️ [일일 킬 스위치 방어] 매수 주문 집행 전 최종 차단 검사
+      if (signal.type === 'BUY' && this.checkDailyKillSwitch()) {
+        const err = new Error(`일일 킬 스위치 가동 중: 당일 최대 손실(-${this.dailyKillSwitch.maxLossPct}%) 초과로 신규 매수가 차단되었습니다.`);
+        console.warn(`🛑 [신규 매수 차단] ${err.message}`);
+        if (signal.slotId) slotManager.clearPosition(signal.slotId);
+        throw err;
+      }
+
       let orderResult = null;
 
       if (signal.type === 'BUY') {
-        // 시장가 매수 (원화 금액 기준)
-        orderResult = await upbitClient.createOrder({
+        // 📥 비동기 스마트 주문 큐 (Order Queue)를 통한 안전 주문 집행 (Rate Limit 방어)
+        orderResult = await orderQueue.enqueue({
+          type: 'BUY',
+          slotId: signal.slotId,
           market: signal.market,
-          side: 'bid',
-          price: signal.amount,
-          ord_type: 'price'
+          price: signal.price,
+          amount: signal.amount,
+          priority: 'NORMAL',
+          reason: signal.reason || triggerType
         });
 
         const targetSlotId = signal.slotId || (slotManager.getAvailableSlot(signal.market) || {}).slotId || 1;
@@ -615,14 +705,13 @@ class StrategyEngine {
           dynamicStopLossPct: signal.dynamicStopLossPct || null
         });
 
-        // 🔄 [운영자 피드백 1번] 주문 완료('done') 대기 후 실제 체결 평균단가/수량 비동기 동기화 (부분 체결 예외 처리)
+        // 🔄 [운영자 피드백 1번] 주문 완료('done') 대기 후 실제 체결 평균단가/수량 비동기 동기화
         if (orderResult && orderResult.uuid) {
           this.syncRealOrderAveragePrice(targetSlotId, signal.market, orderResult.uuid, signal.price, estimatedVolume, signal.amount);
         }
 
       } else if (signal.type === 'SELL') {
         // 시장가 매도 (보유 수량 전량)
-        // 실제 업비트 계좌의 잔고를 한번 더 확인하여 정확한 수량으로 매도
         let sellVolume = signal.volume;
         try {
           const accounts = await upbitClient.getAccounts();
@@ -635,17 +724,25 @@ class StrategyEngine {
           // Fallback to estimated volume
         }
 
-        orderResult = await upbitClient.createOrder({
+        // 🚨 긴급 매도/손절/청산은 최우선순위(HIGH)로 큐 앞단에 즉각 집행!
+        orderResult = await orderQueue.enqueue({
+          type: 'SELL',
+          slotId: signal.slotId,
           market: signal.market,
-          side: 'ask',
           volume: sellVolume,
-          ord_type: 'market'
+          priority: 'HIGH',
+          reason: signal.reason || triggerType
         });
 
         // 손익 계산 및 통계 누적
         const isProfit = (Number(signal.profitPct) || 0) >= 0;
         const profitKrw = Number(signal.profitKrw) || 0;
         
+        // 🛡️ 당일 누적 실현손익 집계 (일일 킬스위치 감시용)
+        this.dailyKillSwitch.dailyRealizedProfitKrw += profitKrw;
+        console.log(`💰 [당일 누적 실현손익 갱신] ${profitKrw >= 0 ? '+' : ''}${Math.round(profitKrw).toLocaleString()}원 (당일 합계: ${Math.round(this.dailyKillSwitch.dailyRealizedProfitKrw).toLocaleString()}원)`);
+        this.checkDailyKillSwitch();
+
         if (signal.slotId) {
           slotManager.recordTrade(signal.slotId, isProfit, profitKrw);
           slotManager.clearPosition(signal.slotId);

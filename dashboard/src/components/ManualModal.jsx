@@ -155,6 +155,64 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
           {/* 탭 1: 핵심 자동매매 기능 매뉴얼 */}
           {activeTab === 'MANUAL' && (
             <div className="space-y-5 animate-in fade-in text-sm text-slate-200">
+            {/* 0. 🌟 글로벌 통합 제어 타워 & 3대 핵심 신기능 (최신 고도화) */}
+            <div className="bg-gradient-to-r from-slate-950 via-indigo-950/40 to-slate-950 p-5 rounded-2xl border-2 border-indigo-500/50 shadow-xl space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <h4 className="text-base font-black text-white flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-amber-400 animate-spin-slow" />
+                  <span>🌟 글로벌 제어 타워 &amp; 3대 신규 핵심 엔진 (제안서 1~3부 실전 탑재)</span>
+                </h4>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
+                  v3.4.1 NEW
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs sm:text-[13px]">
+                {/* 1) 3단계 장세 스케줄러 */}
+                <div className="bg-slate-900/90 p-4 rounded-xl border border-indigo-500/30 space-y-2">
+                  <div className="flex items-center gap-2 font-bold text-amber-300 text-sm">
+                    <span>⏰</span>
+                    <span>3단계 장세 자동 스케줄러</span>
+                  </div>
+                  <p className="text-slate-300 leading-relaxed text-xs">
+                    오전(09:00~ 경주마 돌파), 오후(12:00~ 횡보 방어 및 스윙), 야간(21:00~ 미증시 단기 트레일링)으로 KST 시간대에 맞춰 전자동 환복합니다.
+                  </p>
+                  <div className="p-2 rounded-lg bg-indigo-950/40 border border-indigo-500/20 text-[11px] text-indigo-200">
+                    🛡️ <strong>포지션 무결성</strong>: 코인 보유 슬롯은 청산까지 기존 룰 100% 보호! 매도 완료 시 새 프리셋으로 자동 변신!
+                  </div>
+                </div>
+
+                {/* 2) 가짜 윗꼬리 10초 Sustain Check */}
+                <div className="bg-slate-900/90 p-4 rounded-xl border border-rose-500/30 space-y-2">
+                  <div className="flex items-center gap-2 font-bold text-rose-300 text-sm">
+                    <span>🛡️</span>
+                    <span>가짜 윗꼬리 10초 검증(Sustain)</span>
+                  </div>
+                  <p className="text-slate-300 leading-relaxed text-xs">
+                    세력이 1분 만에 50억 쏘고 튀는 '가짜 윗꼬리(Spoofing)'를 막기 위해, 돌파 후 <strong>10초간 가격과 수급 유지 여부를 검증</strong>합니다.
+                  </p>
+                  <div className="p-2 rounded-lg bg-rose-950/40 border border-rose-500/20 text-[11px] text-rose-200">
+                    🚫 10초 후 -0.4% 이상 급락하면 <strong>즉시 드롭(Drop)</strong>하여 최고점 설거지를 완벽 회피합니다!
+                  </div>
+                </div>
+
+                {/* 3) 비동기 주문 큐 & 일일 킬스위치 */}
+                <div className="bg-slate-900/90 p-4 rounded-xl border border-emerald-500/30 space-y-2">
+                  <div className="flex items-center gap-2 font-bold text-emerald-300 text-sm">
+                    <span>⚡</span>
+                    <span>주문 큐 &amp; 일일 킬 스위치</span>
+                  </div>
+                  <p className="text-slate-300 leading-relaxed text-xs">
+                    • <strong>비동기 스마트 주문 큐</strong>: 업비트 초당 8회 제한을 완벽 우회하며, 긴급 청산은 최우선순위(HIGH)로 즉각 집행!<br />
+                    • <strong>일일 킬 스위치</strong>: 당일 누적 -10% 이상 손실 시 익일 09시까지 신규 매수 하드 차단!
+                  </p>
+                  <div className="p-2 rounded-lg bg-emerald-950/40 border border-emerald-500/20 text-[11px] text-emerald-200">
+                    🔀 <strong>A/B 모드</strong>: 하이브리드 vs 방망이 분할(1단 5% 익절) 원터치 전환 지원!
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* 1. 자동매매 전체 워크플로우 한눈에 보기 */}
             <div className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800 space-y-4">
               <h4 className="text-base font-black text-slate-100 flex items-center gap-2">
@@ -423,13 +481,58 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
                 </p>
               </div>
 
-              <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 space-y-2">
+                <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 space-y-2">
                 <h5 className="font-bold text-amber-300 flex items-center gap-2 text-sm sm:text-base">
                   <HelpCircle className="w-5 h-5 text-amber-400 shrink-0" />
                   Q4. 업비트 Open API 발급 시 어떤 IP를 등록해야 하나요?
                 </h5>
                 <p className="text-slate-300 text-xs sm:text-sm leading-relaxed pl-7">
                   👉 대표님의 서버 노드 고정 공인 IP인 <strong>`49.171.41.10`</strong>을 업비트 Open API 발급 페이지의 허용 IP란에 등록해 주시면 정상 승인됩니다.
+                </p>
+              </div>
+
+              {/* Q5: 3단계 장세 스케줄러 & 포지션 무결성 */}
+              <div className="bg-slate-950/80 p-4 rounded-2xl border border-indigo-500/40 space-y-2">
+                <h5 className="font-bold text-indigo-300 flex items-center gap-2 text-sm sm:text-base">
+                  <HelpCircle className="w-5 h-5 text-indigo-400 shrink-0" />
+                  Q5. 3단계 장세 스케줄러가 시간대에 맞춰 변경될 때, 이미 매수한 코인은 어떻게 되나요?
+                </h5>
+                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed pl-7">
+                  👉 <strong>포지션 무결성 (State Preservation)</strong> 원칙에 따라, 이미 매수하여 보유 중인 슬롯은 중간에 설정이 바뀌지 않고 <strong>기존 진입 룰(익절/손절/트레일링)을 청산될 때까지 100% 유지</strong>합니다. 코인이 매도 완료되어 빈 슬롯이 되는 바로 그 순간, 현재 시간대의 최신 프리셋으로 안전하게 자동 환복됩니다!
+                </p>
+              </div>
+
+              {/* Q6: 가짜 윗꼬리 10초 Sustain Check */}
+              <div className="bg-slate-950/80 p-4 rounded-2xl border border-rose-500/40 space-y-2">
+                <h5 className="font-bold text-rose-300 flex items-center gap-2 text-sm sm:text-base">
+                  <HelpCircle className="w-5 h-5 text-rose-400 shrink-0" />
+                  Q6. 가짜 윗꼬리 10초 딜레이 검증(Sustain Check)은 무엇인가요?
+                </h5>
+                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed pl-7">
+                  👉 세력이 1분 만에 허수 수급(50억 등)으로 팍 띄웠다가 개미들이 타자마자 패대기치는 <strong>'가짜 윗꼬리(Spoofing)'</strong>에 당하지 않도록, 돌파 신호가 떠도 즉시 사지 않고 <strong>10초간 가격과 수급 텐션이 무너지지 않고 지지되는지 검증</strong>합니다. 만약 10초 뒤 -0.4% 이상 급락하면 <strong>주문 큐에서 즉시 드롭(Drop)</strong>하여 설거지를 원천 방어합니다.
+                </p>
+              </div>
+
+              {/* Q7: 일일 킬 스위치 */}
+              <div className="bg-slate-950/80 p-4 rounded-2xl border border-amber-500/40 space-y-2">
+                <h5 className="font-bold text-amber-300 flex items-center gap-2 text-sm sm:text-base">
+                  <HelpCircle className="w-5 h-5 text-amber-400 shrink-0" />
+                  Q7. 일일 킬 스위치(Daily Kill Switch)가 발동되면 언제 풀리나요?
+                </h5>
+                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed pl-7">
+                  👉 급락장에서 당일 누적 실현 손실이 설정치(예: -10%)에 도달하면 신규 매수가 전면 차단됩니다. 차단은 <strong>다음 날 오전 09:00 (KST 업비트 일봉 리셋 시간)에 자동 초기화</strong>되며, 장세가 안정되었을 경우 대시보드 상단 제어 타워에서 <strong>[차단 긴급 해제]</strong> 버튼을 눌러 언제든 즉시 수동 해제할 수도 있습니다.
+                </p>
+              </div>
+
+              {/* Q8: A모드 vs B모드 */}
+              <div className="bg-slate-950/80 p-4 rounded-2xl border border-purple-500/40 space-y-2">
+                <h5 className="font-bold text-purple-300 flex items-center gap-2 text-sm sm:text-base">
+                  <HelpCircle className="w-5 h-5 text-purple-400 shrink-0" />
+                  Q8. A모드(하이브리드)와 B모드(방망이 분할)는 어떤 차이가 있나요?
+                </h5>
+                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed pl-7">
+                  👉 <strong>A모드(기본 추천)</strong>는 1~8번 슬롯을 초단타 스캘핑, 9~10번 돌파, 11~12번 정배열 스윙으로 분산하여 시장 변동성을 골고루 공략합니다.<br />
+                  반면 <strong>B모드(대세 상승장 전용)</strong>는 12개 전 슬롯을 돌파/스윙으로 전환하여, 1~8번은 단기 5% 1단 익절 후 청산하고 9~12번은 10~20% 장기 와이드 트레일링으로 큰 추세를 추종합니다.
                 </p>
               </div>
             </div>

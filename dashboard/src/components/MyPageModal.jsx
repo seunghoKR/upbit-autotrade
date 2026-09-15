@@ -785,6 +785,19 @@ export default function MyPageModal({
                       <span className="text-slate-300">한국시간 24시 기준, 23:00~02:00 야간 심야 시간대도 안전 지원</span>
                     </div>
                   </div>
+
+                  {/* 🌟 제안서 1~3부 3단계 장세 스케줄러 & 글로벌 제어 타워 연동 안내 */}
+                  <div className="mt-3 p-3 rounded-xl bg-gradient-to-r from-indigo-950/40 via-purple-950/40 to-slate-950/60 border border-indigo-500/30 flex items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2 text-indigo-300">
+                      <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span>
+                        <strong>3단계 장세 스케줄러 연동</strong>: 대시보드 최상단 제어 타워에서 <strong>Morning · Afternoon · Night</strong> 장세별 프리셋과 <strong>일일 킬 스위치(-10% 락)</strong>를 한눈에 통제할 수 있습니다.
+                      </span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-200 text-[10px] font-bold shrink-0 border border-indigo-500/40">
+                      글로벌 타워 지원
+                    </span>
+                  </div>
                 </div>
 
                 {/* 2. 3대 다중 시간대 설정 카드 목록 */}
