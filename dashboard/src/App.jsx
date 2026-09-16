@@ -153,24 +153,7 @@ export default function App() {
   // 회원 상태 (sessionStorage 우선 -> 자동로그인 체크된 localStorage 확인 + 12시간 세션 만료 검증)
   const [currentUser, setCurrentUser] = useState(() => {
     try {
-      // 🧪 1. 연구실/실험실 환경일 경우: 대표님 계정(id=3)으로 최우선 자동 동기화 보장
-      if (isLabEnvironment) {
-        const sessionUserId = sessionStorage.getItem('nurioh_user_id');
-        const sessionProfile = sessionStorage.getItem('nurioh_user_profile');
-        if (sessionProfile && sessionUserId === String(LAB_DEV_USER.id)) {
-          const parsed = JSON.parse(sessionProfile);
-          if (parsed.email === 'leeshkr@kakao.com' || parsed.id === LAB_DEV_USER.id) {
-            return { ...LAB_DEV_USER, ...parsed, nickname: '이승호 대표님', role: 'DEVELOPER', tier: 'VIP', maxSlots: 12 };
-          }
-        }
-        // 세션이 없거나 이전 더미 계정(id=1 등)이거나 불일치 시 대표님 계정으로 즉시 세팅
-        sessionStorage.setItem('nurioh_user_id', String(LAB_DEV_USER.id));
-        sessionStorage.setItem('nurioh_user_profile', JSON.stringify(LAB_DEV_USER));
-        sessionStorage.removeItem('nurioh_lab_explicit_logout');
-        return LAB_DEV_USER;
-      }
-
-      // 1. 현재 브라우저 탭 세션 확인
+      // 1. 현재 브라우저 탭 세션 확인 (실서버 및 실험실 공통: 각자 로그인한 실제 계정 우선)
       const sessionProfile = sessionStorage.getItem('nurioh_user_profile');
       const sessionUserId = sessionStorage.getItem('nurioh_user_id');
       if (sessionProfile && sessionUserId) {
@@ -195,11 +178,18 @@ export default function App() {
         const localProfile = localStorage.getItem('nurioh_user_profile');
         if (localProfile) return JSON.parse(localProfile);
       } else {
-        // 자동 로그인이 체크되어 있지 않다면 남아있는 로컬 잔여 데이터 완전 삭제 (다른 브라우저/새 창 보안 강화)
+        // 자동 로그인이 체크되어 있지 않다면 남아있는 로컬 잔여 데이터 완전 삭제
         localStorage.removeItem('nurioh_user_id');
         localStorage.removeItem('nurioh_user_profile');
         localStorage.removeItem('nurioh_remember_me');
         localStorage.removeItem('nurioh_login_timestamp');
+      }
+
+      // 🧪 3. 오직 로컬 연구실(localhost 개발 모드)에서만 기본 개발자 계정 자동 진입 편의 제공
+      if (isLocalLab && sessionStorage.getItem('nurioh_lab_explicit_logout') !== 'true') {
+        sessionStorage.setItem('nurioh_user_id', String(LAB_DEV_USER.id));
+        sessionStorage.setItem('nurioh_user_profile', JSON.stringify(LAB_DEV_USER));
+        return LAB_DEV_USER;
       }
     } catch (e) {}
     return null;
@@ -347,16 +337,20 @@ export default function App() {
   // 🛡️ 실시간 유효 로그인 ID 검증 헬퍼 (스토리지에 인증 정보가 없을 때 절대 ID를 반환하지 않음)
   const getValidAuthUserId = () => {
     try {
-      // 🧪 연구실/실험실 환경일 때는 무조건 대표님 계정 ID(id=3) 보장!
-      if (isLabEnvironment) {
-        return String(LAB_DEV_USER.id);
-      }
-      const isRemembered = localStorage.getItem('nurioh_remember_me') === 'true';
+      // 1. 현재 세션 사용자 ID 확인 (실서버 및 실험실 공통)
       const sessionUserId = sessionStorage.getItem('nurioh_user_id');
       if (sessionUserId) return sessionUserId;
+
+      // 2. 자동 로그인된 로컬 사용자 ID 확인
+      const isRemembered = localStorage.getItem('nurioh_remember_me') === 'true';
       if (isRemembered) {
         const localUserId = localStorage.getItem('nurioh_user_id');
         if (localUserId) return localUserId;
+      }
+
+      // 🧪 3. 오직 로컬 연구실(localhost 개발 모드)에서만 기본 개발자 계정 허용
+      if (isLocalLab && sessionStorage.getItem('nurioh_lab_explicit_logout') !== 'true') {
+        return String(LAB_DEV_USER.id);
       }
     } catch (e) {}
     return null;
@@ -377,12 +371,12 @@ export default function App() {
       }
 
       if (userRes && userRes.user) {
-        const isUserPrivileged = (userRes.user.role === 'DEVELOPER' || userRes.user.role === 'ADMIN' || userRes.user.role === 'OPERATOR' || userRes.user.tier === 'VIP' || isLabEnvironment);
+        const isUserPrivileged = (userRes.user.role === 'DEVELOPER' || userRes.user.role === 'ADMIN' || userRes.user.role === 'OPERATOR' || userRes.user.tier === 'VIP');
         const sanitizedUser = {
           ...userRes.user,
-          nickname: (isLabEnvironment || userRes.user.email === 'leeshkr@kakao.com') ? '이승호 대표님' : (userRes.user.nickname || '회원'),
-          role: (isLabEnvironment || userRes.user.email === 'leeshkr@kakao.com') ? 'DEVELOPER' : userRes.user.role,
-          tier: (isLabEnvironment || userRes.user.email === 'leeshkr@kakao.com') ? 'VIP' : userRes.user.tier,
+          nickname: userRes.user.nickname || userRes.user.name || '회원',
+          role: userRes.user.role || 'USER',
+          tier: userRes.user.tier || 'FREE_TRIAL',
           maxSlots: isUserPrivileged ? 12 : (userRes.user.tier === 'PRO' ? 3 : (userRes.user.maxSlots || 1))
         };
         const isRemembered = localStorage.getItem('nurioh_remember_me') === 'true';
