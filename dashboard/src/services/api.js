@@ -235,8 +235,18 @@ export const switchSchedulerPreset = async (presetKey) => {
   return res.data;
 };
 
-export const updateSchedulerTimetable = async (timeTable) => {
-  const res = await axios.post(`${API_BASE}/scheduler/timetable`, { timeTable });
+export const updateSchedulerTimetable = async (timeTable, scheduleMapping) => {
+  const res = await axios.post(`${API_BASE}/scheduler/timetable`, { timeTable, scheduleMapping });
+  return res.data;
+};
+
+export const saveSchedulerPreset = async (presetKey, preset) => {
+  const res = await axios.post(`${API_BASE}/scheduler/preset/save`, { presetKey, preset });
+  return res.data;
+};
+
+export const applySchedulerPreset = async (presetKey) => {
+  const res = await axios.post(`${API_BASE}/scheduler/preset/apply`, { presetKey });
   return res.data;
 };
 
@@ -249,5 +259,6 @@ export const updateKillSwitchConfig = async (config) => {
   const res = await axios.post(`${API_BASE}/killswitch/config`, config);
   return res.data;
 };
+
 
 

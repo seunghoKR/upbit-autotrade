@@ -21,8 +21,8 @@ class SlotManager {
       { slotId: 10, name: '10번 돌파 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutHighEnabled: true, breakoutCandleUnit: 1, breakoutMinVolumeKrwEok: 5, isEnabled: false, targetMarket: null, tradeAmountKrw: 50000, positionStatus: 'IDLE', position: null, useAtrStopLoss: false, stopLossPct: 2.0, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
 
       // 11~12번 슬롯: 정배열 추세 스윙 모드 (TREND_SWING) - 기본 가동 중지(OFF) 상태 유지
-      { slotId: 11, name: '11번 스윙 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'days', swingShortMa: 5, swingLongMa: 20, isEnabled: false, targetMarket: null, tradeAmountKrw: 100000, positionStatus: 'IDLE', position: null, useAtrStopLoss: false, stopLossPct: 3.0, useWideTrailing: true, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 12.0, trailingTier2CallbackPct: 3.5, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
-      { slotId: 12, name: '12번 스윙 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'minutes/240', swingShortMa: 5, swingLongMa: 20, isEnabled: false, targetMarket: null, tradeAmountKrw: 100000, positionStatus: 'IDLE', position: null, useAtrStopLoss: false, stopLossPct: 3.0, useWideTrailing: true, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 12.0, trailingTier2CallbackPct: 3.5, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 }
+      { slotId: 11, name: '11번 스윙 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'days', swingShortMa: 5, swingLongMa: 20, swingMinTradePrice24hEok: 100, min24hAccTradePriceKrw: 10000000000, isEnabled: false, targetMarket: null, tradeAmountKrw: 100000, positionStatus: 'IDLE', position: null, useAtrStopLoss: false, stopLossPct: 3.0, useWideTrailing: true, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 12.0, trailingTier2CallbackPct: 3.5, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
+      { slotId: 12, name: '12번 스윙 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'minutes/240', swingShortMa: 5, swingLongMa: 20, swingMinTradePrice24hEok: 100, min24hAccTradePriceKrw: 10000000000, isEnabled: false, targetMarket: null, tradeAmountKrw: 100000, positionStatus: 'IDLE', position: null, useAtrStopLoss: false, stopLossPct: 3.0, useWideTrailing: true, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 12.0, trailingTier2CallbackPct: 3.5, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 }
     ];
 
     this.listeners = new Set();
@@ -103,6 +103,7 @@ class SlotManager {
         swingCandleUnit: slot.swingCandleUnit || 'days',
         swingShortMa: slot.swingShortMa || 5,
         swingLongMa: slot.swingLongMa || 20,
+        swingMinTradePrice24hEok: slot.swingMinTradePrice24hEok !== undefined ? Number(slot.swingMinTradePrice24hEok) : (slot.min24hAccTradePriceKrw ? Math.round(Number(slot.min24hAccTradePriceKrw) / 100000000) : 100),
         min24hAccTradePriceKrw: slot.min24hAccTradePriceKrw !== undefined ? Number(slot.min24hAccTradePriceKrw) : 10000000000,
         pendingPreset: slot.pendingPreset || null,
         dynamicStopLossPct: hasPos ? (slot.position.dynamicStopLossPct || null) : null,
@@ -141,7 +142,18 @@ class SlotManager {
     if (updateData.swingCandleUnit !== undefined) slot.swingCandleUnit = updateData.swingCandleUnit;
     if (updateData.swingShortMa !== undefined) slot.swingShortMa = Number(updateData.swingShortMa);
     if (updateData.swingLongMa !== undefined) slot.swingLongMa = Number(updateData.swingLongMa);
-    if (updateData.min24hAccTradePriceKrw !== undefined) slot.min24hAccTradePriceKrw = Number(updateData.min24hAccTradePriceKrw);
+    if (updateData.swingMinTradePrice24hEok !== undefined) {
+      slot.swingMinTradePrice24hEok = Number(updateData.swingMinTradePrice24hEok);
+      if (updateData.min24hAccTradePriceKrw === undefined) {
+        slot.min24hAccTradePriceKrw = slot.swingMinTradePrice24hEok * 100000000;
+      }
+    }
+    if (updateData.min24hAccTradePriceKrw !== undefined) {
+      slot.min24hAccTradePriceKrw = Number(updateData.min24hAccTradePriceKrw);
+      if (updateData.swingMinTradePrice24hEok === undefined) {
+        slot.swingMinTradePrice24hEok = Math.round(slot.min24hAccTradePriceKrw / 100000000);
+      }
+    }
 
     if (updateData.totalTrades !== undefined) slot.totalTrades = Number(updateData.totalTrades);
     if (updateData.winTrades !== undefined) slot.winTrades = Number(updateData.winTrades);

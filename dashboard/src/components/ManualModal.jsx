@@ -164,7 +164,7 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
                   <span>🌟 글로벌 제어 타워 &amp; 3대 신규 핵심 엔진 (제안서 1~3부 실전 탑재)</span>
                 </h4>
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
-                  v3.5.0 NEW
+                  v3.5.1 NEW
                 </span>
               </div>
 
@@ -389,8 +389,13 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
                   <p className="text-slate-300 leading-relaxed">
                     일봉/4시간봉 이동평균선(5선 &gt; 20선) 골든크로스 정배열 구간을 추종하여 큰 추세 파동을 길게 먹는 중기 스윙 전략입니다.
                   </p>
-                  <div className="text-[11px] font-mono text-sky-300 bg-slate-950/80 p-2 rounded-lg border border-sky-500/20">
-                    비상 청산: 데드크로스(5선 &lt; 20선) 발생 시 시장가 즉시 전량 매도
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] font-mono">
+                    <div className="text-sky-300 bg-slate-950/80 p-2 rounded-lg border border-sky-500/20">
+                      수급 안전망: 24시간 누적 거래대금 100억+ 메이저/주도주 한정
+                    </div>
+                    <div className="text-rose-300 bg-slate-950/80 p-2 rounded-lg border border-rose-500/20">
+                      비상 청산: 데드크로스(5선 &lt; 20선) 발생 시 시장가 즉시 전량 매도
+                    </div>
                   </div>
                 </div>
               </div>
@@ -525,15 +530,27 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
                 </p>
               </div>
 
-              {/* Q8: A모드 vs B모드 */}
+              {/* Q8: 동적 프리셋 (A/B/C 모드) */}
               <div className="bg-slate-950/80 p-4 rounded-2xl border border-purple-500/40 space-y-2">
                 <h5 className="font-bold text-purple-300 flex items-center gap-2 text-sm sm:text-base">
                   <HelpCircle className="w-5 h-5 text-purple-400 shrink-0" />
-                  Q8. A모드(하이브리드)와 B모드(방망이 분할)는 어떤 차이가 있나요?
+                  Q8. A/B/C 전략 모드(동적 프리셋)는 어떻게 활용하나요?
                 </h5>
                 <p className="text-slate-300 text-xs sm:text-sm leading-relaxed pl-7">
-                  👉 <strong>A모드(기본 추천)</strong>는 1~8번 슬롯을 초단타 스캘핑, 9~10번 돌파, 11~12번 정배열 스윙으로 분산하여 시장 변동성을 골고루 공략합니다.<br />
-                  반면 <strong>B모드(대세 상승장 전용)</strong>는 12개 전 슬롯을 돌파/스윙으로 전환하여, 1~8번은 단기 5% 1단 익절 후 청산하고 9~12번은 10~20% 장기 와이드 트레일링으로 큰 추세를 추종합니다.
+                  👉 자동차의 <strong>'메모리 시트'</strong>처럼 1~12번 슬롯의 전략과 설정값을 통째로 저장하고 언제든 원클릭으로 불러올 수 있는 맞춤형 템플릿입니다.<br />
+                  대표님께서 슬롯들을 자유롭게 세팅하신 후 <strong>[💾 모든 슬롯 설정을 A모드로 저장]</strong>을 누르면 통째로 기억되며, 필요할 때 <strong>[📥 이 모드를 1~12번 슬롯에 적용하기]</strong>를 누르면 1초 만에 슬롯에 완벽 적용됩니다. 3단계 장세 스케줄러와 연동해 두면 오전/오후/야간 시간대에 맞춰 자동으로 전환되기도 합니다!
+                </p>
+              </div>
+
+              {/* Q9: C모드 24시간 누적 거래대금 필터 */}
+              <div className="bg-slate-950/80 p-4 rounded-2xl border border-sky-500/40 space-y-2">
+                <h5 className="font-bold text-sky-300 flex items-center gap-2 text-sm sm:text-base">
+                  <HelpCircle className="w-5 h-5 text-sky-400 shrink-0" />
+                  Q9. C모드의 '24시간 누적 거래대금 필터'는 왜 중요한가요?
+                </h5>
+                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed pl-7">
+                  👉 스윙 매매는 며칠 동안 포지션을 유지하므로, 거래량이 메마른 비인기 잡코인에 타면 호가가 얇아 빠져나오지 못하거나 세력의 가짜 골든크로스(속임수)에 당할 위험이 있습니다.<br />
+                  따라서 <strong>하루 거래대금이 최소 100억 원 이상 탄탄하게 몰린 대장주/주도주(BTC, ETH, SOL 등)</strong>만 엄선하여 진입하도록 차단막을 쳐주는 최강의 수급 안전장치입니다. (슬롯 설정창에서 원하는 기준 금액으로 자유롭게 변경 가능합니다.)
                 </p>
               </div>
             </div>

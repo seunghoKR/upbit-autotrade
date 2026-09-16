@@ -70,18 +70,6 @@ export default function LandingPage({ onOpenKakaoLogin, onLabDevLogin }) {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-2.5">
-            {/* 🧪 연구실 전용: 개발자 즉시 입장 버튼 */}
-            {isLabMode && (
-              <button
-                onClick={() => onLabDevLogin && onLabDevLogin()}
-                className="px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs sm:text-sm transition shadow-md shadow-purple-900/50 border border-purple-400/50 flex items-center gap-1.5 cursor-pointer"
-                title="연구실에서는 카카오 로그인 없이 대표님 개발자 최고 권한으로 즉시 입장합니다."
-              >
-                <span>👑</span>
-                <span>개발자 즉시 입장</span>
-              </button>
-            )}
-
             <button
               onClick={() => onOpenKakaoLogin && onOpenKakaoLogin()}
               className="px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] font-black text-xs sm:text-sm transition shadow-md shadow-yellow-500/20 flex items-center gap-1.5 cursor-pointer"
@@ -121,25 +109,13 @@ export default function LandingPage({ onOpenKakaoLogin, onLabDevLogin }) {
 
           {/* 메인 CTA 버튼 영역 */}
           <div className="pt-4 flex flex-col items-center justify-center gap-3">
-            {/* 🧪 연구실 모드일 때 개발자 즉시 접속 메인 배너 버튼 */}
-            {isLabMode && (
-              <button
-                onClick={() => onLabDevLogin && onLabDevLogin()}
-                className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-base sm:text-lg transition shadow-2xl shadow-purple-900/60 border border-purple-400/50 flex items-center justify-center gap-2.5 cursor-pointer transform hover:-translate-y-0.5 active:translate-y-0"
-              >
-                <span className="text-xl">🧪</span>
-                <span>연구실 개발자(대표님) 즉시 접속</span>
-                <ArrowRight className="w-5 h-5 text-purple-200" />
-              </button>
-            )}
-
             <button
               onClick={() => onOpenKakaoLogin && onOpenKakaoLogin()}
-              className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] font-black text-sm sm:text-base transition shadow-xl shadow-yellow-500/25 flex items-center justify-center gap-2.5 cursor-pointer transform hover:-translate-y-0.5 active:translate-y-0 group"
+              className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] font-black text-base sm:text-lg transition shadow-xl shadow-yellow-500/25 flex items-center justify-center gap-2.5 cursor-pointer transform hover:-translate-y-0.5 active:translate-y-0 group"
             >
-              <span className="text-lg">💬</span>
+              <span className="text-xl">💬</span>
               <span>카카오톡으로 로그인</span>
-              <ArrowRight className="w-4 h-4 text-slate-900 group-hover:translate-x-1 transition" />
+              <ArrowRight className="w-5 h-5 text-slate-900 group-hover:translate-x-1 transition" />
             </button>
 
             {/* 무료체험 신청 안내 */}

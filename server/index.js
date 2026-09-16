@@ -260,11 +260,17 @@ app.get('/api/scheduler', (req, res) => {
   res.json({ success: true, ...marketScheduler.getStatus() });
 });
 
-// 장세 프리셋 즉시 수동 적용 (포지션 무결성 유지)
+// 장세 프리셋 즉시 수동 적용 (포지션 무결성 유지 & Last Action Wins 보장)
 app.post('/api/scheduler/switch', (req, res) => {
   const { presetKey } = req.body;
   if (!presetKey) return res.status(400).json({ success: false, error: 'presetKey가 필요합니다.' });
-  const success = marketScheduler.applyPreset(presetKey, 'MANUAL_USER');
+  const pKey = presetKey.toUpperCase();
+  let success = false;
+  if (['MORNING', 'AFTERNOON', 'NIGHT'].includes(pKey)) {
+    success = marketScheduler.applyPeriodPreset(pKey, 'MANUAL_PERIOD_BUTTON');
+  } else {
+    success = marketScheduler.applyUserPreset(pKey, 'MANUAL_USER');
+  }
   if (success) {
     broadcast({ type: 'SLOTS_UPDATED', slots: slotManager.getSlots(livePriceMap) });
     broadcast({ type: 'SCHEDULER_UPDATED', scheduler: marketScheduler.getStatus() });
@@ -274,13 +280,36 @@ app.post('/api/scheduler/switch', (req, res) => {
   }
 });
 
-// 장세 시간표 업데이트
+// 장세 시간표 및 매핑 업데이트
 app.post('/api/scheduler/timetable', (req, res) => {
-  const { timeTable } = req.body;
-  if (!timeTable) return res.status(400).json({ success: false, error: 'timeTable 객체가 필요합니다.' });
-  marketScheduler.updateTimeTable(timeTable);
+  const { timeTable, scheduleMapping } = req.body;
+  if (!timeTable && !scheduleMapping) return res.status(400).json({ success: false, error: 'timeTable 또는 scheduleMapping이 필요합니다.' });
+  marketScheduler.updateTimeTable(timeTable, scheduleMapping);
   broadcast({ type: 'SCHEDULER_UPDATED', scheduler: marketScheduler.getStatus() });
   res.json({ success: true, scheduler: marketScheduler.getStatus() });
+});
+
+// 동적 프리셋 저장 (현재 슬롯 세팅 스냅샷 CRUD)
+app.post('/api/scheduler/preset/save', (req, res) => {
+  const { presetKey, preset } = req.body;
+  if (!presetKey) return res.status(400).json({ success: false, error: 'presetKey가 필요합니다.' });
+  const savedPreset = marketScheduler.saveUserPreset(presetKey, preset);
+  broadcast({ type: 'SCHEDULER_UPDATED', scheduler: marketScheduler.getStatus() });
+  res.json({ success: true, preset: savedPreset, scheduler: marketScheduler.getStatus() });
+});
+
+// 동적 프리셋 불러오기 (슬롯 자동 주입)
+app.post('/api/scheduler/preset/apply', (req, res) => {
+  const { presetKey } = req.body;
+  if (!presetKey) return res.status(400).json({ success: false, error: 'presetKey가 필요합니다.' });
+  const success = marketScheduler.applyUserPreset(presetKey, 'MANUAL_USER');
+  if (success) {
+    broadcast({ type: 'SLOTS_UPDATED', slots: slotManager.getSlots(livePriceMap) });
+    broadcast({ type: 'SCHEDULER_UPDATED', scheduler: marketScheduler.getStatus() });
+    res.json({ success: true, scheduler: marketScheduler.getStatus() });
+  } else {
+    res.status(400).json({ success: false, error: '프리셋 적용 실패' });
+  }
 });
 
 // 글로벌 전략 모드 전환 (MODE_A 하이브리드 vs MODE_B 방망이 분할)

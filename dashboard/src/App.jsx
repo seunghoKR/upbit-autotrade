@@ -55,6 +55,8 @@ import {
   getSchedulerStatus,
   switchSchedulerPreset,
   updateSchedulerTimetable,
+  saveSchedulerPreset,
+  applySchedulerPreset,
   switchStrategyMode,
   updateKillSwitchConfig
 } from './services/api';
@@ -1853,25 +1855,207 @@ export default function App() {
     setPendingApproval(null);
   };
 
-  // ⏰ [제안서 2부] 3단계 장세 프리셋 수동 전환
+  // ⏰ [제안서 2부/3부] 3단계 장세 프리셋 수동 전환 (Last Action Wins 보장)
   const handleSwitchPreset = async (presetKey) => {
     try {
       const res = await switchSchedulerPreset(presetKey);
       if (res?.scheduler) setSchedulerData(res.scheduler);
+
+      const period = (presetKey || 'MORNING').toUpperCase();
+      const mappedKey = (res?.scheduler?.scheduleMapping?.[period] || schedulerData?.scheduleMapping?.[period]) || 
+        (period === 'MORNING' ? 'PRESET_A' : (period === 'AFTERNOON' ? 'PRESET_B' : 'PRESET_C'));
+
+      const targetPreset = res?.scheduler?.userPresets?.[mappedKey] || schedulerData?.userPresets?.[mappedKey];
+      if (targetPreset && Array.isArray(targetPreset.slots) && targetPreset.slots.length > 0) {
+        setSlots(prevSlots => prevSlots.map(slot => {
+          const config = targetPreset.slots.find(s => s.slotId === slot.slotId);
+          if (!config) return slot;
+          const hasActivePosition = slot.positionStatus !== 'IDLE' && slot.position && slot.position.entryPrice > 0;
+          if (hasActivePosition) {
+            return {
+              ...slot,
+              pendingPreset: { presetKey: mappedKey, presetName: targetPreset.name, params: config }
+            };
+          }
+          return {
+            ...slot,
+            strategyMode: config.strategyMode || slot.strategyMode,
+            tradeAmountKrw: config.tradeAmountKrw !== undefined ? config.tradeAmountKrw : slot.tradeAmountKrw,
+            targetProfitPct: config.targetProfitPct !== undefined ? config.targetProfitPct : slot.targetProfitPct,
+            trailingTargetProfitPct: config.trailingTargetProfitPct !== undefined ? config.trailingTargetProfitPct : slot.trailingTargetProfitPct,
+            trailingCallbackPct: config.trailingCallbackPct !== undefined ? config.trailingCallbackPct : slot.trailingCallbackPct,
+            stopLossPct: config.stopLossPct !== undefined ? config.stopLossPct : slot.stopLossPct,
+            useWideTrailing: config.useWideTrailing !== undefined ? config.useWideTrailing : slot.useWideTrailing,
+            trailingTier1TargetProfitPct: config.trailingTier1TargetProfitPct !== undefined ? config.trailingTier1TargetProfitPct : slot.trailingTier1TargetProfitPct,
+            trailingTier1CallbackPct: config.trailingTier1CallbackPct !== undefined ? config.trailingTier1CallbackPct : slot.trailingTier1CallbackPct,
+            trailingTier2HurdlePct: config.trailingTier2HurdlePct !== undefined ? config.trailingTier2HurdlePct : slot.trailingTier2HurdlePct,
+            trailingTier2CallbackPct: config.trailingTier2CallbackPct !== undefined ? config.trailingTier2CallbackPct : slot.trailingTier2CallbackPct,
+            useAtrStopLoss: config.useAtrStopLoss !== undefined ? config.useAtrStopLoss : slot.useAtrStopLoss,
+            breakoutHighEnabled: config.breakoutHighEnabled !== undefined ? config.breakoutHighEnabled : slot.breakoutHighEnabled,
+            breakoutCandleUnit: config.breakoutCandleUnit !== undefined ? config.breakoutCandleUnit : slot.breakoutCandleUnit,
+            breakoutMinVolumeKrwEok: config.breakoutMinVolumeKrwEok !== undefined ? config.breakoutMinVolumeKrwEok : slot.breakoutMinVolumeKrwEok,
+            swingCandleUnit: config.swingCandleUnit !== undefined ? config.swingCandleUnit : slot.swingCandleUnit,
+            swingShortMa: config.swingShortMa !== undefined ? config.swingShortMa : slot.swingShortMa,
+            swingLongMa: config.swingLongMa !== undefined ? config.swingLongMa : slot.swingLongMa,
+            swingMinTradePrice24hEok: config.swingMinTradePrice24hEok !== undefined ? config.swingMinTradePrice24hEok : (slot.swingMinTradePrice24hEok || (config.min24hAccTradePriceKrw ? Math.round(config.min24hAccTradePriceKrw / 100000000) : 100)),
+            min24hAccTradePriceKrw: config.min24hAccTradePriceKrw !== undefined ? config.min24hAccTradePriceKrw : (config.swingMinTradePrice24hEok ? config.swingMinTradePrice24hEok * 100000000 : slot.min24hAccTradePriceKrw),
+            pendingPreset: null
+          };
+        }));
+      }
+
       await loadData();
     } catch (err) {
       alert('프리셋 전환 실패: ' + err.message);
     }
   };
 
-  // ⏰ 장세 시간표 수정
-  const handleUpdateTimetable = async (newTimetable) => {
+  // ⏰ 장세 시간표 및 매핑 수정
+  const handleUpdateTimetable = async (newTimetable, newMapping) => {
     try {
-      const res = await updateSchedulerTimetable(newTimetable);
+      const res = await updateSchedulerTimetable(newTimetable, newMapping);
       if (res?.scheduler) setSchedulerData(res.scheduler);
       await loadData();
     } catch (err) {
       alert('시간표 수정 실패: ' + err.message);
+    }
+  };
+
+  // 💾 [제안서 1부/3.5.0] 현재 1~12번 슬롯 상태를 특정 프리셋으로 저장 (Save)
+  const handleSaveCurrentSlotsToPreset = async (presetKey) => {
+    try {
+      const slotConfigs = slots.map(s => ({
+        slotId: s.slotId,
+        name: s.slotName || s.name || `${s.slotId}번 슬롯`,
+        strategyMode: s.strategyMode || 'SCALPING',
+        tradeAmountKrw: s.tradeAmountKrw || 50000,
+        targetProfitPct: s.targetProfitPct !== undefined ? s.targetProfitPct : 3.0,
+        trailingTargetProfitPct: s.trailingTargetProfitPct !== undefined ? s.trailingTargetProfitPct : 3.0,
+        trailingCallbackPct: s.trailingCallbackPct !== undefined ? s.trailingCallbackPct : 0.5,
+        stopLossPct: s.stopLossPct !== undefined ? s.stopLossPct : 2.0,
+        useWideTrailing: s.useWideTrailing !== undefined ? s.useWideTrailing : true,
+        trailingTier1TargetProfitPct: s.trailingTier1TargetProfitPct !== undefined ? s.trailingTier1TargetProfitPct : 3.0,
+        trailingTier1CallbackPct: s.trailingTier1CallbackPct !== undefined ? s.trailingTier1CallbackPct : 0.5,
+        trailingTier2HurdlePct: s.trailingTier2HurdlePct !== undefined ? s.trailingTier2HurdlePct : 10.0,
+        trailingTier2CallbackPct: s.trailingTier2CallbackPct !== undefined ? s.trailingTier2CallbackPct : 3.0,
+        useAtrStopLoss: s.useAtrStopLoss || false,
+        breakoutHighEnabled: s.breakoutHighEnabled !== undefined ? s.breakoutHighEnabled : (s.slotId >= 9 && s.slotId <= 10),
+        breakoutCandleUnit: s.breakoutCandleUnit || 1,
+        breakoutMinVolumeKrwEok: s.breakoutMinVolumeKrwEok || 5,
+        swingCandleUnit: s.swingCandleUnit || 'days',
+        swingShortMa: s.swingShortMa || 5,
+        swingLongMa: s.swingLongMa || 20,
+        swingMinTradePrice24hEok: s.swingMinTradePrice24hEok || (s.min24hAccTradePriceKrw ? Math.round(s.min24hAccTradePriceKrw / 100000000) : 100),
+        min24hAccTradePriceKrw: s.min24hAccTradePriceKrw || ((s.swingMinTradePrice24hEok || 100) * 100000000)
+      }));
+
+      const defaultNames = {
+        PRESET_A: 'A모드 (메모리 1번)',
+        PRESET_B: 'B모드 (메모리 2번)',
+        PRESET_C: 'C모드 (메모리 3번)'
+      };
+
+      const presetData = {
+        id: presetKey,
+        name: schedulerData?.userPresets?.[presetKey]?.name || defaultNames[presetKey] || presetKey,
+        description: `사용자 커스텀 1~12번 슬롯 전략 세팅 (${slotConfigs.length}개 슬롯 저장)`,
+        updatedAt: new Date().toISOString(),
+        slots: slotConfigs
+      };
+
+      try {
+        const res = await saveSchedulerPreset(presetKey, presetData);
+        if (res?.scheduler) setSchedulerData(res.scheduler);
+      } catch (err) {
+        console.warn('API saveSchedulerPreset error, saving locally:', err);
+      }
+
+      setSchedulerData(prev => {
+        const updated = {
+          ...prev,
+          userPresets: {
+            ...(prev?.userPresets || {}),
+            [presetKey]: presetData
+          }
+        };
+        try {
+          localStorage.setItem('nurioh_user_presets', JSON.stringify(updated.userPresets));
+        } catch (e) {}
+        return updated;
+      });
+
+      soundService?.playSuccess?.();
+    } catch (e) {
+      console.error('프리셋 저장 실패:', e);
+      throw e;
+    }
+  };
+
+  // 📥 [제안서 1부/3.5.0] 특정 프리셋을 1~12번 슬롯에 적용하기 (Apply/Load)
+  const handleLoadPresetToSlots = async (presetKey) => {
+    try {
+      try {
+        const res = await applySchedulerPreset(presetKey);
+        if (res?.scheduler) setSchedulerData(res.scheduler);
+      } catch (err) {
+        console.warn('API applySchedulerPreset error, applying locally:', err);
+      }
+
+      const targetPreset = schedulerData?.userPresets?.[presetKey] || null;
+      if (targetPreset && Array.isArray(targetPreset.slots) && targetPreset.slots.length > 0) {
+        setSlots(prevSlots => prevSlots.map(slot => {
+          const config = targetPreset.slots.find(s => s.slotId === slot.slotId);
+          if (!config) return slot;
+
+          const hasActivePosition = slot.positionStatus !== 'IDLE' && slot.position && slot.position.entryPrice > 0;
+          if (hasActivePosition) {
+            return {
+              ...slot,
+              pendingPreset: {
+                presetKey,
+                presetName: targetPreset.name,
+                params: config
+              }
+            };
+          }
+
+          return {
+            ...slot,
+            strategyMode: config.strategyMode || slot.strategyMode,
+            tradeAmountKrw: config.tradeAmountKrw !== undefined ? config.tradeAmountKrw : slot.tradeAmountKrw,
+            targetProfitPct: config.targetProfitPct !== undefined ? config.targetProfitPct : slot.targetProfitPct,
+            trailingTargetProfitPct: config.trailingTargetProfitPct !== undefined ? config.trailingTargetProfitPct : slot.trailingTargetProfitPct,
+            trailingCallbackPct: config.trailingCallbackPct !== undefined ? config.trailingCallbackPct : slot.trailingCallbackPct,
+            stopLossPct: config.stopLossPct !== undefined ? config.stopLossPct : slot.stopLossPct,
+            useWideTrailing: config.useWideTrailing !== undefined ? config.useWideTrailing : slot.useWideTrailing,
+            trailingTier1TargetProfitPct: config.trailingTier1TargetProfitPct !== undefined ? config.trailingTier1TargetProfitPct : slot.trailingTier1TargetProfitPct,
+            trailingTier1CallbackPct: config.trailingTier1CallbackPct !== undefined ? config.trailingTier1CallbackPct : slot.trailingTier1CallbackPct,
+            trailingTier2HurdlePct: config.trailingTier2HurdlePct !== undefined ? config.trailingTier2HurdlePct : slot.trailingTier2HurdlePct,
+            trailingTier2CallbackPct: config.trailingTier2CallbackPct !== undefined ? config.trailingTier2CallbackPct : slot.trailingTier2CallbackPct,
+            useAtrStopLoss: config.useAtrStopLoss !== undefined ? config.useAtrStopLoss : slot.useAtrStopLoss,
+            breakoutHighEnabled: config.breakoutHighEnabled !== undefined ? config.breakoutHighEnabled : slot.breakoutHighEnabled,
+            breakoutCandleUnit: config.breakoutCandleUnit !== undefined ? config.breakoutCandleUnit : slot.breakoutCandleUnit,
+            breakoutMinVolumeKrwEok: config.breakoutMinVolumeKrwEok !== undefined ? config.breakoutMinVolumeKrwEok : slot.breakoutMinVolumeKrwEok,
+            swingCandleUnit: config.swingCandleUnit !== undefined ? config.swingCandleUnit : slot.swingCandleUnit,
+            swingShortMa: config.swingShortMa !== undefined ? config.swingShortMa : slot.swingShortMa,
+            swingLongMa: config.swingLongMa !== undefined ? config.swingLongMa : slot.swingLongMa,
+            swingMinTradePrice24hEok: config.swingMinTradePrice24hEok !== undefined ? config.swingMinTradePrice24hEok : (slot.swingMinTradePrice24hEok || (config.min24hAccTradePriceKrw ? Math.round(config.min24hAccTradePriceKrw / 100000000) : 100)),
+            min24hAccTradePriceKrw: config.min24hAccTradePriceKrw !== undefined ? config.min24hAccTradePriceKrw : (config.swingMinTradePrice24hEok ? config.swingMinTradePrice24hEok * 100000000 : slot.min24hAccTradePriceKrw),
+            pendingPreset: null
+          };
+        }));
+      }
+
+      setSchedulerData(prev => ({
+        ...prev,
+        currentPresetKey: presetKey
+      }));
+
+      soundService?.playSuccess?.();
+      await loadData();
+    } catch (e) {
+      console.error('프리셋 로드 실패:', e);
+      throw e;
     }
   };
 
@@ -2028,9 +2212,12 @@ export default function App() {
         <GlobalControlPanel
           schedulerData={schedulerData}
           killSwitchData={killSwitchData}
+          slots={effectiveSlots}
           onSwitchPreset={handleSwitchPreset}
           onUpdateTimetable={handleUpdateTimetable}
           onSwitchMode={handleSwitchStrategyMode}
+          onSaveCurrentSlotsToPreset={handleSaveCurrentSlotsToPreset}
+          onLoadPresetToSlots={handleLoadPresetToSlots}
           onUpdateKillSwitch={handleUpdateKillSwitch}
           isDevMode={currentUser?.role === 'DEVELOPER' || currentUser?.role === 'ADMIN'}
         />

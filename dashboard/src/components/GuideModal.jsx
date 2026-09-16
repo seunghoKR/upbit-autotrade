@@ -68,7 +68,7 @@ export default function GuideModal({ isOpen, onClose }) {
           <div className="bg-dark-bg p-4 rounded-2xl border border-dark-border text-xs text-slate-300 space-y-2 leading-relaxed">
             <p>• <b>모드 A (초단타 스캘핑, 1~8번):</b> 5초 급등 및 수급 즉시 추격 진입, 1단 익절(+3%) 및 2단 와이드(+10% 이상 대시세 홀딩)</p>
             <p>• <b>모드 B (당일 신고가 돌파, 9~10번):</b> 09:00 KST 장중 최고가 돌파 + 분봉 대금 5억 이상 시 진입 (08:50~09:30 타임락 방어)</p>
-            <p>• <b>모드 C (정배열 추세 스윙, 11~12번):</b> 일봉/4시간봉 5선 &gt; 20선 골든크로스 스윙 진입, 데드크로스 발생 시 시장가 즉시 청산</p>
+            <p>• <b>모드 C (정배열 추세 스윙, 11~12번):</b> 24시간 거래대금 100억+ 대장주 엄선, 5선 &gt; 20선 골든크로스 스윙 진입 및 데드크로스 즉시 안전 청산</p>
           </div>
         </div>
 

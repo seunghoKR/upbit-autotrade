@@ -131,6 +131,12 @@ try {
     try {
         $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `use_orderbook_filter` TINYINT(1) DEFAULT 1");
     } catch (Exception $ex) {}
+    try {
+        $pdo->exec("ALTER TABLE `nurioh_settings` ADD COLUMN `scheduler_data` LONGTEXT NULL");
+    } catch (Exception $ex) {}
+    try {
+        $pdo->exec("ALTER TABLE `nurioh_settings` ADD COLUMN `killswitch_data` LONGTEXT NULL");
+    } catch (Exception $ex) {}
 
     $pdo->exec("UPDATE `nurioh_slots` SET 
         `position_status` = 'IDLE',

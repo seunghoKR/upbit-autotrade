@@ -325,8 +325,9 @@ class CandleStrategyEngine {
 
     const candleUnit = slot.swingCandleUnit || 'days';
     const shortMaPeriod = Number(slot.swingShortMa) || 5;
-    const longMaPeriod = Number(slot.swingLongMa) || 20;
-    const min24hTradePriceKrw = Number(slot.min24hAccTradePriceKrw) || 10000000000; // 100억 원
+    const min24hTradePriceKrw = slot.swingMinTradePrice24hEok 
+      ? Number(slot.swingMinTradePrice24hEok) * 100000000 
+      : (Number(slot.min24hAccTradePriceKrw) || 10000000000); // 기본 100억 원 이상 (제안서 C모드 필터)
 
     for (const market of targetMarkets) {
       try {

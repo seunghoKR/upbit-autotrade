@@ -333,6 +333,8 @@ try {
     $pdo->exec("SET NAMES utf8mb4");
     // 🛡️ 필수 컬럼 자동 보정 (Unknown column 'use_atr_stop_loss' 에러 영구 방지)
     try { $pdo->exec("ALTER TABLE nurioh_slots ADD COLUMN use_atr_stop_loss TINYINT(1) DEFAULT 0 AFTER stop_loss_pct"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_settings ADD COLUMN scheduler_data LONGTEXT DEFAULT NULL"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE nurioh_settings ADD COLUMN killswitch_data LONGTEXT DEFAULT NULL"); } catch (Exception $e) {}
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(['error' => 'DB Connection failed: ' . $e->getMessage()]);
@@ -930,6 +932,8 @@ try {
             try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `swing_candle_unit` VARCHAR(20) DEFAULT 'days'"); } catch (Exception $e) {}
             try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `swing_short_ma` INT DEFAULT 5"); } catch (Exception $e) {}
             try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `swing_long_ma` INT DEFAULT 20"); } catch (Exception $e) {}
+            try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `swing_min_trade_price_24h_eok` INT DEFAULT 100"); } catch (Exception $e) {}
+            try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `min24h_acc_trade_price_krw` BIGINT DEFAULT 10000000000"); } catch (Exception $e) {}
             try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `use_wide_trailing` TINYINT(1) DEFAULT 1"); } catch (Exception $e) {}
             try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `trailing_tier1_target_profit_pct` DECIMAL(5,2) DEFAULT 3.00"); } catch (Exception $e) {}
             try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `trailing_tier1_callback_pct` DECIMAL(5,2) DEFAULT 0.50"); } catch (Exception $e) {}
@@ -1102,6 +1106,8 @@ try {
                 'swingCandleUnit' => $s['swing_candle_unit'] ?? 'days',
                 'swingShortMa' => (int)($s['swing_short_ma'] ?? 5),
                 'swingLongMa' => (int)($s['swing_long_ma'] ?? 20),
+                'swingMinTradePrice24hEok' => (int)($s['swing_min_trade_price_24h_eok'] ?? (isset($s['min24h_acc_trade_price_krw']) ? round($s['min24h_acc_trade_price_krw'] / 100000000) : 100)),
+                'min24hAccTradePriceKrw' => (float)($s['min24h_acc_trade_price_krw'] ?? ((int)($s['swing_min_trade_price_24h_eok'] ?? 100) * 100000000)),
                 'useWideTrailing' => (bool)($s['use_wide_trailing'] ?? true),
                 'trailingTier1TargetProfitPct' => (float)($s['trailing_tier1_target_profit_pct'] ?? ($s['target_profit_pct'] ?? 3.0)),
                 'trailingTier1CallbackPct' => (float)($s['trailing_tier1_callback_pct'] ?? ($s['trailing_callback_pct'] ?? 0.5)),
@@ -1636,6 +1642,8 @@ try {
             $swingCandleUnit = isset($input['swingCandleUnit']) ? trim((string)$input['swingCandleUnit']) : ($existingSlot['swing_candle_unit'] ?? 'days');
             $swingShortMa = isset($input['swingShortMa']) ? max(1, (int)$input['swingShortMa']) : (int)($existingSlot['swing_short_ma'] ?? 5);
             $swingLongMa = isset($input['swingLongMa']) ? max(1, (int)$input['swingLongMa']) : (int)($existingSlot['swing_long_ma'] ?? 20);
+            $swingMinTradePrice24hEok = isset($input['swingMinTradePrice24hEok']) ? max(1, (int)$input['swingMinTradePrice24hEok']) : (int)($existingSlot['swing_min_trade_price_24h_eok'] ?? 100);
+            $min24hAccTradePriceKrw = isset($input['min24hAccTradePriceKrw']) ? (float)$input['min24hAccTradePriceKrw'] : ($swingMinTradePrice24hEok * 100000000);
             $useWideTrailing = isset($input['useWideTrailing']) ? ((bool)$input['useWideTrailing'] ? 1 : 0) : (int)($existingSlot['use_wide_trailing'] ?? 1);
             $trailingTier1TargetProfitPct = isset($input['trailingTier1TargetProfitPct']) ? abs((float)$input['trailingTier1TargetProfitPct']) : (float)($existingSlot['trailing_tier1_target_profit_pct'] ?? ($existingSlot['target_profit_pct'] ?? 3.0));
             $trailingTier1CallbackPct = isset($input['trailingTier1CallbackPct']) ? abs((float)$input['trailingTier1CallbackPct']) : (float)($existingSlot['trailing_tier1_callback_pct'] ?? ($existingSlot['trailing_callback_pct'] ?? 0.5));
@@ -1669,6 +1677,8 @@ try {
                     swing_candle_unit = ?,
                     swing_short_ma = ?,
                     swing_long_ma = ?,
+                    swing_min_trade_price_24h_eok = ?,
+                    min24h_acc_trade_price_krw = ?,
                     use_wide_trailing = ?,
                     trailing_tier1_target_profit_pct = ?,
                     trailing_tier1_callback_pct = ?,
@@ -1701,6 +1711,8 @@ try {
                     $swingCandleUnit,
                     $swingShortMa,
                     $swingLongMa,
+                    $swingMinTradePrice24hEok,
+                    $min24hAccTradePriceKrw,
                     $useWideTrailing,
                     $trailingTier1TargetProfitPct,
                     $trailingTier1CallbackPct,
@@ -1715,8 +1727,8 @@ try {
                 ]);
             } else {
                 $stmt = $pdo->prepare("INSERT INTO nurioh_slots 
-                    (user_id, slot_id, slot_name, is_enabled, target_market, trade_amount_krw, strategy_type, strategy_mode, surge_window_seconds, surge_rate_pct, surge_min_volume_krw, surge_volume_mode, surge_min_volume_rate_pct, use_reverse_alignment_filter, use_whale_tick_filter, whale_min_amount_krw, use_orderbook_filter, surge_base_mode, breakout_high_enabled, breakout_candle_unit, breakout_min_volume_krw_eok, swing_candle_unit, swing_short_ma, swing_long_ma, use_wide_trailing, trailing_tier1_target_profit_pct, trailing_tier1_callback_pct, trailing_tier2_hurdle_pct, trailing_tier2_callback_pct, target_profit_pct, trailing_callback_pct, stop_loss_pct, use_atr_stop_loss, position_status) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'IDLE')");
+                    (user_id, slot_id, slot_name, is_enabled, target_market, trade_amount_krw, strategy_type, strategy_mode, surge_window_seconds, surge_rate_pct, surge_min_volume_krw, surge_volume_mode, surge_min_volume_rate_pct, use_reverse_alignment_filter, use_whale_tick_filter, whale_min_amount_krw, use_orderbook_filter, surge_base_mode, breakout_high_enabled, breakout_candle_unit, breakout_min_volume_krw_eok, swing_candle_unit, swing_short_ma, swing_long_ma, swing_min_trade_price_24h_eok, min24h_acc_trade_price_krw, use_wide_trailing, trailing_tier1_target_profit_pct, trailing_tier1_callback_pct, trailing_tier2_hurdle_pct, trailing_tier2_callback_pct, target_profit_pct, trailing_callback_pct, stop_loss_pct, use_atr_stop_loss, position_status) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'IDLE')");
                 $stmt->execute([
                     $userId,
                     $slotId,
@@ -1742,6 +1754,8 @@ try {
                     $swingCandleUnit,
                     $swingShortMa,
                     $swingLongMa,
+                    $swingMinTradePrice24hEok,
+                    $min24hAccTradePriceKrw,
                     $useWideTrailing,
                     $trailingTier1TargetProfitPct,
                     $trailingTier1CallbackPct,
@@ -2644,6 +2658,190 @@ try {
     // 17. POST trade/reject : 매수 신호 취소
     if ($path === 'trade/reject' && $method === 'POST') {
         echo json_encode(['success' => true, 'message' => '매수 신호가 취소되었습니다.'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // 18. ⏰ [제안서 1~3부 / 3.5.0] 장세 스케줄러 & 프리셋 & 킬스위치 API
+    if ($path === 'scheduler' && $method === 'GET') {
+        $stmt = $pdo->query("SELECT scheduler_data FROM nurioh_settings WHERE id = 1");
+        $row = $stmt ? $stmt->fetch() : null;
+        $decoded = ($row && !empty($row['scheduler_data'])) ? json_decode($row['scheduler_data'], true) : [];
+        if (!is_array($decoded)) $decoded = [];
+
+        $defaultScheduler = [
+            'isEnabled' => true,
+            'currentPeriod' => 'MORNING',
+            'currentPresetKey' => 'PRESET_A',
+            'currentPresetName' => 'A모드 (하이브리드 전략)',
+            'globalStrategyMode' => 'MODE_A',
+            'timeTable' => [
+                'MORNING_START' => '08:50',
+                'AFTERNOON_START' => '12:00',
+                'NIGHT_START' => '21:00'
+            ],
+            'scheduleMapping' => [
+                'MORNING' => 'PRESET_A',
+                'AFTERNOON' => 'PRESET_B',
+                'NIGHT' => 'PRESET_C'
+            ],
+            'userPresets' => [
+                'PRESET_A' => [
+                    'id' => 'PRESET_A',
+                    'name' => 'A모드 (메모리 1번)',
+                    'description' => '대표님이 설정한 1~12번 슬롯 설정을 자유롭게 저장/불러오는 빈 템플릿입니다.',
+                    'updatedAt' => date('c'),
+                    'slots' => []
+                ],
+                'PRESET_B' => [
+                    'id' => 'PRESET_B',
+                    'name' => 'B모드 (메모리 2번)',
+                    'description' => '오후장 또는 특정 장세에 맞춘 1~12번 슬롯 커스텀 설정 보관 공간입니다.',
+                    'updatedAt' => date('c'),
+                    'slots' => []
+                ],
+                'PRESET_C' => [
+                    'id' => 'PRESET_C',
+                    'name' => 'C모드 (메모리 3번)',
+                    'description' => '야간장 또는 급변동 대응용 1~12번 슬롯 커스텀 설정 보관 공간입니다.',
+                    'updatedAt' => date('c'),
+                    'slots' => []
+                ]
+            ]
+        ];
+
+        $merged = array_replace_recursive($defaultScheduler, $decoded);
+        echo json_encode(array_merge(['success' => true], $merged), JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    if ($path === 'scheduler/timetable' && $method === 'POST') {
+        $stmt = $pdo->query("SELECT scheduler_data FROM nurioh_settings WHERE id = 1");
+        $row = $stmt ? $stmt->fetch() : null;
+        $decoded = ($row && !empty($row['scheduler_data'])) ? json_decode($row['scheduler_data'], true) : [];
+        if (!is_array($decoded)) $decoded = [];
+
+        if (isset($input['timeTable']) && is_array($input['timeTable'])) {
+            $decoded['timeTable'] = $input['timeTable'];
+        }
+        if (isset($input['scheduleMapping']) && is_array($input['scheduleMapping'])) {
+            $decoded['scheduleMapping'] = $input['scheduleMapping'];
+        }
+        $encoded = json_encode($decoded, JSON_UNESCAPED_UNICODE);
+        $pdo->prepare("INSERT INTO nurioh_settings (id, scheduler_data) VALUES (1, ?) ON DUPLICATE KEY UPDATE scheduler_data = ?")
+            ->execute([$encoded, $encoded]);
+
+        echo json_encode(['success' => true, 'scheduler' => $decoded], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    if ($path === 'scheduler/preset/save' && $method === 'POST') {
+        $presetKey = strtoupper((string)($input['presetKey'] ?? 'PRESET_A'));
+        $preset = $input['preset'] ?? [];
+
+        $stmt = $pdo->query("SELECT scheduler_data FROM nurioh_settings WHERE id = 1");
+        $row = $stmt ? $stmt->fetch() : null;
+        $decoded = ($row && !empty($row['scheduler_data'])) ? json_decode($row['scheduler_data'], true) : [];
+        if (!is_array($decoded)) $decoded = [];
+        if (!isset($decoded['userPresets'])) $decoded['userPresets'] = [];
+
+        $decoded['userPresets'][$presetKey] = $preset;
+        $encoded = json_encode($decoded, JSON_UNESCAPED_UNICODE);
+        $pdo->prepare("INSERT INTO nurioh_settings (id, scheduler_data) VALUES (1, ?) ON DUPLICATE KEY UPDATE scheduler_data = ?")
+            ->execute([$encoded, $encoded]);
+
+        echo json_encode(['success' => true, 'preset' => $preset, 'scheduler' => $decoded], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    if ($path === 'scheduler/preset/apply' && $method === 'POST') {
+        $presetKey = strtoupper((string)($input['presetKey'] ?? 'PRESET_A'));
+
+        $stmt = $pdo->query("SELECT scheduler_data FROM nurioh_settings WHERE id = 1");
+        $row = $stmt ? $stmt->fetch() : null;
+        $decoded = ($row && !empty($row['scheduler_data'])) ? json_decode($row['scheduler_data'], true) : [];
+        if (!is_array($decoded)) $decoded = [];
+
+        $decoded['currentPresetKey'] = $presetKey;
+        if (isset($decoded['userPresets'][$presetKey]['name'])) {
+            $decoded['currentPresetName'] = $decoded['userPresets'][$presetKey]['name'];
+        }
+        $decoded['lastAction'] = [
+            'source' => 'MANUAL_USER',
+            'presetKey' => $presetKey,
+            'period' => $decoded['currentPeriod'] ?? 'MORNING',
+            'timestamp' => date('c')
+        ];
+        $encoded = json_encode($decoded, JSON_UNESCAPED_UNICODE);
+        $pdo->prepare("INSERT INTO nurioh_settings (id, scheduler_data) VALUES (1, ?) ON DUPLICATE KEY UPDATE scheduler_data = ?")
+            ->execute([$encoded, $encoded]);
+
+        echo json_encode(['success' => true, 'scheduler' => $decoded], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    if ($path === 'scheduler/switch' && $method === 'POST') {
+        $presetKey = strtoupper((string)($input['presetKey'] ?? 'MORNING'));
+        $stmt = $pdo->query("SELECT scheduler_data FROM nurioh_settings WHERE id = 1");
+        $row = $stmt ? $stmt->fetch() : null;
+        $decoded = ($row && !empty($row['scheduler_data'])) ? json_decode($row['scheduler_data'], true) : [];
+        if (!is_array($decoded)) $decoded = [];
+
+        $decoded['currentPeriod'] = $presetKey;
+        $mappedPreset = $decoded['scheduleMapping'][$presetKey] ?? $presetKey;
+        $decoded['currentPresetKey'] = $mappedPreset;
+        if (isset($decoded['userPresets'][$mappedPreset]['name'])) {
+            $decoded['currentPresetName'] = $decoded['userPresets'][$mappedPreset]['name'];
+        }
+        $decoded['lastAction'] = [
+            'source' => 'MANUAL_PERIOD_BUTTON',
+            'period' => $presetKey,
+            'presetKey' => $mappedPreset,
+            'timestamp' => date('c')
+        ];
+
+        $encoded = json_encode($decoded, JSON_UNESCAPED_UNICODE);
+        $pdo->prepare("INSERT INTO nurioh_settings (id, scheduler_data) VALUES (1, ?) ON DUPLICATE KEY UPDATE scheduler_data = ?")
+            ->execute([$encoded, $encoded]);
+
+        echo json_encode(['success' => true, 'scheduler' => $decoded], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    if ($path === 'scheduler/mode' && $method === 'POST') {
+        $mode = (string)($input['mode'] ?? 'MODE_A');
+        $stmt = $pdo->query("SELECT scheduler_data FROM nurioh_settings WHERE id = 1");
+        $row = $stmt ? $stmt->fetch() : null;
+        $decoded = ($row && !empty($row['scheduler_data'])) ? json_decode($row['scheduler_data'], true) : [];
+        if (!is_array($decoded)) $decoded = [];
+
+        $decoded['globalStrategyMode'] = $mode;
+        $encoded = json_encode($decoded, JSON_UNESCAPED_UNICODE);
+        $pdo->prepare("INSERT INTO nurioh_settings (id, scheduler_data) VALUES (1, ?) ON DUPLICATE KEY UPDATE scheduler_data = ?")
+            ->execute([$encoded, $encoded]);
+
+        echo json_encode(['success' => true, 'scheduler' => $decoded], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    if ($path === 'killswitch/config' && $method === 'POST') {
+        $stmt = $pdo->query("SELECT killswitch_data FROM nurioh_settings WHERE id = 1");
+        $row = $stmt ? $stmt->fetch() : null;
+        $decoded = ($row && !empty($row['killswitch_data'])) ? json_decode($row['killswitch_data'], true) : [];
+        if (!is_array($decoded)) $decoded = [];
+
+        if (isset($input['enabled'])) $decoded['enabled'] = (bool)$input['enabled'];
+        if (isset($input['maxLossPct'])) $decoded['maxLossPct'] = abs((float)$input['maxLossPct']);
+        if (isset($input['totalCapitalKrw'])) $decoded['totalCapitalKrw'] = (float)$input['totalCapitalKrw'];
+        if (!empty($input['resetTriggered'])) {
+            $decoded['isTriggered'] = false;
+            $decoded['dailyRealizedProfitKrw'] = 0;
+        }
+
+        $encoded = json_encode($decoded, JSON_UNESCAPED_UNICODE);
+        $pdo->prepare("INSERT INTO nurioh_settings (id, killswitch_data) VALUES (1, ?) ON DUPLICATE KEY UPDATE killswitch_data = ?")
+            ->execute([$encoded, $encoded]);
+
+        echo json_encode(['success' => true, 'dailyKillSwitch' => $decoded], JSON_UNESCAPED_UNICODE);
         exit;
     }
 

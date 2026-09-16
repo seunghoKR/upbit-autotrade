@@ -47,8 +47,8 @@ const DEFAULT_SLOTS = [
   { id: 10, slotId: 10, slotName: '10번 돌파 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutHighEnabled: true, breakoutCandleUnit: 1, breakoutMinVolumeKrwEok: 5, isEnabled: true, targetMarket: 'KRW-SUI', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
 
   // 11~12번: 정배열 추세 스윙 (모드 C)
-  { id: 11, slotId: 11, slotName: '11번 스윙 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'days', swingShortMa: 5, swingLongMa: 20, isEnabled: true, targetMarket: 'KRW-BTC', tradeAmountKrw: 100000, strategyType: 'RECOMMENDED', useWideTrailing: true, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 12.0, trailingTier2CallbackPct: 3.5, stopLossPct: 3.0, positionStatus: 'IDLE' },
-  { id: 12, slotId: 12, slotName: '12번 스윙 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'minutes/240', swingShortMa: 5, swingLongMa: 20, isEnabled: true, targetMarket: 'KRW-ETH', tradeAmountKrw: 100000, strategyType: 'RECOMMENDED', useWideTrailing: true, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 12.0, trailingTier2CallbackPct: 3.5, stopLossPct: 3.0, positionStatus: 'IDLE' },
+  { id: 11, slotId: 11, slotName: '11번 스윙 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'days', swingShortMa: 5, swingLongMa: 20, swingMinTradePrice24hEok: 100, isEnabled: true, targetMarket: 'KRW-BTC', tradeAmountKrw: 100000, strategyType: 'RECOMMENDED', useWideTrailing: true, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 12.0, trailingTier2CallbackPct: 3.5, stopLossPct: 3.0, positionStatus: 'IDLE' },
+  { id: 12, slotId: 12, slotName: '12번 스윙 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'minutes/240', swingShortMa: 5, swingLongMa: 20, swingMinTradePrice24hEok: 100, isEnabled: true, targetMarket: 'KRW-ETH', tradeAmountKrw: 100000, strategyType: 'RECOMMENDED', useWideTrailing: true, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 12.0, trailingTier2CallbackPct: 3.5, stopLossPct: 3.0, positionStatus: 'IDLE' },
 ];
 
 const formatPrice = (p) => {
@@ -102,6 +102,7 @@ export default function SlotManager({
     swingCandleUnit: 'days',
     swingShortMa: 5,
     swingLongMa: 20,
+    swingMinTradePrice24hEok: 100,
     useWideTrailing: true,
     trailingTier1TargetProfitPct: 3.0,
     trailingTier1CallbackPct: 0.5,
@@ -175,6 +176,7 @@ export default function SlotManager({
       swingCandleUnit: slot.swingCandleUnit || 'days',
       swingShortMa: slot.swingShortMa || 5,
       swingLongMa: slot.swingLongMa || 20,
+      swingMinTradePrice24hEok: slot.swingMinTradePrice24hEok !== undefined ? slot.swingMinTradePrice24hEok : (slot.min24hAccTradePriceKrw ? Math.round(Number(slot.min24hAccTradePriceKrw) / 100000000) : 100),
       useWideTrailing: slot.useWideTrailing !== undefined ? Boolean(slot.useWideTrailing) : true,
       trailingTier1TargetProfitPct: targetProfit,
       trailingTier1CallbackPct: callback,
@@ -202,6 +204,7 @@ export default function SlotManager({
             : 3.0);
 
       const currentSlot = slots.find(s => (s.id === slotId || s.slotId === slotId));
+      const swingEok = Number(editForm.swingMinTradePrice24hEok) > 0 ? Number(editForm.swingMinTradePrice24hEok) : 100;
 
       onUpdateSlot(slotId, {
         isEnabled: currentSlot ? currentSlot.isEnabled : true,
@@ -224,6 +227,8 @@ export default function SlotManager({
         swingCandleUnit: editForm.swingCandleUnit || 'days',
         swingShortMa: Number(editForm.swingShortMa) || 5,
         swingLongMa: Number(editForm.swingLongMa) || 20,
+        swingMinTradePrice24hEok: swingEok,
+        min24hAccTradePriceKrw: swingEok * 100000000,
         useWideTrailing: Boolean(editForm.useWideTrailing),
         trailingTier1TargetProfitPct: targetProfit,
         trailingTier1CallbackPct: parseFloat(editForm.trailingTier1CallbackPct) || 0.5,
@@ -455,7 +460,7 @@ export default function SlotManager({
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   {/* 슬롯 번호 버튼형 뱃지 */}
-                  <div className={`px-2.5 py-1 rounded-xl text-xs sm:text-sm font-black flex items-center justify-center border shadow-sm shrink-0 whitespace-nowrap ${
+                  <div className={`px-3 py-1 rounded-xl text-sm sm:text-base font-black flex items-center justify-center border shadow-sm shrink-0 whitespace-nowrap ${
                     !slot.isEnabled
                       ? 'bg-slate-800 text-slate-400 border-slate-700'
                       : isSwing
@@ -467,13 +472,13 @@ export default function SlotManager({
                           : 'bg-emerald-500/25 text-emerald-300 border-emerald-400/60 shadow-emerald-500/20')
                   }`}>
                     <span className="flex items-center gap-1.5">
-                      {hasPosition && <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping" />}
+                      {hasPosition && <span className="w-2 h-2 rounded-full bg-rose-400 animate-ping" />}
                       <span>{slot.slotId}번 슬롯</span>
                     </span>
                   </div>
 
                   {/* 전략 모드 뱃지 (스캘핑 / 신고가 돌파 / 추세 스윙) */}
-                  <span className={`text-[10px] px-2 py-0.8 rounded-lg font-black tracking-tight border shadow-sm shrink-0 whitespace-nowrap ${
+                  <span className={`text-xs px-2.5 py-1 rounded-lg font-black tracking-tight border shadow-sm shrink-0 whitespace-nowrap ${
                     !slot.isEnabled
                       ? 'bg-slate-900 text-slate-500 border-slate-800'
                       : isSwing
@@ -489,7 +494,7 @@ export default function SlotManager({
 
                   {/* 🚀 와이드 트레일링 2단계 대시세 진입 뱃지 */}
                   {hasPosition && slot.trailingStage === 2 && (
-                    <span className="text-[10px] px-2 py-0.8 rounded-lg font-black tracking-tight bg-gradient-to-r from-purple-600 to-indigo-600 text-white border border-purple-400 shadow-md shadow-purple-500/30 animate-pulse whitespace-nowrap">
+                    <span className="text-xs px-2.5 py-1 rounded-lg font-black tracking-tight bg-gradient-to-r from-purple-600 to-indigo-600 text-white border border-purple-400 shadow-md shadow-purple-500/30 animate-pulse whitespace-nowrap">
                       🚀 와이드 2단계
                     </span>
                   )}
@@ -511,7 +516,7 @@ export default function SlotManager({
                         });
                       }
                     }}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-black flex items-center gap-1.5 border transition shadow-sm cursor-pointer whitespace-nowrap ${
+                    className={`px-3 py-1 rounded-lg text-xs sm:text-sm font-black flex items-center gap-1.5 border transition shadow-sm cursor-pointer whitespace-nowrap ${
                       slot.isEnabled
                         ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/60 hover:bg-emerald-500/30'
                         : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white hover:bg-slate-700'
@@ -1052,6 +1057,33 @@ export default function SlotManager({
                           단기({editForm.swingShortMa || 5})선이 장기({editForm.swingLongMa || 20})선 위에 있는 상승 추세에만 탑승하며, 보유 중 단기선이 장기선을 하향 돌파(데드크로스)하면 즉시 시장가로 전량 청산합니다.
                         </p>
                       </div>
+
+                      {/* 🌊 [C모드 전용 방어막] 24시간 누적 거래대금 필터 (제안서 100% 반영) */}
+                      <div className="bg-slate-900/90 p-2.5 rounded-lg border border-sky-500/30 flex items-center justify-between">
+                        <div>
+                          <span className="text-[11px] font-bold text-sky-200 flex items-center gap-1.5">
+                            <Coins className="w-3.5 h-3.5 text-sky-400" />
+                            24시간 누적 거래대금 필터
+                          </span>
+                          <span className="text-[9px] text-slate-400 block mt-0.5">
+                            거래대금 미달 잡코인 진입 원천 차단 (주도주·대장주 한정)
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={editForm.swingMinTradePrice24hEok !== undefined ? editForm.swingMinTradePrice24hEok : 100}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/[^0-9]/g, '');
+                              setEditForm(prev => ({ ...prev, swingMinTradePrice24hEok: val === '' ? '' : Number(val) }));
+                            }}
+                            className="w-16 bg-slate-950 border border-sky-500/50 rounded-lg py-1 text-center font-mono text-xs font-bold text-sky-300 focus:border-sky-400 focus:outline-none"
+                            placeholder="100"
+                          />
+                          <span className="text-xs text-slate-300 font-bold whitespace-nowrap">억 원 이상</span>
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -1202,18 +1234,18 @@ export default function SlotManager({
                 /* 📊 일반 보기 모드 */
                 <div className="flex-1 flex flex-col justify-between my-2 space-y-2.5">
                   {/* 상단: 상태 및 주문 금액 / 보유 포지션 요약 */}
-                  <div className="grid grid-cols-2 gap-2 bg-slate-900/70 p-2.5 sm:p-3 rounded-xl border border-slate-800/80 items-center">
+                  <div className="grid grid-cols-2 gap-2 bg-slate-900/70 p-3 rounded-xl border border-slate-800/80 items-center">
                     <div>
                       {/* 미보유 상태 시: 매수금액 헤더 */}
                       {!hasPosition ? (
                         <div>
-                          <span className="text-[10px] text-slate-400 font-bold block mb-0.5">
+                          <span className="text-xs text-slate-400 font-bold block mb-1">
                             1회 매수금액
                           </span>
-                          <span className="text-sm sm:text-base font-black font-mono text-white flex items-center gap-1">
-                            {Math.round(slot.tradeAmountKrw || 0).toLocaleString()} <span className="text-[10px] font-normal text-slate-400">원</span>
+                          <span className="text-base sm:text-lg font-black font-mono text-white flex items-center gap-1">
+                            {Math.round(slot.tradeAmountKrw || 0).toLocaleString()} <span className="text-xs font-normal text-slate-400">원</span>
                             {isZeroAmount && (
-                              <span className="text-[9px] px-1.5 py-0.2 rounded bg-slate-800/80 text-amber-300 font-sans font-bold border border-amber-500/20">
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800/80 text-amber-300 font-sans font-bold border border-amber-500/20">
                                 미설정
                               </span>
                             )}
@@ -1224,17 +1256,17 @@ export default function SlotManager({
                         <div className="space-y-1">
                           <div className="flex items-center gap-1 flex-wrap">
                             <span className="px-2 py-0.5 rounded-lg bg-amber-500/25 text-amber-300 font-black text-xs sm:text-sm font-mono border border-amber-500/40 shadow-sm flex items-center gap-1">
-                              <Coins className="w-3 h-3 text-amber-400 shrink-0" />
-                              <span className="truncate max-w-[110px] sm:max-w-[130px]">{formatCoinWithKo(slot.targetMarket)}</span>
+                              <Coins className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                              <span className="truncate max-w-[120px] sm:max-w-[140px]">{formatCoinWithKo(slot.targetMarket)}</span>
                             </span>
                           </div>
 
-                          <div className="text-[11px] font-mono text-slate-300 flex items-center gap-1">
-                            <span className="text-slate-400 text-[10px]">진입:</span>
+                          <div className="text-xs font-mono text-slate-300 flex items-center gap-1">
+                            <span className="text-slate-400 text-xs">진입:</span>
                             <span className="text-white font-extrabold">{formatPrice(effectiveEntryPrice || currentPrice)}</span>
                           </div>
 
-                          <div className="text-[10px] font-mono text-slate-400 truncate" title={`수량: ${slot.entryVolume ? slot.entryVolume.toFixed(6) : ''}`}>
+                          <div className="text-xs font-mono text-slate-400 truncate" title={`수량: ${slot.entryVolume ? slot.entryVolume.toFixed(6) : ''}`}>
                             <span className="text-slate-500">수량:</span> <strong className="text-slate-200">{slot.entryVolume ? slot.entryVolume.toFixed(4) : (slot.entryAmountKrw / currentPrice).toFixed(4)}</strong> {(slot.targetMarket || '').replace('KRW-', '')}
                           </div>
                         </div>
@@ -1243,13 +1275,13 @@ export default function SlotManager({
 
                     <div className="text-right flex flex-col justify-between py-0.5">
                       <div>
-                        <span className="text-[10px] text-slate-400 block mb-0.5">
+                        <span className="text-xs text-slate-400 font-bold block mb-1">
                           {hasPosition ? '실시간 수익률' : '현재 상태'}
                         </span>
-                        <span className={`text-sm sm:text-base font-black font-mono block ${
+                        <span className={`text-base sm:text-lg font-black font-mono block ${
                           hasPosition 
-                            ? (!hasLivePrice ? 'text-slate-400 animate-pulse text-xs sm:text-sm' : (isProfit ? 'text-rose-400' : 'text-blue-400'))
-                            : 'text-slate-500 text-xs sm:text-sm'
+                            ? (!hasLivePrice ? 'text-slate-400 animate-pulse text-sm' : (isProfit ? 'text-rose-400' : 'text-blue-400'))
+                            : 'text-emerald-400/90 text-sm sm:text-base'
                         }`}>
                           {hasPosition 
                             ? (!hasLivePrice ? '⏳ 시세 동기화' : `${isProfit ? '+' : ''}${profitPct.toFixed(2)}%`) 
@@ -1257,19 +1289,19 @@ export default function SlotManager({
                         </span>
                       </div>
                       {hasPosition ? (
-                        <div className="space-y-0.5 mt-0.5">
-                          <div className="text-[10px] font-mono flex items-center justify-end gap-1">
+                        <div className="space-y-0.5 mt-1">
+                          <div className="text-xs font-mono flex items-center justify-end gap-1">
                             <span className="text-slate-400">현재:</span>
                             <span className="font-extrabold text-amber-300 drop-shadow-sm">
                               {hasLivePrice ? formatPrice(currentPrice) : '...'}
                             </span>
                           </div>
-                          <span className="text-[9px] font-mono text-slate-400 block" title={`최고 기록 수익률: +${Math.max(profitPct, slot.highestProfitPct || 0).toFixed(2)}%`}>
+                          <span className="text-[11px] font-mono text-slate-400 block" title={`최고 기록 수익률: +${Math.max(profitPct, slot.highestProfitPct || 0).toFixed(2)}%`}>
                             최고: <strong className="text-rose-300 font-bold">+{Math.max(profitPct, slot.highestProfitPct || 0).toFixed(2)}%</strong>
                           </span>
                         </div>
                       ) : (
-                        <span className={`text-[10px] font-mono font-bold block mt-0.5 ${
+                        <span className={`text-xs font-mono font-bold block mt-1 ${
                           isBreakout ? 'text-amber-400/90' : (isSwing ? 'text-sky-400/90' : 'text-emerald-400/90')
                         }`}>
                           {isBreakout ? '🚀 신고가 상시 감시' : (isSwing ? '🌊 추세스윙 상시 감시' : '⚡ 스캘핑 상시 감시')}
@@ -1294,50 +1326,50 @@ export default function SlotManager({
                       const stopLoss = slot.stopLossPct !== undefined ? slot.stopLossPct : 2.0;
 
                       return (
-                        <div className="rounded-xl bg-slate-950/80 border border-amber-500/40 overflow-hidden text-[10px] sm:text-[11px] font-mono shadow-inner shadow-amber-950/30">
+                        <div className="rounded-xl bg-slate-950/80 border border-amber-500/40 overflow-hidden text-xs sm:text-[13px] font-mono shadow-inner shadow-amber-950/30">
                           {/* 표 헤더 */}
-                          <div className="grid grid-cols-2 bg-slate-900/90 border-b border-amber-500/20 text-[10px] font-extrabold">
-                            <div className="px-2 py-1 flex items-center justify-between border-r border-slate-800/80 text-amber-300">
+                          <div className="grid grid-cols-2 bg-slate-900/90 border-b border-amber-500/20 text-xs sm:text-[13px] font-extrabold">
+                            <div className="px-2.5 py-1.5 flex items-center justify-between border-r border-slate-800/80 text-amber-300">
                               <span className="flex items-center gap-1">🚀 당일 신고가 돌파</span>
                             </div>
-                            <div className="px-2 py-1 flex items-center justify-between text-orange-300">
+                            <div className="px-2.5 py-1.5 flex items-center justify-between text-orange-300">
                               <span className="flex items-center gap-1">🎯 와이드 트레일링</span>
                             </div>
                           </div>
 
                           {/* 표 1행: 돌파 기준 vs 1단계 익절 */}
                           <div className="grid grid-cols-2 border-b border-slate-800/50">
-                            <div className="px-2 py-1 border-r border-slate-800/50 flex items-center justify-between bg-slate-950/40">
-                              <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">돌파기준</span>
-                              <span className="font-bold text-amber-300">09:00 장중 최고가</span>
+                            <div className="px-2.5 py-1.5 border-r border-slate-800/50 flex items-center justify-between bg-slate-950/40">
+                              <span className="text-slate-400 font-sans text-[11px] sm:text-xs font-semibold">돌파기준</span>
+                              <span className="font-black text-xs sm:text-[13px] text-amber-300">09:00 장중 최고가</span>
                             </div>
-                            <div className="px-2 py-1 flex items-center justify-between bg-slate-950/40">
-                              <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">1단익절</span>
-                              <span className="font-bold text-rose-400">+{t1Target}% (-{t1Cb}%)</span>
+                            <div className="px-2.5 py-1.5 flex items-center justify-between bg-slate-950/40">
+                              <span className="text-slate-400 font-sans text-[11px] sm:text-xs font-semibold">1단익절</span>
+                              <span className="font-black text-xs sm:text-[13px] text-rose-400">+{t1Target}% (-{t1Cb}%)</span>
                             </div>
                           </div>
 
                           {/* 표 2행: 순간 수급 vs 2단계 와이드 */}
                           <div className="grid grid-cols-2 border-b border-slate-800/50">
-                            <div className="px-2 py-1 border-r border-slate-800/50 flex items-center justify-between bg-slate-950/20">
-                              <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">순간수급</span>
-                              <span className="font-bold text-amber-200">{candleUnit}분봉 ≥ {minVolEok}억원</span>
+                            <div className="px-2.5 py-1.5 border-r border-slate-800/50 flex items-center justify-between bg-slate-950/20">
+                              <span className="text-slate-400 font-sans text-[11px] sm:text-xs font-semibold">순간수급</span>
+                              <span className="font-black text-xs sm:text-[13px] text-amber-200">{candleUnit}분봉 ≥ {minVolEok}억원</span>
                             </div>
-                            <div className="px-2 py-1 flex items-center justify-between bg-slate-950/20">
-                              <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">2단와이드</span>
-                              <span className="font-bold text-orange-300">+{t2Hurdle}% (-{t2Cb}%)</span>
+                            <div className="px-2.5 py-1.5 flex items-center justify-between bg-slate-950/20">
+                              <span className="text-slate-400 font-sans text-[11px] sm:text-xs font-semibold">2단와이드</span>
+                              <span className="font-black text-xs sm:text-[13px] text-orange-300">+{t2Hurdle}% (-{t2Cb}%)</span>
                             </div>
                           </div>
 
                           {/* 표 3행: 시간 잠금 vs 손절선 */}
                           <div className="grid grid-cols-2">
-                            <div className="px-2 py-1 border-r border-slate-800/50 flex items-center justify-between bg-slate-950/40">
-                              <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">시간잠금</span>
-                              <span className="font-bold text-amber-300">08:50~09:30 락</span>
+                            <div className="px-2.5 py-1.5 border-r border-slate-800/50 flex items-center justify-between bg-slate-950/40">
+                              <span className="text-slate-400 font-sans text-[11px] sm:text-xs font-semibold">시간잠금</span>
+                              <span className="font-black text-xs sm:text-[13px] text-amber-300">08:50~09:30 락</span>
                             </div>
-                            <div className="px-2 py-1 flex items-center justify-between bg-slate-950/40">
-                              <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">손실제한</span>
-                              <span className="font-bold text-blue-400">-{stopLoss}% 시장가</span>
+                            <div className="px-2.5 py-1.5 flex items-center justify-between bg-slate-950/40">
+                              <span className="text-slate-400 font-sans text-[11px] sm:text-xs font-semibold">손실제한</span>
+                              <span className="font-black text-xs sm:text-[13px] text-blue-400">-{stopLoss}% 시장가</span>
                             </div>
                           </div>
                         </div>
@@ -1355,50 +1387,53 @@ export default function SlotManager({
                       const stopLoss = slot.stopLossPct !== undefined ? slot.stopLossPct : 3.0;
 
                       return (
-                        <div className="rounded-xl bg-slate-950/80 border border-sky-500/40 overflow-hidden text-[10px] sm:text-[11px] font-mono shadow-inner shadow-sky-950/30">
+                        <div className="rounded-xl bg-slate-950/80 border border-sky-500/40 overflow-hidden text-xs sm:text-[13px] font-mono shadow-inner shadow-sky-950/30">
                           {/* 표 헤더 */}
-                          <div className="grid grid-cols-2 bg-slate-900/90 border-b border-sky-500/20 text-[10px] font-extrabold">
-                            <div className="px-2 py-1 flex items-center justify-between border-r border-slate-800/80 text-sky-300">
+                          <div className="grid grid-cols-2 bg-slate-900/90 border-b border-sky-500/20 text-xs sm:text-[13px] font-extrabold">
+                            <div className="px-2.5 py-1.5 flex items-center justify-between border-r border-slate-800/80 text-sky-300">
                               <span className="flex items-center gap-1">🌊 정배열 추세 스윙</span>
                             </div>
-                            <div className="px-2 py-1 flex items-center justify-between text-indigo-300">
+                            <div className="px-2.5 py-1.5 flex items-center justify-between text-indigo-300">
                               <span className="flex items-center gap-1">🎯 스윙 익절 / 청산</span>
                             </div>
                           </div>
 
                           {/* 표 1행: 정배열 vs 1단계 익절 */}
                           <div className="grid grid-cols-2 border-b border-slate-800/50">
-                            <div className="px-2 py-1 border-r border-slate-800/50 flex items-center justify-between bg-slate-950/40">
-                              <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">이평선</span>
-                              <span className="font-bold text-sky-300">MA{shortMa} &gt; MA{longMa}</span>
+                            <div className="px-2.5 py-1.5 border-r border-slate-800/50 flex items-center justify-between bg-slate-950/40">
+                              <span className="text-slate-400 font-sans text-[11px] sm:text-xs font-semibold">이평선</span>
+                              <span className="font-black text-xs sm:text-[13px] text-sky-300">MA{shortMa} &gt; MA{longMa}</span>
                             </div>
-                            <div className="px-2 py-1 flex items-center justify-between bg-slate-950/40">
-                              <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">1단익절</span>
-                              <span className="font-bold text-rose-400">+{t1Target}% (-{t1Cb}%)</span>
+                            <div className="px-2.5 py-1.5 flex items-center justify-between bg-slate-950/40">
+                              <span className="text-slate-400 font-sans text-[11px] sm:text-xs font-semibold">1단익절</span>
+                              <span className="font-black text-xs sm:text-[13px] text-rose-400">+{t1Target}% (-{t1Cb}%)</span>
                             </div>
                           </div>
 
                           {/* 표 2행: 기준봉 vs 2단계 와이드 */}
                           <div className="grid grid-cols-2 border-b border-slate-800/50">
-                            <div className="px-2 py-1 border-r border-slate-800/50 flex items-center justify-between bg-slate-950/20">
-                              <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">기준봉</span>
-                              <span className="font-bold text-sky-200">{candleUnitLabel}</span>
+                            <div className="px-2.5 py-1.5 border-r border-slate-800/50 flex items-center justify-between bg-slate-950/20">
+                              <span className="text-slate-400 font-sans text-[11px] sm:text-xs font-semibold">기준봉</span>
+                              <span className="font-black text-xs sm:text-[13px] text-sky-200">
+                                {candleUnitLabel}
+                                <span className="text-[10px] text-sky-400 font-normal ml-1">({slot.swingMinTradePrice24hEok || (slot.min24hAccTradePriceKrw ? Math.round(slot.min24hAccTradePriceKrw / 100000000) : 100)}억↑)</span>
+                              </span>
                             </div>
-                            <div className="px-2 py-1 flex items-center justify-between bg-slate-950/20">
-                              <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">2단와이드</span>
-                              <span className="font-bold text-indigo-300">+{t2Hurdle}% (-{t2Cb}%)</span>
+                            <div className="px-2.5 py-1.5 flex items-center justify-between bg-slate-950/20">
+                              <span className="text-slate-400 font-sans text-[11px] sm:text-xs font-semibold">2단와이드</span>
+                              <span className="font-black text-xs sm:text-[13px] text-indigo-300">+{t2Hurdle}% (-{t2Cb}%)</span>
                             </div>
                           </div>
 
                           {/* 표 3행: 안전 청산 vs 손절선 */}
                           <div className="grid grid-cols-2">
-                            <div className="px-2 py-1 border-r border-slate-800/50 flex items-center justify-between bg-slate-950/40">
-                              <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">안전청산</span>
-                              <span className="font-bold text-rose-400">데드크로스 즉시</span>
+                            <div className="px-2.5 py-1.5 border-r border-slate-800/50 flex items-center justify-between bg-slate-950/40">
+                              <span className="text-slate-400 font-sans text-[11px] sm:text-xs font-semibold">안전청산</span>
+                              <span className="font-black text-xs sm:text-[13px] text-rose-400">데드크로스 즉시</span>
                             </div>
-                            <div className="px-2 py-1 flex items-center justify-between bg-slate-950/40">
-                              <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">손실제한</span>
-                              <span className="font-bold text-blue-400">-{stopLoss}%</span>
+                            <div className="px-2.5 py-1.5 flex items-center justify-between bg-slate-950/40">
+                              <span className="text-slate-400 font-sans text-[11px] sm:text-xs font-semibold">손실제한</span>
+                              <span className="font-black text-xs sm:text-[13px] text-blue-400">-{stopLoss}%</span>
                             </div>
                           </div>
                         </div>
@@ -1424,55 +1459,55 @@ export default function SlotManager({
                     const wideCb = slot.trailingTier2CallbackPct !== undefined ? slot.trailingTier2CallbackPct : 3.0;
 
                     return (
-                      <div className="rounded-xl bg-slate-950/80 border border-emerald-500/40 overflow-hidden text-[10px] sm:text-[11px] font-mono shadow-inner shadow-emerald-950/30">
+                      <div className="rounded-xl bg-slate-950/80 border border-emerald-500/40 overflow-hidden text-xs sm:text-[13px] font-mono shadow-inner shadow-emerald-950/30">
                         {/* 표 헤더 */}
-                        <div className="grid grid-cols-2 bg-slate-900/90 border-b border-emerald-500/20 text-[10px] font-extrabold">
-                          <div className="px-2 py-1 flex items-center justify-between border-r border-slate-800/80 text-emerald-400">
+                        <div className="grid grid-cols-2 bg-slate-900/90 border-b border-emerald-500/20 text-xs sm:text-[13px] font-extrabold">
+                          <div className="px-2.5 py-1.5 flex items-center justify-between border-r border-slate-800/80 text-emerald-400">
                             <span className="flex items-center gap-1">⚡ 초단타 스캘핑</span>
                           </div>
-                          <div className="px-2 py-1 flex items-center justify-between text-teal-300">
+                          <div className="px-2.5 py-1.5 flex items-center justify-between text-teal-300">
                             <span className="flex items-center gap-1">🎯 다단 트레일링 익절</span>
                           </div>
                         </div>
 
                         {/* 표 1행: 감시/상승률 vs 1단계 익절 */}
                         <div className="grid grid-cols-2 border-b border-slate-800/50">
-                          <div className="px-2 py-1 border-r border-slate-800/50 flex items-center justify-between bg-slate-950/40">
-                            <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">감시/급등</span>
-                            <span className="font-bold text-emerald-300">{surgeWindow}초 / +{surgeRate}%</span>
+                          <div className="px-2.5 py-1.5 border-r border-slate-800/50 flex items-center justify-between bg-slate-950/40">
+                            <span className="text-slate-400 font-sans text-[11px] sm:text-xs font-semibold">감시/급등</span>
+                            <span className="font-black text-xs sm:text-[13px] text-emerald-300">{surgeWindow}초 / +{surgeRate}%</span>
                           </div>
-                          <div className="px-2 py-1 flex items-center justify-between bg-slate-950/40">
-                            <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">1단익절</span>
-                            <span className="font-bold text-rose-400">+{targetProfit}% (-{callback}%)</span>
+                          <div className="px-2.5 py-1.5 flex items-center justify-between bg-slate-950/40">
+                            <span className="text-slate-400 font-sans text-[11px] sm:text-xs font-semibold">1단익절</span>
+                            <span className="font-black text-xs sm:text-[13px] text-rose-400">+{targetProfit}% (-{callback}%)</span>
                           </div>
                         </div>
 
                         {/* 표 2행: 최소수급 vs 2단계 와이드 */}
                         <div className="grid grid-cols-2 border-b border-slate-800/50">
-                          <div className="px-2 py-1 border-r border-slate-800/50 flex items-center justify-between bg-slate-950/20">
-                            <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">최소수급</span>
-                            <span className="font-bold text-emerald-300">{minVolText}</span>
+                          <div className="px-2.5 py-1.5 border-r border-slate-800/50 flex items-center justify-between bg-slate-950/20">
+                            <span className="text-slate-400 font-sans text-[11px] sm:text-xs font-semibold">최소수급</span>
+                            <span className="font-black text-xs sm:text-[13px] text-emerald-300">{minVolText}</span>
                           </div>
-                          <div className="px-2 py-1 flex items-center justify-between bg-slate-950/20">
-                            <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">2단와이드</span>
-                            <span className="font-bold text-purple-300">+{hurdle}% (-{wideCb}%)</span>
+                          <div className="px-2.5 py-1.5 flex items-center justify-between bg-slate-950/20">
+                            <span className="text-slate-400 font-sans text-[11px] sm:text-xs font-semibold">2단와이드</span>
+                            <span className="font-black text-xs sm:text-[13px] text-purple-300">+{hurdle}% (-{wideCb}%)</span>
                           </div>
                         </div>
 
                         {/* 표 3행: 기준가 모드 vs 손절선 */}
                         <div className="grid grid-cols-2">
-                          <div className="px-2 py-1 border-r border-slate-800/50 flex items-center justify-between bg-slate-950/40">
-                            <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">돌파기준</span>
-                            <span className="font-bold text-teal-300">{baseMode}</span>
+                          <div className="px-2.5 py-1.5 border-r border-slate-800/50 flex items-center justify-between bg-slate-950/40">
+                            <span className="text-slate-400 font-sans text-[11px] sm:text-xs font-semibold">돌파기준</span>
+                            <span className="font-black text-xs sm:text-[13px] text-teal-300">{baseMode}</span>
                           </div>
-                          <div className="px-2 py-1 flex items-center justify-between bg-slate-950/40">
-                            <span className="text-slate-500 font-sans text-[9px] sm:text-[10px]">손실제한</span>
+                          <div className="px-2.5 py-1.5 flex items-center justify-between bg-slate-950/40">
+                            <span className="text-slate-400 font-sans text-[11px] sm:text-xs font-semibold">손실제한</span>
                             {slot.useAtrStopLoss ? (
-                              <span className="font-bold text-amber-300 text-[9px] sm:text-[10px] flex items-center gap-0.5" title="AI ATR 동적 변동성 손절 모드 가동 중 (1.2%~4.5% 맞춤 손절)">
+                              <span className="font-black text-amber-300 text-xs sm:text-[13px] flex items-center gap-0.5" title="AI ATR 동적 변동성 손절 모드 가동 중 (1.2%~4.5% 맞춤 손절)">
                                 ⚡ AI ATR (동적)
                               </span>
                             ) : (
-                              <span className="font-bold text-blue-400">-{stopLoss}%</span>
+                              <span className="font-black text-xs sm:text-[13px] text-blue-400">-{stopLoss}%</span>
                             )}
                           </div>
                         </div>
@@ -1523,11 +1558,11 @@ export default function SlotManager({
                   </div>
                 ) : (
                   <>
-                    <span className="text-[11px] text-slate-400 flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+                    <span className="text-xs sm:text-[13px] text-slate-300 flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden font-bold">
                       {!slot.isEnabled ? (
                         <>
                           <span className="w-2 h-2 rounded-full bg-slate-600 shrink-0"></span>
-                          <strong className="text-slate-500 truncate">⏸️ 슬롯 가동 중지됨</strong>
+                          <strong className="text-slate-400 truncate">⏸️ 슬롯 가동 중지됨</strong>
                         </>
                       ) : hasPosition ? (
                         <>
