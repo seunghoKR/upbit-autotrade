@@ -176,7 +176,7 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
                     <span>3단계 장세 자동 스케줄러</span>
                   </div>
                   <p className="text-slate-300 leading-relaxed text-xs">
-                    오전(09:00~ 경주마 돌파), 오후(12:00~ 횡보 방어 및 스윙), 야간(21:00~ 미증시 단기 트레일링)으로 KST 시간대에 맞춰 전자동 환복합니다.
+                    A 모드(초단타 스캘핑), B 모드(신고가 돌파), C 모드(추세 스윙)로 KST 시간표에 맞춰 전자동 전환됩니다.
                   </p>
                   <div className="p-2 rounded-lg bg-indigo-950/40 border border-indigo-500/20 text-[11px] text-indigo-200">
                     🛡️ <strong>포지션 무결성</strong>: 코인 보유 슬롯은 청산까지 기존 룰 100% 보호! 매도 완료 시 새 프리셋으로 자동 변신!
@@ -538,7 +538,7 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
                 </h5>
                 <p className="text-slate-300 text-xs sm:text-sm leading-relaxed pl-7">
                   👉 자동차의 <strong>'메모리 시트'</strong>처럼 1~12번 슬롯의 전략과 설정값을 통째로 저장하고 언제든 원클릭으로 불러올 수 있는 맞춤형 템플릿입니다.<br />
-                  대표님께서 슬롯들을 자유롭게 세팅하신 후 <strong>[💾 모든 슬롯 설정을 A모드로 저장]</strong>을 누르면 통째로 기억되며, 필요할 때 <strong>[📥 이 모드를 1~12번 슬롯에 적용하기]</strong>를 누르면 1초 만에 슬롯에 완벽 적용됩니다. 3단계 장세 스케줄러와 연동해 두면 오전/오후/야간 시간대에 맞춰 자동으로 전환되기도 합니다!
+                  대표님께서 슬롯들을 자유롭게 세팅하신 후 <strong>[💾 모든 슬롯 설정을 A모드로 저장]</strong>을 누르면 통째로 기억되며, 필요할 때 <strong>[📥 이 모드를 1~12번 슬롯에 적용하기]</strong>를 누르면 1초 만에 슬롯에 완벽 적용됩니다. 3단계 스케줄러와 연동해 두면 설정해 둔 시간표에 맞춰 A/B/C 모드가 자동으로 전환되기도 합니다!
                 </p>
               </div>
 

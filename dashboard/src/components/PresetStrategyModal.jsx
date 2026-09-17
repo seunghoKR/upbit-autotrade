@@ -5,11 +5,11 @@ import { soundService } from '../services/soundService';
 export const DEFAULT_MODE_PRESETS = {
   PRESET_A: {
     id: 'PRESET_A',
-    name: 'A 모드 (오전장 돌파)',
-    icon: '🌅',
+    name: 'A 모드 (초단타 스캘핑)',
+    icon: '⚡',
     periodKey: 'MORNING',
-    tagText: '오전 경주마 & 변동성 돌파',
-    description: '09:00 업비트 리셋 직후 활발한 수급 유입 및 당일 신고가 돌파 코인 집중 공략',
+    tagText: '초단타 급등 & VWAP 돌파',
+    description: '급등 포착 및 단기 수급 코인 집중 공략',
     common: {
       tradeAmountKrw: 50000,
       trailingTier1TargetProfitPct: 3.5,
@@ -27,11 +27,11 @@ export const DEFAULT_MODE_PRESETS = {
   },
   PRESET_B: {
     id: 'PRESET_B',
-    name: 'B 모드 (오후장 횡보방어)',
-    icon: '🌤️',
+    name: 'B 모드 (신고가 돌파)',
+    icon: '🚀',
     periodKey: 'AFTERNOON',
-    tagText: '오후 횡보 방어 & 저점 반등',
-    description: '거래량 감소 시간대 뇌동매매를 원천 방어하고 4시간봉/일봉 우상향 코인만 선별 진입',
+    tagText: '당일 신고가 & 돌파 매수',
+    description: '당일 고가 돌파 및 거래대금 상위 코인 선별 진입',
     common: {
       tradeAmountKrw: 50000,
       trailingTier1TargetProfitPct: 2.0,
@@ -49,11 +49,11 @@ export const DEFAULT_MODE_PRESETS = {
   },
   PRESET_C: {
     id: 'PRESET_C',
-    name: 'C 모드 (야간장 트레일링)',
-    icon: '🌙',
+    name: 'C 모드 (추세 스윙)',
+    icon: '🌊',
     periodKey: 'NIGHT',
-    tagText: '미 증시 연동 & 트레일링 스탑',
-    description: '미 증시 개장 전후 급변동성에 대응하며 고수익 코인은 타이트 트레일링으로 즉시 수익 확정',
+    tagText: '이평 정배열 & 트레일링 스탑',
+    description: '중장기 이평선 정배열 추세 추종 및 다단 트레일링 스탑으로 수익 보존',
     common: {
       tradeAmountKrw: 50000,
       trailingTier1TargetProfitPct: 2.0,
@@ -302,7 +302,7 @@ export default function PresetStrategyModal({
                 </h3>
               </div>
               <span className="text-xs text-slate-400 font-mono">
-                시간대: {timeRange || '장세 스케줄 연동'} · 포지션 무결성 보장
+                시간대: {timeRange || '스케줄 연동'} · 포지션 무결성 보장
               </span>
             </div>
           </div>
@@ -330,7 +330,7 @@ export default function PresetStrategyModal({
               }`}
             >
               <span>⚡</span>
-              <span>핵심 전략 &amp; 장세 특화 필터</span>
+              <span>핵심 전략 &amp; 알고리즘 필터</span>
             </button>
             <button
               type="button"
@@ -491,13 +491,13 @@ export default function PresetStrategyModal({
                 </div>
               </div>
 
-              {/* 우측 카드: 장세 특화 수급 및 진입 알고리즘 필터 */}
+              {/* 우측 카드: 모드별 특화 수급 및 진입 알고리즘 필터 */}
               <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-3.5 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5 mb-3">
                     <h4 className="text-sm font-extrabold text-white flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full bg-purple-400"></span>
-                      <span>장세별 특화 수급 &amp; 진입 필터 ({defaultMeta.periodKey})</span>
+                      <span>모드별 특화 수급 &amp; 진입 필터</span>
                     </h4>
                     <span className="text-xs text-indigo-300 font-bold">{defaultMeta.tagText}</span>
                   </div>

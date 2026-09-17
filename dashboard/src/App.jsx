@@ -2017,7 +2017,7 @@ export default function App() {
     }
   };
 
-  // ⚙️ [v3.6.2] 사용자가 오전/오후/야간 모드별 세부 전략 설정값을 직접 수정하여 저장 & 즉시 적용하는 핸들러
+  // ⚙️ [v3.6.2] 사용자가 A/B/C 모드별 세부 전략 설정값을 직접 수정하여 저장 & 즉시 적용하는 핸들러
   const handleSaveCustomPreset = async (presetKey, presetData, applyImmediately = false) => {
     try {
       try {

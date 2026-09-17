@@ -38,22 +38,22 @@ export default function GlobalControlPanel({
   const [userPresets, setUserPresets] = useState({
     PRESET_A: {
       id: 'PRESET_A',
-      name: 'A 모드 (오전장 돌파)',
-      description: '오전 08:50~12:00 변동성 돌파 및 시가 베팅에 최적화된 1~12번 슬롯 설정입니다.',
+      name: 'A 모드 (초단타 스캘핑)',
+      description: '급등 포착 및 단기 수급 코인에 최적화된 1~12번 슬롯 설정입니다.',
       updatedAt: null,
       slots: []
     },
     PRESET_B: {
       id: 'PRESET_B',
-      name: 'B 모드 (오후장 횡보방어)',
-      description: '오후 12:00~21:00 지루한 횡보 구간에서 뇌동매매를 방지하고 저점 반등을 노리는 설정입니다.',
+      name: 'B 모드 (신고가 돌파)',
+      description: '당일 고가 돌파 및 거래대금 상위 코인을 선별 진입하는 설정입니다.',
       updatedAt: null,
       slots: []
     },
     PRESET_C: {
       id: 'PRESET_C',
-      name: 'C 모드 (야간장 트레일링)',
-      description: '야간 21:00~익일 08:50 글로벌 변동성에 대응하며 트레일링 스탑으로 수익을 지키는 설정입니다.',
+      name: 'C 모드 (추세 스윙)',
+      description: '이평선 정배열 추세 추종 및 다단 트레일링 스탑으로 수익을 지키는 설정입니다.',
       updatedAt: null,
       slots: []
     }
@@ -223,40 +223,40 @@ export default function GlobalControlPanel({
       periodKey: 'MORNING',
       presetKey: 'PRESET_A',
       modeName: 'A 모드',
-      title: 'A 모드 (오전장 돌파)',
+      title: 'A 모드 (초단타 스캘핑)',
       timeRange: `${timeTable.MORNING_START || '08:50'} ~ ${timeTable.AFTERNOON_START || '12:00'}`,
-      icon: '🌅',
+      icon: '⚡',
       themeColor: 'from-amber-500/20 to-orange-500/10 border-amber-500/40 text-amber-300',
       activeRing: 'ring-2 ring-amber-500 border-amber-500 bg-slate-800/90 shadow-xl shadow-amber-900/20',
-      tagText: '오전 경주마 & 변동성 돌파',
-      desc: '09:00 업비트 리셋 직후 활발한 수급 유입 및 당일 신고가 돌파 코인 집중 공략',
+      tagText: '초단타 급등 & VWAP 돌파',
+      desc: '급등 포착 및 단기 수급 코인 집중 공략',
       specSummary: '1분봉 5억+ 거래대금 돌파, 1단계 감시익절 +3.0%, 2단계 와이드 +10.0%'
     },
     {
       periodKey: 'AFTERNOON',
       presetKey: 'PRESET_B',
       modeName: 'B 모드',
-      title: 'B 모드 (오후장 횡보방어)',
+      title: 'B 모드 (신고가 돌파)',
       timeRange: `${timeTable.AFTERNOON_START || '12:00'} ~ ${timeTable.NIGHT_START || '21:00'}`,
-      icon: '🌤️',
+      icon: '🚀',
       themeColor: 'from-blue-500/20 to-indigo-500/10 border-blue-500/40 text-blue-300',
       activeRing: 'ring-2 ring-blue-500 border-blue-500 bg-slate-800/90 shadow-xl shadow-blue-900/20',
-      tagText: '오후 횡보 방어 & 저점 반등',
-      desc: '거래량 감소 시간대 뇌동매매를 원천 방어하고 4시간봉/일봉 우상향 코인만 선별 진입',
+      tagText: '당일 신고가 & 돌파 매수',
+      desc: '당일 고가 돌파 및 거래대금 상위 코인 선별 진입',
       specSummary: '24시간 거래대금 100억+ 필터, 이평 정배열 지지선 탑승, 손절 -2.0% 엄격'
     },
     {
       periodKey: 'NIGHT',
       presetKey: 'PRESET_C',
       modeName: 'C 모드',
-      title: 'C 모드 (야간장 트레일링)',
-      timeRange: `${timeTable.NIGHT_START || '21:00'} ~ 익일 ${timeTable.MORNING_START || '08:50'}`,
-      icon: '🌙',
+      title: 'C 모드 (추세 스윙)',
+      timeRange: `${timeTable.NIGHT_START || '21:00'} ~ ${timeTable.MORNING_START || '08:50'}`,
+      icon: '🌊',
       themeColor: 'from-purple-500/20 to-fuchsia-500/10 border-purple-500/40 text-purple-300',
       activeRing: 'ring-2 ring-purple-500 border-purple-500 bg-slate-800/90 shadow-xl shadow-purple-900/20',
-      tagText: '미 증시 연동 & 트레일링 스탑',
-      desc: '미 증시 개장 전후 급변동성에 대응하며 고수익 코인은 타이트 트레일링으로 즉시 수익 확정',
-      specSummary: '다단 트레일링(콜백 0.5%), 취침 중 급락 방어, 킬스위치 실시간 감시'
+      tagText: '이평 정배열 & 트레일링 스탑',
+      desc: '중장기 이평선 정배열 추세 추종 및 다단 트레일링 스탑으로 수익 보존',
+      specSummary: '다단 트레일링(콜백 0.5%), 급락 방어, 킬스위치 실시간 감시'
     }
   ];
 
@@ -338,7 +338,7 @@ export default function GlobalControlPanel({
               </span>
             </div>
             <p className="text-xs text-slate-400">
-              오전 / 오후 / 야간 모드 즉시 적용 &amp; 저장 · 일체형 장세 시간표 · 일일 킬 스위치
+              A / B / C 모드 즉시 적용 &amp; 저장 · 모드 전환 시간표 · 일일 킬 스위치
             </p>
           </div>
         </div>
@@ -348,7 +348,7 @@ export default function GlobalControlPanel({
           {/* 장세 뱃지 */}
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border font-bold bg-indigo-950/80 text-indigo-300 border-indigo-500/40">
             <span>⏰</span>
-            <span>KST {currentPeriod === 'MORNING' ? 'A 모드 (오전)' : (currentPeriod === 'AFTERNOON' ? 'B 모드 (오후)' : 'C 모드 (야간)')}</span>
+            <span>KST {currentPeriod === 'MORNING' ? 'A 모드' : (currentPeriod === 'AFTERNOON' ? 'B 모드' : 'C 모드')}</span>
           </div>
 
           {/* 킬스위치 상태 뱃지 */}
@@ -555,14 +555,14 @@ export default function GlobalControlPanel({
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              {/* 좌측: 3단계 장세 전환 기준 시간표 */}
+              {/* 좌측: 3단계 모드 전환 기준 시간표 */}
               <div className="space-y-2">
                 <span className="text-xs font-bold text-indigo-300 block flex items-center gap-1">
-                  <span>⏰</span> 장세 전환 기준 시간표 (KST 한국 표준시)
+                  <span>⏰</span> 모드 자동전환 기준 시간표 (KST 한국 표준시)
                 </span>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800">
-                    <label className="text-[11px] text-slate-400 block mb-1 font-semibold">🌅 오전 시작</label>
+                    <label className="text-[11px] text-slate-400 block mb-1 font-semibold">⚡ A 모드 시작</label>
                     <input
                       type="time"
                       value={timeTable.MORNING_START}
@@ -572,7 +572,7 @@ export default function GlobalControlPanel({
                   </div>
 
                   <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800">
-                    <label className="text-[11px] text-slate-400 block mb-1 font-semibold">🌤️ 오후 시작</label>
+                    <label className="text-[11px] text-slate-400 block mb-1 font-semibold">🚀 B 모드 시작</label>
                     <input
                       type="time"
                       value={timeTable.AFTERNOON_START}
@@ -582,7 +582,7 @@ export default function GlobalControlPanel({
                   </div>
 
                   <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800">
-                    <label className="text-[11px] text-slate-400 block mb-1 font-semibold">🌙 야간 시작</label>
+                    <label className="text-[11px] text-slate-400 block mb-1 font-semibold">🌊 C 모드 시작</label>
                     <input
                       type="time"
                       value={timeTable.NIGHT_START}
@@ -666,7 +666,7 @@ export default function GlobalControlPanel({
         </div>
       )}
 
-      {/* ⚙️ [v3.6.2] 오전/오후/야간 모드 세부 전략 설정 모달 */}
+      {/* ⚙️ [v3.6.2] A/B/C 모드 세부 전략 설정 모달 */}
       <PresetStrategyModal
         isOpen={Boolean(editingPresetKey)}
         onClose={() => setEditingPresetKey(null)}

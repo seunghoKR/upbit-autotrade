@@ -40,22 +40,22 @@ class MarketScheduler {
     this.userPresets = {
       PRESET_A: {
         id: 'PRESET_A',
-        name: 'A 모드 (오전장 돌파)',
-        description: '오전 08:50~12:00 변동성 돌파 및 시가 베팅에 최적화된 1~12번 슬롯 설정입니다.',
+        name: 'A 모드 (초단타 스캘핑)',
+        description: '급등 포착 및 단기 수급 코인에 최적화된 1~12번 슬롯 설정입니다.',
         updatedAt: new Date().toISOString(),
         slots: []
       },
       PRESET_B: {
         id: 'PRESET_B',
-        name: 'B 모드 (오후장 횡보방어)',
-        description: '오후 12:00~21:00 지루한 횡보 구간에서 뇌동매매를 방지하고 저점 반등을 노리는 설정입니다.',
+        name: 'B 모드 (신고가 돌파)',
+        description: '당일 고가 돌파 및 거래대금 상위 코인을 선별 진입하는 설정입니다.',
         updatedAt: new Date().toISOString(),
         slots: []
       },
       PRESET_C: {
         id: 'PRESET_C',
-        name: 'C 모드 (야간장 트레일링)',
-        description: '야간 21:00~익일 08:50 글로벌 변동성에 대응하며 트레일링 스탑으로 수익을 지키는 설정입니다.',
+        name: 'C 모드 (추세 스윙)',
+        description: '이평선 정배열 추세 추종 및 다단 트레일링 스탑으로 수익을 지키는 설정입니다.',
         updatedAt: new Date().toISOString(),
         slots: []
       }
@@ -77,12 +77,12 @@ class MarketScheduler {
     // 글로벌 모드: 'MODE_A' (하이브리드: 1~8 스캘핑, 9~12 스윙) | 'MODE_B' (방망이 분할: 전슬롯 돌파/스윙)
     this.globalStrategyMode = 'MODE_A';
 
-    // 3가지 장세 기본 프리셋 템플릿
+    // 3가지 모드 기본 프리셋 템플릿
     this.presets = {
-      // ① Preset_Morning (오전 경주마/돌파 중심)
+      // ① Preset A (초단타 스캘핑)
       MORNING: {
-        name: '오전 경주마 돌파 (Preset_Morning)',
-        description: '09:00 리셋 직후 활발한 수급과 당일 돌파 코인 집중 공략',
+        name: 'A 모드 (초단타 스캘핑)',
+        description: '급등 포착 및 단기 수급 코인 집중 공략',
         // 1~8번 슬롯 세팅
         scalping: {
           useWideTrailing: true,
@@ -119,10 +119,10 @@ class MarketScheduler {
         }
       },
 
-      // ② Preset_Afternoon (오후 횡보 방어 / 스윙 중심)
+      // ② Preset B (신고가 돌파)
       AFTERNOON: {
-        name: '오후 횡보 방어 (Preset_Afternoon)',
-        description: '거래량 감소 시간대 뇌동매매 방어 및 슬리피지/스윙 추세 집중',
+        name: 'B 모드 (신고가 돌파)',
+        description: '당일 고가 돌파 및 거래대금 상위 코인 선별 진입',
         scalping: {
           useWideTrailing: true,
           trailingTier1TargetProfitPct: 2.0,
@@ -156,10 +156,10 @@ class MarketScheduler {
         }
       },
 
-      // ③ Preset_Night (야간 변동성 / 방망이 단축 세팅)
+      // ③ Preset C (추세 스윙)
       NIGHT: {
-        name: '야간 단기 트레일링 (Preset_Night)',
-        description: '미 증시 개장 전후 급변동 대응, 방망이 단축 및 타이트 트레일링',
+        name: 'C 모드 (추세 스윙)',
+        description: '중장기 이평선 정배열 추세 추종 및 다단 트레일링 스탑으로 수익 보존',
         scalping: {
           useWideTrailing: true,
           trailingTier1TargetProfitPct: 2.0,
