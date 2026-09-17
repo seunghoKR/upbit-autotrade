@@ -188,6 +188,120 @@ function getOutboundServerIp(): string {
     return $cachedIp;
 }
 
+function getSchedulerDataFromDb($pdo): array {
+    date_default_timezone_set('Asia/Seoul');
+    try {
+        $stmt = $pdo->query("SELECT scheduler_data FROM nurioh_settings WHERE id = 1");
+        $row = $stmt ? $stmt->fetch() : null;
+        $decoded = ($row && !empty($row['scheduler_data'])) ? json_decode($row['scheduler_data'], true) : [];
+        if (!is_array($decoded)) $decoded = [];
+    } catch (Exception $e) {
+        $decoded = [];
+    }
+
+    $timeTable = $decoded['timeTable'] ?? [
+        'MORNING_START' => '08:50',
+        'AFTERNOON_START' => '12:00',
+        'NIGHT_START' => '21:00'
+    ];
+
+    list($mH, $mM) = array_map('intval', explode(':', $timeTable['MORNING_START'] ?? '08:50'));
+    list($aH, $aM) = array_map('intval', explode(':', $timeTable['AFTERNOON_START'] ?? '12:00'));
+    list($nH, $nM) = array_map('intval', explode(':', $timeTable['NIGHT_START'] ?? '21:00'));
+
+    $curMin = (int)date('G') * 60 + (int)date('i');
+    $mMin = $mH * 60 + $mM;
+    $aMin = $aH * 60 + $aM;
+    $nMin = $nH * 60 + $nM;
+
+    if ($curMin >= $mMin && $curMin < $aMin) {
+        $curPeriod = 'MORNING';
+    } else if ($curMin >= $aMin && $curMin < $nMin) {
+        $curPeriod = 'AFTERNOON';
+    } else {
+        $curPeriod = 'NIGHT';
+    }
+
+    $scheduleMapping = $decoded['scheduleMapping'] ?? [
+        'MORNING' => 'PRESET_A',
+        'AFTERNOON' => 'PRESET_B',
+        'NIGHT' => 'PRESET_C'
+    ];
+    $curPresetKey = $scheduleMapping[$curPeriod] ?? 'PRESET_A';
+
+    $defaultScheduler = [
+        'isEnabled' => true,
+        'currentPeriod' => $curPeriod,
+        'currentPresetKey' => $curPresetKey,
+        'currentPresetName' => $curPeriod === 'MORNING' ? '오전 모드 (오전장 돌파)' : ($curPeriod === 'AFTERNOON' ? '오후 모드 (오후장 횡보방어)' : '야간 모드 (야간장 트레일링)'),
+        'globalStrategyMode' => 'MODE_A',
+        'timeTable' => $timeTable,
+        'scheduleMapping' => $scheduleMapping,
+        'userPresets' => [
+            'PRESET_A' => [
+                'id' => 'PRESET_A',
+                'name' => '오전 모드 (오전장 돌파)',
+                'description' => '오전 08:50~12:00 변동성 돌파 및 시가 베팅에 최적화된 1~12번 슬롯 설정입니다.',
+                'updatedAt' => date('c'),
+                'slots' => []
+            ],
+            'PRESET_B' => [
+                'id' => 'PRESET_B',
+                'name' => '오후 모드 (오후장 횡보방어)',
+                'description' => '오후 12:00~21:00 지루한 횡보 구간에서 뇌동매매를 방지하고 저점 반등을 노리는 설정입니다.',
+                'updatedAt' => date('c'),
+                'slots' => []
+            ],
+            'PRESET_C' => [
+                'id' => 'PRESET_C',
+                'name' => '야간 모드 (야간장 트레일링)',
+                'description' => '야간 21:00~익일 08:50 글로벌 변동성에 대응하며 트레일링 스탑으로 수익을 지키는 설정입니다.',
+                'updatedAt' => date('c'),
+                'slots' => []
+            ]
+        ]
+    ];
+
+    $merged = array_replace_recursive($defaultScheduler, $decoded);
+    $merged['currentPeriod'] = $curPeriod;
+    $merged['currentPresetKey'] = $curPresetKey;
+    if ($curPeriod === 'MORNING') $merged['currentPresetName'] = '오전 모드 (오전장 돌파)';
+    else if ($curPeriod === 'AFTERNOON') $merged['currentPresetName'] = '오후 모드 (오후장 횡보방어)';
+    else $merged['currentPresetName'] = '야간 모드 (야간장 트레일링)';
+
+    // 구버전 A/B/C 모드 명칭 자동 보정
+    if (isset($merged['userPresets']['PRESET_A']['name']) && strpos($merged['userPresets']['PRESET_A']['name'], '메모리') !== false) {
+        $merged['userPresets']['PRESET_A']['name'] = '오전 모드 (오전장 돌파)';
+    }
+    if (isset($merged['userPresets']['PRESET_B']['name']) && strpos($merged['userPresets']['PRESET_B']['name'], '메모리') !== false) {
+        $merged['userPresets']['PRESET_B']['name'] = '오후 모드 (오후장 횡보방어)';
+    }
+    if (isset($merged['userPresets']['PRESET_C']['name']) && strpos($merged['userPresets']['PRESET_C']['name'], '메모리') !== false) {
+        $merged['userPresets']['PRESET_C']['name'] = '야간 모드 (야간장 트레일링)';
+    }
+
+    return $merged;
+}
+
+function getKillSwitchDataFromDb($pdo): array {
+    try {
+        $stmt = $pdo->query("SELECT killswitch_data FROM nurioh_settings WHERE id = 1");
+        $row = $stmt ? $stmt->fetch() : null;
+        $decoded = ($row && !empty($row['killswitch_data'])) ? json_decode($row['killswitch_data'], true) : [];
+        if (!is_array($decoded)) $decoded = [];
+    } catch (Exception $e) {
+        $decoded = [];
+    }
+
+    return [
+        'enabled' => (bool)($decoded['enabled'] ?? true),
+        'maxLossPct' => (float)($decoded['maxLossPct'] ?? 10.0),
+        'isTriggered' => (bool)($decoded['isTriggered'] ?? false),
+        'totalCapitalKrw' => (float)($decoded['totalCapitalKrw'] ?? 1000000),
+        'dailyRealizedProfitKrw' => (float)($decoded['dailyRealizedProfitKrw'] ?? 0)
+    ];
+}
+
 function fetchUpbitAccounts(string $accessKey, string $secretKey, ?string &$errorMsg = null): array {
     $jwt = generateUpbitJwt($accessKey, $secretKey);
     $ch = curl_init();
@@ -1181,6 +1295,8 @@ try {
             'botRunning' => (bool)($settings['bot_enabled'] ?? false),
             'serverIp' => getOutboundServerIp(),
             'accountError' => $accountError,
+            'scheduler' => getSchedulerDataFromDb($pdo),
+            'dailyKillSwitch' => getKillSwitchDataFromDb($pdo),
             'settings' => [
                 'DEFAULT_MARKET' => 'KRW-BTC',
                 'DEFAULT_TRADE_AMOUNT' => 0,
@@ -2663,91 +2779,7 @@ try {
 
     // 18. ⏰ [제안서 1~3부 / 3.5.0] 장세 스케줄러 & 프리셋 & 킬스위치 API
     if ($path === 'scheduler' && $method === 'GET') {
-        date_default_timezone_set('Asia/Seoul');
-        $stmt = $pdo->query("SELECT scheduler_data FROM nurioh_settings WHERE id = 1");
-        $row = $stmt ? $stmt->fetch() : null;
-        $decoded = ($row && !empty($row['scheduler_data'])) ? json_decode($row['scheduler_data'], true) : [];
-        if (!is_array($decoded)) $decoded = [];
-
-        $timeTable = $decoded['timeTable'] ?? [
-            'MORNING_START' => '08:50',
-            'AFTERNOON_START' => '12:00',
-            'NIGHT_START' => '21:00'
-        ];
-
-        list($mH, $mM) = array_map('intval', explode(':', $timeTable['MORNING_START'] ?? '08:50'));
-        list($aH, $aM) = array_map('intval', explode(':', $timeTable['AFTERNOON_START'] ?? '12:00'));
-        list($nH, $nM) = array_map('intval', explode(':', $timeTable['NIGHT_START'] ?? '21:00'));
-
-        $curMin = (int)date('G') * 60 + (int)date('i');
-        $mMin = $mH * 60 + $mM;
-        $aMin = $aH * 60 + $aM;
-        $nMin = $nH * 60 + $nM;
-
-        if ($curMin >= $mMin && $curMin < $aMin) {
-            $curPeriod = 'MORNING';
-        } else if ($curMin >= $aMin && $curMin < $nMin) {
-            $curPeriod = 'AFTERNOON';
-        } else {
-            $curPeriod = 'NIGHT';
-        }
-
-        $scheduleMapping = $decoded['scheduleMapping'] ?? [
-            'MORNING' => 'PRESET_A',
-            'AFTERNOON' => 'PRESET_B',
-            'NIGHT' => 'PRESET_C'
-        ];
-        $curPresetKey = $scheduleMapping[$curPeriod] ?? 'PRESET_A';
-
-        $defaultScheduler = [
-            'isEnabled' => true,
-            'currentPeriod' => $curPeriod,
-            'currentPresetKey' => $curPresetKey,
-            'currentPresetName' => '오전 모드 (오전장 돌파)',
-            'globalStrategyMode' => 'MODE_A',
-            'timeTable' => $timeTable,
-            'scheduleMapping' => $scheduleMapping,
-            'userPresets' => [
-                'PRESET_A' => [
-                    'id' => 'PRESET_A',
-                    'name' => '오전 모드 (오전장 돌파)',
-                    'description' => '오전 08:50~12:00 변동성 돌파 및 시가 베팅에 최적화된 1~12번 슬롯 설정입니다.',
-                    'updatedAt' => date('c'),
-                    'slots' => []
-                ],
-                'PRESET_B' => [
-                    'id' => 'PRESET_B',
-                    'name' => '오후 모드 (오후장 횡보방어)',
-                    'description' => '오후 12:00~21:00 지루한 횡보 구간에서 뇌동매매를 방지하고 저점 반등을 노리는 설정입니다.',
-                    'updatedAt' => date('c'),
-                    'slots' => []
-                ],
-                'PRESET_C' => [
-                    'id' => 'PRESET_C',
-                    'name' => '야간 모드 (야간장 트레일링)',
-                    'description' => '야간 21:00~익일 08:50 글로벌 변동성에 대응하며 트레일링 스탑으로 수익을 지키는 설정입니다.',
-                    'updatedAt' => date('c'),
-                    'slots' => []
-                ]
-            ]
-        ];
-
-        $merged = array_replace_recursive($defaultScheduler, $decoded);
-        $merged['currentPeriod'] = $curPeriod;
-        $merged['currentPresetKey'] = $curPresetKey;
-
-        // 구버전 A/B/C 모드 명칭 자동 보정
-        if (isset($merged['userPresets']['PRESET_A']['name']) && strpos($merged['userPresets']['PRESET_A']['name'], '메모리') !== false) {
-            $merged['userPresets']['PRESET_A']['name'] = '오전 모드 (오전장 돌파)';
-        }
-        if (isset($merged['userPresets']['PRESET_B']['name']) && strpos($merged['userPresets']['PRESET_B']['name'], '메모리') !== false) {
-            $merged['userPresets']['PRESET_B']['name'] = '오후 모드 (오후장 횡보방어)';
-        }
-        if (isset($merged['userPresets']['PRESET_C']['name']) && strpos($merged['userPresets']['PRESET_C']['name'], '메모리') !== false) {
-            $merged['userPresets']['PRESET_C']['name'] = '야간 모드 (야간장 트레일링)';
-        }
-
-        echo json_encode(array_merge(['success' => true], $merged), JSON_UNESCAPED_UNICODE);
+        echo json_encode(array_merge(['success' => true], getSchedulerDataFromDb($pdo)), JSON_UNESCAPED_UNICODE);
         exit;
     }
 

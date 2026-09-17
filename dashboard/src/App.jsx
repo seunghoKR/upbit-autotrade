@@ -445,7 +445,13 @@ export default function App() {
         if (status.settings) setSettings(status.settings);
         if (status.accounts) setAccounts(status.accounts);
         if (status.btcProtection) setBtcProtection(status.btcProtection);
-        if (status.scheduler) setSchedulerData(status.scheduler);
+        if (status.scheduler) {
+          setSchedulerData(status.scheduler);
+        } else {
+          getSchedulerStatus().then(sch => {
+            if (sch && sch.success !== false) setSchedulerData(sch);
+          }).catch(() => {});
+        }
         if (status.dailyKillSwitch) setKillSwitchData(status.dailyKillSwitch);
         if (status.accountError) setAccountError(status.accountError);
         else setAccountError(null);

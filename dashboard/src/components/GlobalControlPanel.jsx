@@ -184,8 +184,34 @@ export default function GlobalControlPanel({
     }
   };
 
-  const currentPresetKey = schedulerData?.currentPresetKey || 'PRESET_A';
-  const currentPeriod = schedulerData?.currentPeriod || 'MORNING';
+  // KST 기준 현재 시간 계산 (서버 응답 지연 또는 schedulerData 부재 시 대비 백업 계산)
+  const getFallbackPeriod = () => {
+    try {
+      const now = new Date();
+      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+      const kst = new Date(utc + (9 * 60 * 60000));
+      const curMin = kst.getHours() * 60 + kst.getMinutes();
+
+      const [mH, mM] = (timeTable?.MORNING_START || '08:50').split(':').map(Number);
+      const [aH, aM] = (timeTable?.AFTERNOON_START || '12:00').split(':').map(Number);
+      const [nH, nM] = (timeTable?.NIGHT_START || '21:00').split(':').map(Number);
+
+      const mMin = mH * 60 + mM;
+      const aMin = aH * 60 + aM;
+      const nMin = nH * 60 + nM;
+
+      if (curMin >= mMin && curMin < aMin) return 'MORNING';
+      if (curMin >= aMin && curMin < nMin) return 'AFTERNOON';
+      return 'NIGHT';
+    } catch {
+      return 'NIGHT';
+    }
+  };
+
+  const currentPeriod = schedulerData?.currentPeriod || getFallbackPeriod();
+  const currentPresetKey = schedulerData?.currentPresetKey || (
+    currentPeriod === 'MORNING' ? 'PRESET_A' : (currentPeriod === 'AFTERNOON' ? 'PRESET_B' : 'PRESET_C')
+  );
   const isKillTriggered = killSwitchData?.isTriggered || false;
   const dailyProfitKrw = killSwitchData?.dailyRealizedProfitKrw || 0;
   const capital = killSwitchData?.totalCapitalKrw || 1000000;
