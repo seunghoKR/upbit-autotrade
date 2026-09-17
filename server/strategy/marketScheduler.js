@@ -29,44 +29,48 @@ class MarketScheduler {
       NIGHT_START: '21:00'      // 21:00~익일 08:50
     };
 
-    // ⏰ [제안서 2부/3.5.0] 장세별 프리셋 드롭다운 매핑 (오전/오후/야간)
+    // ⏰ [제안서 2부/3.5.0] 장세별 프리셋 매핑 (오전/오후/야간)
     this.scheduleMapping = {
       MORNING: 'PRESET_A',
       AFTERNOON: 'PRESET_B',
       NIGHT: 'PRESET_C'
     };
 
-    // 🔀 [제안서 1부/3.5.0] 사용자 정의 동적 프리셋 템플릿 (Preset A, B, C - 자동차 메모리 시트 방식 빈 템플릿)
+    // 🔀 사용자 정의 동적 프리셋 템플릿 (오전/오후/야간 모드)
     this.userPresets = {
       PRESET_A: {
         id: 'PRESET_A',
-        name: 'A모드 (메모리 1번)',
-        description: '대표님이 설정한 1~12번 슬롯 설정을 자유롭게 저장/불러오는 빈 템플릿입니다.',
+        name: '오전 모드 (오전장 돌파)',
+        description: '오전 08:50~12:00 변동성 돌파 및 시가 베팅에 최적화된 1~12번 슬롯 설정입니다.',
         updatedAt: new Date().toISOString(),
         slots: []
       },
       PRESET_B: {
         id: 'PRESET_B',
-        name: 'B모드 (메모리 2번)',
-        description: '오후장 또는 특정 장세에 맞춘 1~12번 슬롯 커스텀 설정 보관 공간입니다.',
+        name: '오후 모드 (오후장 횡보방어)',
+        description: '오후 12:00~21:00 지루한 횡보 구간에서 뇌동매매를 방지하고 저점 반등을 노리는 설정입니다.',
         updatedAt: new Date().toISOString(),
         slots: []
       },
       PRESET_C: {
         id: 'PRESET_C',
-        name: 'C모드 (메모리 3번)',
-        description: '야간장 또는 급변동 대응용 1~12번 슬롯 커스텀 설정 보관 공간입니다.',
+        name: '야간 모드 (야간장 트레일링)',
+        description: '야간 21:00~익일 08:50 글로벌 변동성에 대응하며 트레일링 스탑으로 수익을 지키는 설정입니다.',
         updatedAt: new Date().toISOString(),
         slots: []
       }
     };
 
+    const initialPeriod = this.determineCurrentPresetKey();
+    this.currentPeriod = initialPeriod;
+    this.currentPresetKey = this.scheduleMapping[initialPeriod] || initialPeriod;
+
     // 👑 [Last Action Wins 우선순위 추적] 자동 스케줄러와 수동 전환 간 가장 마지막 명령 우선
-    this.lastScheduledPeriod = null; // 마지막으로 스케줄 시간 경계에 의해 자동 발동된 장세
+    this.lastScheduledPeriod = initialPeriod;
     this.lastAction = {
-      source: 'SYSTEM_INIT', // 'AUTO_TIME_SCHEDULE' | 'MANUAL_PERIOD_BUTTON' | 'MANUAL_USER'
-      period: 'MORNING',
-      presetKey: 'PRESET_A',
+      source: 'SYSTEM_INIT',
+      period: initialPeriod,
+      presetKey: this.currentPresetKey,
       timestamp: new Date().toISOString()
     };
 
@@ -228,8 +232,22 @@ class MarketScheduler {
    * 현재 KST 시각에 해당하는 프리셋 키 반환
    */
   determineCurrentPresetKey() {
-    const now = new Date();
-    const curMin = now.getHours() * 60 + now.getMinutes();
+    // 한국 표준시(KST, UTC+9) 기준 시간 계산
+    const kstFormatter = new Intl.DateTimeFormat('ko-KR', {
+      timeZone: 'Asia/Seoul',
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: false
+    });
+    const parts = kstFormatter.formatToParts(new Date());
+    let kstHour = 0;
+    let kstMinute = 0;
+    for (const part of parts) {
+      if (part.type === 'hour') kstHour = parseInt(part.value, 10);
+      if (part.type === 'minute') kstMinute = parseInt(part.value, 10);
+    }
+    if (kstHour === 24) kstHour = 0;
+    const curMin = kstHour * 60 + kstMinute;
 
     const [mH, mM] = this.timeTable.MORNING_START.split(':').map(Number);
     const [aH, aM] = this.timeTable.AFTERNOON_START.split(':').map(Number);

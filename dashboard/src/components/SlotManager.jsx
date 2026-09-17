@@ -76,12 +76,21 @@ export default function SlotManager({
   selectedSlotId = 1,
   onSelectSlot,
   krwBalance = 1000000,
-  currentUser = null
+  currentUser = null,
+  strategyViewMode = 'RECOMMENDED'
 }) {
   const displaySlots = (Array.isArray(slots) && slots.length > 0) ? slots : DEFAULT_SLOTS;
 
   const [editingSlotId, setEditingSlotId] = useState(null);
   const [activeTabSlotId, setActiveTabSlotId] = useState(1);
+  const [expandedSpecSlots, setExpandedSpecSlots] = useState({});
+
+  const toggleSpecExpand = (slotId) => {
+    setExpandedSpecSlots(prev => ({
+      ...prev,
+      [slotId]: !prev[slotId]
+    }));
+  };
   const [editForm, setEditForm] = useState({
     tradeAmountKrw: 50000,
     strategyMode: 'SCALPING',
@@ -158,6 +167,7 @@ export default function SlotManager({
 
     setEditForm({
       tradeAmountKrw: slot.tradeAmountKrw !== undefined ? slot.tradeAmountKrw : 50000,
+      targetMarket: slot.targetMarket || '',
       strategyMode: inferredMode,
       strategyType: slot.strategyType || 'RECOMMENDED',
       surgeWindowSeconds: slot.surgeWindowSeconds !== undefined ? slot.surgeWindowSeconds : 5,
@@ -197,11 +207,15 @@ export default function SlotManager({
     }
 
     if (onUpdateSlot) {
-      const targetProfit = (editForm.trailingTier1TargetProfitPct !== undefined && editForm.trailingTier1TargetProfitPct !== '')
-        ? Number(editForm.trailingTier1TargetProfitPct)
-        : ((editForm.targetProfitPct !== undefined && editForm.targetProfitPct !== '') 
-            ? Number(editForm.targetProfitPct) 
+      const targetProfit = (editForm.targetProfitPct !== undefined && editForm.targetProfitPct !== '')
+        ? Number(editForm.targetProfitPct)
+        : ((editForm.trailingTier1TargetProfitPct !== undefined && editForm.trailingTier1TargetProfitPct !== '') 
+            ? Number(editForm.trailingTier1TargetProfitPct) 
             : 3.0);
+
+      const stopLoss = (editForm.stopLossPct !== undefined && editForm.stopLossPct !== '')
+        ? parseFloat(editForm.stopLossPct)
+        : 2.0;
 
       const currentSlot = slots.find(s => (s.id === slotId || s.slotId === slotId));
       const swingEok = Number(editForm.swingMinTradePrice24hEok) > 0 ? Number(editForm.swingMinTradePrice24hEok) : 100;
@@ -209,6 +223,7 @@ export default function SlotManager({
       onUpdateSlot(slotId, {
         isEnabled: currentSlot ? currentSlot.isEnabled : true,
         tradeAmountKrw: editForm.tradeAmountKrw,
+        targetMarket: editForm.targetMarket !== undefined ? editForm.targetMarket : (currentSlot?.targetMarket || 'KRW-BTC'),
         strategyMode: editForm.strategyMode,
         strategyType: editForm.strategyType,
         surgeWindowSeconds: editForm.surgeWindowSeconds,
@@ -237,7 +252,7 @@ export default function SlotManager({
         targetProfitPct: targetProfit,
         trailingTargetProfitPct: targetProfit,
         trailingCallbackPct: parseFloat(editForm.trailingTier1CallbackPct) || 0.5,
-        stopLossPct: parseFloat(editForm.stopLossPct) || 2.0,
+        stopLossPct: stopLoss,
         useAtrStopLoss: Boolean(editForm.useAtrStopLoss)
       });
     }
@@ -275,16 +290,28 @@ export default function SlotManager({
   return (
     <div className="space-y-4 max-w-full min-w-0">
       {/* 1. 상단 슬롯 헤더 & 1~12번 슬롯 탭 네비게이션 통합 바 (1줄 콤팩트 디자인) */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl backdrop-blur-md max-w-full min-w-0">
+      <div className={`flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-2xl bg-slate-900/90 border shadow-xl backdrop-blur-md max-w-full min-w-0 transition-all ${
+        strategyViewMode === 'RECOMMENDED' 
+          ? 'border-emerald-500/30 shadow-emerald-950/20' 
+          : 'border-indigo-500/35 shadow-indigo-950/30'
+      }`}>
         <div className="flex items-center gap-2 shrink-0">
-          <div className="p-1.5 sm:p-2 rounded-xl bg-gradient-to-tr from-emerald-500/20 via-teal-500/15 to-indigo-500/20 border border-emerald-500/30 text-emerald-400">
+          <div className={`p-1.5 sm:p-2 rounded-xl border ${
+            strategyViewMode === 'RECOMMENDED'
+              ? 'bg-gradient-to-tr from-emerald-500/20 via-teal-500/15 to-emerald-500/20 border-emerald-500/40 text-emerald-400'
+              : 'bg-gradient-to-tr from-indigo-500/20 via-purple-500/15 to-indigo-500/20 border-indigo-500/40 text-indigo-400'
+          }`}>
             <Layers className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
           </div>
           <div className="flex items-center gap-2">
             <h3 className="font-black text-slate-100 text-xs sm:text-sm tracking-tight whitespace-nowrap">
-              멀티 슬롯 실시간 자동매매
+              {strategyViewMode === 'RECOMMENDED' ? '🌿 누리오 AI 추천전략 멀티 슬롯' : '⚡ 멀티 슬롯 커스텀 전략'}
             </h3>
-            <span className="text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-bold border border-emerald-500/30 whitespace-nowrap">
+            <span className={`text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full font-bold border whitespace-nowrap ${
+              strategyViewMode === 'RECOMMENDED'
+                ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                : 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
+            }`}>
               {displaySlots.filter(s => s.isEnabled).length}/{displaySlots.length} 가동
             </span>
           </div>
@@ -300,20 +327,24 @@ export default function SlotManager({
               const isSwing = slot.strategyMode === 'TREND_SWING';
 
               const tabColorClass = isSelected
-                ? (isSwing 
+                ? (strategyViewMode === 'RECOMMENDED'
+                    ? 'bg-emerald-500 text-black border-emerald-400 font-black shadow-md shadow-emerald-500/30 scale-105 ring-1 ring-emerald-300 relative z-10'
+                    : isSwing 
                     ? 'bg-sky-400 text-black border-sky-300 font-black shadow-md shadow-sky-500/30 scale-105 ring-1 ring-sky-300 relative z-10' 
                     : isBreakout 
                     ? 'bg-amber-400 text-black border-amber-300 font-black shadow-md shadow-amber-500/30 scale-105 ring-1 ring-amber-300 relative z-10' 
-                    : 'bg-emerald-500 text-black border-emerald-400 font-black shadow-md shadow-emerald-500/30 scale-105 ring-1 ring-emerald-300 relative z-10')
+                    : 'bg-indigo-500 text-white border-indigo-400 font-black shadow-md shadow-indigo-500/30 scale-105 ring-1 ring-indigo-300 relative z-10')
                 : !slot.isEnabled
                   ? 'bg-slate-950/60 text-slate-500 border-slate-800 hover:text-slate-400'
                   : hasPosition
                   ? 'bg-slate-800/90 text-rose-300 border-rose-500/40 hover:bg-slate-800 shadow-sm shadow-rose-950/50'
+                  : strategyViewMode === 'RECOMMENDED'
+                  ? 'bg-slate-950/90 text-emerald-400 border-emerald-500/30 hover:text-white hover:bg-emerald-950/50 hover:border-emerald-400'
                   : isSwing
                   ? 'bg-slate-950/90 text-sky-400 border-sky-500/30 hover:text-white hover:bg-sky-950/50 hover:border-sky-400'
                   : isBreakout
                   ? 'bg-slate-950/90 text-amber-400 border-amber-500/30 hover:text-white hover:bg-amber-950/50 hover:border-amber-400'
-                  : 'bg-slate-950/90 text-emerald-400 border-emerald-500/30 hover:text-white hover:bg-emerald-950/50 hover:border-emerald-400';
+                  : 'bg-slate-950/90 text-indigo-400 border-indigo-500/30 hover:text-white hover:bg-indigo-950/50 hover:border-indigo-400';
 
               return (
                 <button
@@ -327,7 +358,7 @@ export default function SlotManager({
 
                   {/* 데스크탑(sm 이상): 코인명/전략 모드 상세 텍스트 */}
                   <span className="hidden sm:inline font-normal truncate max-w-[48px] sm:max-w-[60px]">
-                    {!slot.isEnabled ? '정지' : (hasPosition && slot.targetMarket ? slot.targetMarket.replace('KRW-', '') : (isSwing ? '스윙' : (isBreakout ? '돌파' : '스캘핑')))}
+                    {!slot.isEnabled ? '정지' : (hasPosition && slot.targetMarket ? slot.targetMarket.replace('KRW-', '') : (strategyViewMode === 'RECOMMENDED' ? '추천' : (isSwing ? '스윙' : (isBreakout ? '돌파' : '스캘핑'))))}
                   </span>
 
                   {/* 상태 아이콘: 모바일에서는 포지션 보유 시 펄스 점만 표시, 데스크탑에서는 풀 아이콘 표시 */}
@@ -335,12 +366,14 @@ export default function SlotManager({
                     <span className="hidden sm:inline text-[9px] text-slate-500 font-mono">⏸️</span>
                   ) : hasPosition ? (
                     <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse shrink-0"></span>
+                  ) : strategyViewMode === 'RECOMMENDED' ? (
+                    <span className="hidden sm:inline text-[9px] text-emerald-400" title="누리오 AI 추천">🌿</span>
                   ) : isSwing ? (
                     <span className="hidden sm:inline text-[9px] text-sky-400" title="정배열 추세 스윙">🌊</span>
                   ) : isBreakout ? (
                     <span className="hidden sm:inline text-[9px] text-amber-400" title="당일 신고가 돌파">🚀</span>
                   ) : (
-                    <span className="hidden sm:inline text-[9px] text-emerald-400" title="초단타 스캘핑">⚡</span>
+                    <span className="hidden sm:inline text-[9px] text-indigo-400" title="초단타 스캘핑">⚡</span>
                   )}
                 </button>
               );
@@ -404,6 +437,10 @@ export default function SlotManager({
                   ? (isSelected ? 'bg-slate-950 border-slate-700 ring-2 ring-slate-500 shadow-xl' : 'bg-slate-950/90 border-slate-800/80 opacity-60 grayscale-[25%]')
                   : isSurgeCounting
                   ? 'bg-amber-950/40 border-amber-400 ring-2 ring-amber-400 shadow-2xl shadow-amber-500/30 animate-pulse'
+                  : strategyViewMode === 'RECOMMENDED'
+                  ? (isSelected
+                      ? 'bg-gradient-to-b from-emerald-950/60 via-slate-900/95 to-slate-950 border-emerald-400 shadow-2xl shadow-emerald-500/30 ring-2 ring-emerald-400/80 scale-[1.01]'
+                      : 'bg-gradient-to-b from-emerald-950/25 via-slate-900/90 to-slate-950 border-emerald-500/40 hover:border-emerald-400 hover:shadow-lg hover:shadow-emerald-500/15')
                   : isSwing
                   ? (isSelected
                       ? 'bg-gradient-to-b from-sky-950/60 via-slate-900/95 to-slate-950 border-sky-400 ring-2 ring-sky-400/80 shadow-2xl shadow-sky-500/30 scale-[1.01]'
@@ -412,24 +449,22 @@ export default function SlotManager({
                   ? (isSelected
                       ? 'bg-gradient-to-b from-amber-950/60 via-slate-900/95 to-slate-950 border-amber-400 ring-2 ring-amber-400/80 shadow-2xl shadow-amber-500/30 scale-[1.01]'
                       : 'bg-gradient-to-b from-amber-950/30 via-slate-900/90 to-slate-950 border-amber-500/50 hover:border-amber-400 hover:shadow-lg hover:shadow-amber-500/20')
-                  : isSelfStrategy
-                  ? (isSelected
-                      ? 'bg-gradient-to-b from-purple-950/60 via-slate-900/95 to-slate-950 border-purple-400 shadow-2xl shadow-purple-500/30 ring-2 ring-purple-400 scale-[1.01]'
-                      : 'bg-gradient-to-b from-purple-950/30 via-slate-900/90 to-slate-950 border-purple-500/60 hover:border-purple-400 hover:shadow-lg hover:shadow-purple-500/15')
                   : (isSelected
-                      ? 'bg-gradient-to-b from-emerald-950/60 via-slate-900/95 to-slate-950 border-emerald-400 shadow-2xl shadow-emerald-500/30 ring-2 ring-emerald-400/80 scale-[1.01]'
-                      : 'bg-gradient-to-b from-emerald-950/25 via-slate-900/90 to-slate-950 border-emerald-500/50 hover:border-emerald-400 hover:shadow-lg hover:shadow-emerald-500/15')
+                      ? 'bg-gradient-to-b from-indigo-950/60 via-slate-900/95 to-slate-950 border-indigo-400 shadow-2xl shadow-indigo-500/30 ring-2 ring-indigo-400 scale-[1.01]'
+                      : 'bg-gradient-to-b from-indigo-950/30 via-slate-900/90 to-slate-950 border-indigo-500/60 hover:border-indigo-400 hover:shadow-lg hover:shadow-indigo-500/15')
               }`}
             >
               {/* 🌟 전략 모드별 상단 컬러 악센트 라인 (카드 상단 가로 줄) */}
               <div className={`absolute top-0 left-0 right-0 h-1.5 sm:h-2 shrink-0 ${
                 !slot.isEnabled
                   ? 'bg-slate-700'
+                  : strategyViewMode === 'RECOMMENDED'
+                  ? 'bg-gradient-to-r from-emerald-400 via-teal-400 to-green-500 shadow-md shadow-emerald-500/50'
                   : isSwing
                   ? 'bg-gradient-to-r from-sky-400 via-cyan-400 to-indigo-500 shadow-md shadow-sky-500/50'
                   : isBreakout
                   ? 'bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-500 shadow-md shadow-amber-500/50'
-                  : 'bg-gradient-to-r from-emerald-400 via-teal-400 to-green-500 shadow-md shadow-emerald-500/50'
+                  : 'bg-gradient-to-r from-indigo-400 via-purple-400 to-violet-500 shadow-md shadow-indigo-500/50'
               }`} />
 
               {/* 🔒 [무료방문자 승인 대기] 락 오버레이 */}
@@ -463,13 +498,13 @@ export default function SlotManager({
                   <div className={`px-3 py-1 rounded-xl text-sm sm:text-base font-black flex items-center justify-center border shadow-sm shrink-0 whitespace-nowrap ${
                     !slot.isEnabled
                       ? 'bg-slate-800 text-slate-400 border-slate-700'
+                      : strategyViewMode === 'RECOMMENDED'
+                      ? 'bg-emerald-500/25 text-emerald-300 border-emerald-400/60 shadow-emerald-500/20'
                       : isSwing
                       ? 'bg-sky-500/25 text-sky-300 border-sky-400/60 shadow-sky-500/20'
                       : isBreakout
                       ? 'bg-amber-500/25 text-amber-300 border-amber-400/60 shadow-amber-500/20'
-                      : (isSelfStrategy 
-                          ? 'bg-purple-500/25 text-purple-200 border-purple-400/60 shadow-purple-500/20' 
-                          : 'bg-emerald-500/25 text-emerald-300 border-emerald-400/60 shadow-emerald-500/20')
+                      : 'bg-indigo-500/25 text-indigo-200 border-indigo-400/60 shadow-indigo-500/20'
                   }`}>
                     <span className="flex items-center gap-1.5">
                       {hasPosition && <span className="w-2 h-2 rounded-full bg-rose-400 animate-ping" />}
@@ -477,19 +512,21 @@ export default function SlotManager({
                     </span>
                   </div>
 
-                  {/* 전략 모드 뱃지 (스캘핑 / 신고가 돌파 / 추세 스윙) */}
+                  {/* 전략 모드 뱃지 (스캘핑 / 신고가 돌파 / 추세 스윙 / 추천) */}
                   <span className={`text-xs px-2.5 py-1 rounded-lg font-black tracking-tight border shadow-sm shrink-0 whitespace-nowrap ${
                     !slot.isEnabled
                       ? 'bg-slate-900 text-slate-500 border-slate-800'
+                      : strategyViewMode === 'RECOMMENDED'
+                      ? 'bg-emerald-500/20 text-emerald-200 border-emerald-400/50 shadow-sm shadow-emerald-500/20'
                       : isSwing
                       ? 'bg-sky-500/20 text-sky-200 border-sky-400/50 shadow-sm shadow-sky-500/20'
                       : isBreakout
                       ? 'bg-amber-500/20 text-amber-200 border-amber-400/50 shadow-sm shadow-amber-500/20'
-                      : 'bg-emerald-500/20 text-emerald-200 border-emerald-400/50 shadow-sm shadow-emerald-500/20'
+                      : 'bg-indigo-500/20 text-indigo-200 border-indigo-400/50 shadow-sm shadow-indigo-500/20'
                   }`}>
-                    {isSwing 
-                      ? '🌊 추세 스윙' 
-                      : (isBreakout ? '🚀 신고가 돌파' : (isSelfStrategy ? '⚡ 셀프' : '⚡ 스캘핑'))}
+                    {strategyViewMode === 'RECOMMENDED'
+                      ? '🌿 AI 추천'
+                      : (isSwing ? '🌊 추세 스윙' : (isBreakout ? '🚀 신고가 돌파' : '⚡ 커스텀 스캘핑'))}
                   </span>
 
                   {/* 🚀 와이드 트레일링 2단계 대시세 진입 뱃지 */}
@@ -619,59 +656,274 @@ export default function SlotManager({
                   </div>
                 </div>
               ) : isEditing ? (
-                /* ⚙️ 수정 모드 폼 (전략 모드 선택 & 전용 UI) */
+                /* ⚙️ 수정 모드 폼 */
                 <div className="flex-1 flex flex-col justify-center my-1.5 space-y-2.5" onClick={(e) => e.stopPropagation()}>
-                  
-                  {/* 🌟 1. 최상단 [전략 모드] 3단 선택 탭 */}
-                  <div className="bg-slate-950/80 p-2 rounded-xl border border-slate-800 space-y-1.5 shadow-inner">
-                    <div className="flex items-center justify-between text-[11px] font-bold">
-                      <span className="text-slate-300 flex items-center gap-1">
-                        <Sliders className="w-3.5 h-3.5 text-indigo-400" />
-                        <span>전략 모드 선택</span>
-                      </span>
-                      <span className="text-[10px] text-slate-500 font-normal">
-                        {editForm.strategyMode === 'SCALPING' ? '1~8번 권장' : (editForm.strategyMode === 'BREAKOUT_DAY_HIGH' ? '9~10번 권장' : '11~12번 권장')}
-                      </span>
+                  {strategyViewMode === 'RECOMMENDED' ? (
+                    /* 🌿 [추천전략 모드] 슬롯 수정창: 핵심 4가지 설정(매수금액, 목표익절, 원금손절, 대상코인)만 심플하게 제공 */
+                    <div className="space-y-2.5">
+                      {/* 헤더 배지 */}
+                      <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/40 flex items-center justify-between shadow-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">🌿</span>
+                          <div>
+                            <span className="text-xs font-black text-emerald-300 block">{slot.slotId}번 슬롯 AI 추천전략 설정</span>
+                            <span className="text-[10px] text-slate-300 font-medium">
+                              {editForm.targetMarket ? formatMarketName(editForm.targetMarket) : '⚡ 전종목 AI 실시간 급등 포착'}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 font-mono">
+                          자동 최적화
+                        </span>
+                      </div>
+
+                      {/* 💰 1. 1회 매수금액 (KRW) */}
+                      <div className="bg-slate-950/80 p-2.5 rounded-xl border border-emerald-500/30 space-y-1.5 shadow-inner">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs text-slate-200 font-bold flex items-center gap-1">
+                            <span>💰 1회 매수금액</span>
+                            <span className="text-[10px] text-slate-400 font-normal">(주문 1회당 투입금)</span>
+                          </label>
+                          <span className="text-[11px] text-slate-400 font-mono">
+                            가능: <strong className="text-emerald-400">{Math.round(krwBalance).toLocaleString()}</strong>원
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={editForm.tradeAmountKrw !== undefined ? editForm.tradeAmountKrw : 50000}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/[^0-9]/g, '');
+                              setEditForm(prev => ({ ...prev, tradeAmountKrw: val === '' ? '' : Number(val) }));
+                            }}
+                            placeholder="50000"
+                            className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-right text-emerald-300 font-mono text-sm font-bold focus:outline-none focus:border-emerald-400"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setEditForm(prev => ({ ...prev, tradeAmountKrw: Math.max(0, Math.floor(krwBalance)) }))}
+                            className="px-3 py-1.5 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 text-xs font-bold border border-emerald-500/40 cursor-pointer active:scale-95 transition-all"
+                          >
+                            최대
+                          </button>
+                        </div>
+                        {editForm.tradeAmountKrw > 0 && editForm.tradeAmountKrw < 5000 && (
+                          <p className="text-[10px] text-rose-400 font-bold flex items-center gap-1 pt-0.5">
+                            <AlertTriangle className="w-3 h-3 shrink-0" />
+                            <span>업비트 최소 주문금액은 5,000원 이상이어야 합니다.</span>
+                          </p>
+                        )}
+                      </div>
+
+                      {/* 🎯 2. 목표 익절선 (+%) + 원클릭 프리셋 */}
+                      <div className="bg-slate-950/80 p-2.5 rounded-xl border border-emerald-500/30 space-y-2 shadow-inner">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs text-slate-200 font-bold flex items-center gap-1">
+                            <span>🎯 목표 익절선 (+%)</span>
+                            <span className="text-[10px] text-slate-400 font-normal">(다단 트레일링 자동 익절)</span>
+                          </label>
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs font-bold text-rose-400">+</span>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={editForm.targetProfitPct !== undefined ? editForm.targetProfitPct : 3.0}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^0-9.]/g, '');
+                                setEditForm(prev => ({ 
+                                  ...prev, 
+                                  targetProfitPct: val, 
+                                  trailingTier1TargetProfitPct: val 
+                                }));
+                              }}
+                              className="w-14 bg-slate-900 border border-rose-500/40 rounded-lg py-1 text-center font-mono text-xs font-bold text-rose-400 focus:border-rose-400 focus:outline-none"
+                            />
+                            <span className="text-xs font-bold text-rose-400">%</span>
+                          </div>
+                        </div>
+                        {/* 원클릭 익절 프리셋 버튼 */}
+                        <div className="grid grid-cols-3 gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setEditForm(prev => ({ ...prev, targetProfitPct: 3.0, trailingTier1TargetProfitPct: 3.0 }))}
+                            className={`py-1 px-1.5 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
+                              Number(editForm.targetProfitPct) === 3.0
+                                ? 'bg-rose-500/30 text-rose-300 border-rose-400 shadow-sm font-black'
+                                : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
+                            }`}
+                          >
+                            안정형 (+3%)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditForm(prev => ({ ...prev, targetProfitPct: 5.0, trailingTier1TargetProfitPct: 5.0 }))}
+                            className={`py-1 px-1.5 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
+                              Number(editForm.targetProfitPct) === 5.0
+                                ? 'bg-rose-500/30 text-rose-300 border-rose-400 shadow-sm font-black'
+                                : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
+                            }`}
+                          >
+                            수익형 (+5%)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditForm(prev => ({ ...prev, targetProfitPct: 10.0, trailingTier1TargetProfitPct: 10.0 }))}
+                            className={`py-1 px-1.5 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
+                              Number(editForm.targetProfitPct) === 10.0
+                                ? 'bg-rose-500/30 text-rose-300 border-rose-400 shadow-sm font-black'
+                                : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
+                            }`}
+                          >
+                            대시세 (+10%)
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 🛡️ 3. 원금 손절선 (-%) + 원클릭 프리셋 */}
+                      <div className="bg-slate-950/80 p-2.5 rounded-xl border border-emerald-500/30 space-y-2 shadow-inner">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs text-slate-200 font-bold flex items-center gap-1">
+                            <span>🛡️ 원금 손절선 (-%)</span>
+                            <span className="text-[10px] text-slate-400 font-normal">(시장가 원금 방어)</span>
+                          </label>
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs font-bold text-blue-400">-</span>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={editForm.stopLossPct !== undefined ? editForm.stopLossPct : 2.0}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^0-9.]/g, '');
+                                setEditForm(prev => ({ ...prev, stopLossPct: val }));
+                              }}
+                              className="w-14 bg-slate-900 border border-blue-500/40 rounded-lg py-1 text-center font-mono text-xs font-bold text-blue-400 focus:border-blue-400 focus:outline-none"
+                            />
+                            <span className="text-xs font-bold text-blue-400">%</span>
+                          </div>
+                        </div>
+                        {/* 원클릭 손절 프리셋 버튼 */}
+                        <div className="grid grid-cols-3 gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setEditForm(prev => ({ ...prev, stopLossPct: 1.5 }))}
+                            className={`py-1 px-1.5 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
+                              Number(editForm.stopLossPct) === 1.5
+                                ? 'bg-blue-500/30 text-blue-300 border-blue-400 shadow-sm font-black'
+                                : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
+                            }`}
+                          >
+                            타이트 (-1.5%)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditForm(prev => ({ ...prev, stopLossPct: 2.0 }))}
+                            className={`py-1 px-1.5 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
+                              Number(editForm.stopLossPct) === 2.0
+                                ? 'bg-blue-500/30 text-blue-300 border-blue-400 shadow-sm font-black'
+                                : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
+                            }`}
+                          >
+                            표준 (-2.0%)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditForm(prev => ({ ...prev, stopLossPct: 3.0 }))}
+                            className={`py-1 px-1.5 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
+                              Number(editForm.stopLossPct) === 3.0
+                                ? 'bg-blue-500/30 text-blue-300 border-blue-400 shadow-sm font-black'
+                                : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
+                            }`}
+                          >
+                            여유 (-3.0%)
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 🪙 4. 매매 대상 코인 선택 */}
+                      <div className="bg-slate-950/80 p-2.5 rounded-xl border border-emerald-500/30 space-y-1.5 shadow-inner">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs text-slate-200 font-bold flex items-center gap-1">
+                            <span>🪙 매매 대상 코인</span>
+                          </label>
+                          <span className="text-[10px] text-emerald-400 font-medium">
+                            {editForm.targetMarket ? formatMarketName(editForm.targetMarket) : '전종목 실시간 감시'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setEditForm(prev => ({ ...prev, targetMarket: '' }))}
+                            className={`py-1 px-1.5 rounded-lg text-[10px] font-bold border transition cursor-pointer col-span-3 ${
+                              !editForm.targetMarket
+                                ? 'bg-emerald-500/30 text-emerald-300 border-emerald-400 shadow-sm font-black'
+                                : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
+                            }`}
+                          >
+                            ⚡ 전종목 실시간 급등 자동 포착 (AI 추천)
+                          </button>
+                          {['KRW-BTC', 'KRW-ETH', 'KRW-XRP', 'KRW-SOL', 'KRW-DOGE'].map((mkt) => {
+                            const sym = mkt.replace('KRW-', '');
+                            const isChosen = (editForm.targetMarket === mkt);
+                            return (
+                              <button
+                                key={mkt}
+                                type="button"
+                                onClick={() => setEditForm(prev => ({ ...prev, targetMarket: mkt }))}
+                                className={`py-1 px-1 rounded-lg text-[10px] font-bold border transition cursor-pointer ${
+                                  isChosen
+                                    ? 'bg-emerald-500/30 text-emerald-300 border-emerald-400 shadow-sm font-black'
+                                    : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
+                                }`}
+                              >
+                                {sym}
+                              </button>
+                            );
+                          })}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const custom = window.prompt('감시할 업비트 원화 마켓 코인 심볼을 입력해 주세요 (예: ADA, AVAX, SUI)', (editForm.targetMarket || '').replace('KRW-', ''));
+                              if (custom) {
+                                const clean = custom.trim().toUpperCase().replace('KRW-', '');
+                                setEditForm(prev => ({ ...prev, targetMarket: `KRW-${clean}` }));
+                              }
+                            }}
+                            className={`py-1 px-1 rounded-lg text-[10px] font-bold border transition cursor-pointer ${
+                              editForm.targetMarket && !['KRW-BTC', 'KRW-ETH', 'KRW-XRP', 'KRW-SOL', 'KRW-DOGE'].includes(editForm.targetMarket)
+                                ? 'bg-emerald-500/30 text-emerald-300 border-emerald-400 shadow-sm font-black'
+                                : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
+                            }`}
+                          >
+                            직접입력
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 🛡️ 5. AI 자동 안전 운용 안내 카드 */}
+                      <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 text-[11px] text-slate-300 space-y-1.5 leading-relaxed">
+                        <div className="flex items-center gap-1.5 font-bold text-emerald-400">
+                          <span>🛡️</span>
+                          <span>AI 전자동 안전 관리 가동 중</span>
+                        </div>
+                        <p className="text-slate-400 text-[10px] leading-normal">
+                          복잡한 수급 분석, 분봉 거래대금 필터링, 다단 트레일링 스탑은 누리오 AI가 장세에 맞춰 24시간 가장 안전하게 자동 운용합니다.
+                        </p>
+                      </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setEditForm(prev => ({ ...prev, strategyMode: 'SCALPING' }))}
-                        className={`py-1.5 px-1 rounded-lg text-[11px] font-extrabold border transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
-                          editForm.strategyMode === 'SCALPING'
-                            ? 'bg-emerald-500 text-black border-emerald-400 shadow-md ring-1 ring-emerald-400 font-black'
-                            : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200 hover:bg-slate-800'
-                        }`}
-                      >
-                        <span className="flex items-center gap-1">⚡ <span>모드 A</span></span>
-                        <span className="text-[9px] font-normal opacity-90">초단타 스캘핑</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditForm(prev => ({ ...prev, strategyMode: 'BREAKOUT_DAY_HIGH' }))}
-                        className={`py-1.5 px-1 rounded-lg text-[11px] font-extrabold border transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
-                          editForm.strategyMode === 'BREAKOUT_DAY_HIGH'
-                            ? 'bg-amber-500 text-black border-amber-400 shadow-md ring-1 ring-amber-400 font-black'
-                            : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200 hover:bg-slate-800'
-                        }`}
-                      >
-                        <span className="flex items-center gap-1">🚀 <span>모드 B</span></span>
-                        <span className="text-[9px] font-normal opacity-90">신고가 돌파</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditForm(prev => ({ ...prev, strategyMode: 'TREND_SWING' }))}
-                        className={`py-1.5 px-1 rounded-lg text-[11px] font-extrabold border transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
-                          editForm.strategyMode === 'TREND_SWING'
-                            ? 'bg-sky-500 text-black border-sky-400 shadow-md ring-1 ring-sky-400 font-black'
-                            : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200 hover:bg-slate-800'
-                        }`}
-                      >
-                        <span className="flex items-center gap-1">🌊 <span>모드 C</span></span>
-                        <span className="text-[9px] font-normal opacity-90">추세 스윙</span>
-                      </button>
-                    </div>
-                  </div>
+                  ) : (
+                    /* ⚡ [셀프전략 모드] 슬롯 수정창: 전문가용 전체 파라미터 노출 (모드 A/B/C 및 추천/셀프 선택 탭 완전 제거) */
+                    <>
+                      {/* 헤더 안내 */}
+                      <div className="p-2 rounded-xl bg-indigo-950/40 border border-indigo-500/30 flex items-center justify-between shadow-inner">
+                        <span className="text-xs text-indigo-300 font-bold flex items-center gap-1.5">
+                          <Sliders className="w-3.5 h-3.5 text-indigo-400" />
+                          <span>{slot.slotId}번 슬롯 알고리즘 세부 파라미터 튜닝</span>
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
+                          {editForm.strategyMode === 'BREAKOUT_DAY_HIGH' ? '신고가 돌파' : (editForm.strategyMode === 'TREND_SWING' ? '추세 스윙' : '초단타 스캘핑')}
+                        </span>
+                      </div>
 
                   {/* 💰 2. 매수금액(KRW) - 1줄 컴팩트 레이아웃 */}
                   <div className="bg-slate-950/60 p-2 rounded-xl border border-slate-800/80">
@@ -715,34 +967,34 @@ export default function SlotManager({
                   {/* ⚡ [모드 A] 초단타 스캘핑 조건창 (기존 v3.2) */}
                   {editForm.strategyMode === 'SCALPING' && (
                     <div className="space-y-2">
-                      {/* 추천 vs 셀프 선택 */}
-                      <div className="grid grid-cols-2 gap-1.5">
+                      {/* 💡 기본 추천값 원클릭 채우기 */}
+                      <div className="flex items-center justify-between p-2 rounded-xl bg-purple-950/40 border border-purple-500/30">
+                        <div className="flex items-center gap-1.5 text-xs text-purple-200 font-bold">
+                          <span>💡</span>
+                          <span>기본 추천값 불러오기</span>
+                        </div>
                         <button
                           type="button"
-                          onClick={() => setEditForm(prev => ({ ...prev, strategyType: 'RECOMMENDED' }))}
-                          className={`py-1 px-2 rounded-lg text-xs font-bold border transition flex items-center justify-center gap-1 ${
-                            editForm.strategyType === 'RECOMMENDED'
-                              ? 'bg-emerald-500 text-black border-emerald-400 shadow-md font-black'
-                              : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
-                          }`}
+                          onClick={() => {
+                            setEditForm(prev => ({
+                              ...prev,
+                              surgeWindowSeconds: 5,
+                              surgeRatePct: 1.5,
+                              surgeMinVolumeKrw: 10000000,
+                              surgeMinVolumeManwon: 1000,
+                              surgeBaseMode: 'VWAP',
+                              useReverseAlignmentFilter: true,
+                              useWhaleTickFilter: true
+                            }));
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold shadow transition cursor-pointer active:scale-95"
+                          title="5초 +1.5% 1000만원 VWAP 기본 추천값 적용"
                         >
-                          <span>🎯 추천전략 (운영자)</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditForm(prev => ({ ...prev, strategyType: 'SELF' }))}
-                          className={`py-1 px-2 rounded-lg text-xs font-bold border transition flex items-center justify-center gap-1 ${
-                            editForm.strategyType === 'SELF'
-                              ? 'bg-purple-600 text-white border-purple-400 shadow-md font-black'
-                              : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
-                          }`}
-                        >
-                          <span>🛠️ 셀프전략 (직접)</span>
+                          황금값 자동 채우기
                         </button>
                       </div>
 
-                      {editForm.strategyType === 'SELF' ? (
-                        <div className="space-y-2">
+                      <div className="space-y-2">
                           {/* 1. 자동 매수 조건 */}
                           <div className="p-2 rounded-xl bg-amber-950/20 border border-amber-500/30 space-y-1.5">
                             <div className="text-xs text-amber-300 flex items-center justify-between font-bold">
@@ -858,17 +1110,6 @@ export default function SlotManager({
                             </label>
                           </div>
                         </div>
-                      ) : (
-                        <div className="p-2 rounded-xl bg-emerald-950/20 border border-emerald-500/20 text-xs text-slate-300 space-y-1">
-                          <div className="flex items-center justify-between text-emerald-400 font-bold">
-                            <span>🎯 운영자 황금 스캘핑 프리셋</span>
-                            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 font-normal">자동 적용</span>
-                          </div>
-                          <p className="text-[10px] text-slate-400 leading-relaxed">
-                            • <strong>5초</strong> 내 <strong>+1.5%</strong> 급등 &amp; <strong>1,000만원</strong> 수급 시 자동 진입
-                          </p>
-                        </div>
-                      )}
                     </div>
                   )}
 
@@ -1229,6 +1470,8 @@ export default function SlotManager({
                       />
                     </button>
                   </div>
+                </>
+              )}
                 </div>
               ) : (
                 /* 📊 일반 보기 모드 */
@@ -1302,21 +1545,63 @@ export default function SlotManager({
                         </div>
                       ) : (
                         <span className={`text-xs font-mono font-bold block mt-1 ${
-                          isBreakout ? 'text-amber-400/90' : (isSwing ? 'text-sky-400/90' : 'text-emerald-400/90')
+                          strategyViewMode === 'RECOMMENDED'
+                            ? 'text-emerald-400/90'
+                            : (isBreakout ? 'text-amber-400/90' : (isSwing ? 'text-sky-400/90' : 'text-emerald-400/90'))
                         }`}>
-                          {isBreakout ? '🚀 신고가 상시 감시' : (isSwing ? '🌊 추세스윙 상시 감시' : '⚡ 스캘핑 상시 감시')}
+                          {strategyViewMode === 'RECOMMENDED'
+                            ? '🌿 AI 추천 상시 감시'
+                            : (isBreakout ? '🚀 신고가 상시 감시' : (isSwing ? '🌊 추세스윙 상시 감시' : '⚡ 스캘핑 상시 감시'))}
                         </span>
                       )}
                     </div>
                   </div>
 
-                  {/* 📊 신규 탑재: 전략 파라미터 미니 스펙 표 (전략 모드별 맞춤 출력) */}
-                  {(() => {
-                    const isBreakout = (slot.strategyMode === 'BREAKOUT_DAY_HIGH');
-                    const isSwing = (slot.strategyMode === 'TREND_SWING');
-                    const isSelf = (slot.strategyType === 'SELF');
+                  {/* 🌿 [추천전략 모드] 깔끔하고 직관적인 AI 추천 운용 요약 카드 */}
+                  {strategyViewMode === 'RECOMMENDED' ? (
+                    <div className="rounded-xl bg-slate-950/70 border border-emerald-500/30 p-2.5 space-y-2 text-xs font-mono shadow-inner shadow-emerald-950/20">
+                      <div className="flex items-center justify-between pb-1.5 border-b border-emerald-500/20 font-bold">
+                        <span className="flex items-center gap-1.5 text-emerald-300 font-sans">
+                          <span>🌿</span>
+                          <span>누리오 AI 스마트 운용 스펙</span>
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-sans">
+                          24시간 전자동
+                        </span>
+                      </div>
 
-                    if (isBreakout) {
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800/80 flex flex-col justify-between">
+                          <span className="text-slate-400 font-sans text-[10px]">목표 익절</span>
+                          <span className="font-extrabold text-rose-400 text-xs sm:text-[13px] mt-0.5">
+                            +{slot.targetProfitPct || slot.trailingTier1TargetProfitPct || 3.0}%
+                            <span className="text-[9px] text-slate-400 font-normal ml-1">(트레일링)</span>
+                          </span>
+                        </div>
+                        <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800/80 flex flex-col justify-between">
+                          <span className="text-slate-400 font-sans text-[10px]">원금 손절</span>
+                          <span className="font-extrabold text-blue-400 text-xs sm:text-[13px] mt-0.5">
+                            -{slot.stopLossPct || 2.0}%
+                            <span className="text-[9px] text-slate-400 font-normal ml-1">(시장가)</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800/80 flex items-center justify-between text-[11px]">
+                        <span className="text-slate-400 font-sans text-[10px]">매매 대상</span>
+                        <span className="font-bold text-slate-200 text-xs truncate max-w-[170px]">
+                          {slot.targetMarket ? formatMarketName(slot.targetMarket) : '⚡ 전종목 실시간 급등 포착'}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    /* 📊 [셀프전략 모드] 전략 파라미터 미니 스펙 표 (PRO 트레이더용) */
+                    (() => {
+                      const isBreakout = (slot.strategyMode === 'BREAKOUT_DAY_HIGH');
+                      const isSwing = (slot.strategyMode === 'TREND_SWING');
+                      const isSelf = true;
+
+                      if (isBreakout) {
                       const candleUnit = slot.breakoutCandleUnit || 1;
                       const minVolEok = slot.breakoutMinVolumeKrwEok || 5;
                       const t1Target = slot.trailingTier1TargetProfitPct !== undefined ? slot.trailingTier1TargetProfitPct : 3.0;
@@ -1513,7 +1798,7 @@ export default function SlotManager({
                         </div>
                       </div>
                     );
-                  })()}
+                  })())}
 
                   {/* 잔고 초과 시 알림 뱃지 */}
                   {isOverBalance && (

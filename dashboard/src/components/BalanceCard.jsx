@@ -9,7 +9,8 @@ export default function BalanceCard({
   accountError = null, 
   serverIp = '115.68.168.243',
   onOpenApiModal,
-  marketCount = 134
+  marketCount = 134,
+  strategyViewMode = 'RECOMMENDED'
 }) {
   const hasRealAccounts = Array.isArray(accounts) && accounts.length > 0 && accounts.some(a => parseFloat(a.balance || 0) > 0 || parseFloat(a.locked || 0) > 0);
   const [useMockSimulation, setUseMockSimulation] = useState(false);
@@ -89,14 +90,26 @@ export default function BalanceCard({
   return (
     <div className="space-y-2 max-w-full min-w-0">
       {/* 1. 상단 실시간 레이더 감시 상태 바 (IP 및 버전 중복 제거, 간결화) */}
-      <div className="flex items-center justify-between px-3.5 py-1.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-[11px] gap-2 shadow-sm max-w-full min-w-0">
-        <div className="flex items-center gap-2 text-emerald-300 font-medium min-w-0 truncate">
+      <div className={`flex items-center justify-between px-3.5 py-1.5 rounded-xl text-[11px] gap-2 shadow-sm max-w-full min-w-0 transition-all ${
+        strategyViewMode === 'RECOMMENDED'
+          ? 'bg-emerald-950/30 border border-emerald-500/30'
+          : 'bg-indigo-950/35 border border-indigo-500/35'
+      }`}>
+        <div className={`flex items-center gap-2 font-medium min-w-0 truncate ${
+          strategyViewMode === 'RECOMMENDED' ? 'text-emerald-300' : 'text-indigo-300'
+        }`}>
           <span className="relative flex h-2 w-2 shrink-0">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+              strategyViewMode === 'RECOMMENDED' ? 'bg-emerald-400' : 'bg-indigo-400'
+            }`}></span>
+            <span className={`relative inline-flex rounded-full h-2 w-2 ${
+              strategyViewMode === 'RECOMMENDED' ? 'bg-emerald-500' : 'bg-indigo-500'
+            }`}></span>
           </span>
           <span className="font-bold text-white text-xs sm:text-sm truncate">
-            실시간 <strong className="text-emerald-400 font-mono font-black">{marketCount || 288}개</strong> 전종목 감시 중
+            실시간 <strong className={`font-mono font-black ${
+              strategyViewMode === 'RECOMMENDED' ? 'text-emerald-400' : 'text-indigo-400'
+            }`}>{marketCount || 288}개</strong> 전종목 감시 중
           </span>
         </div>
 
@@ -110,7 +123,9 @@ export default function BalanceCard({
       </div>
 
       {/* 2-A. 모바일 전용 초슬림 통합 자산 카드 (md:hidden) */}
-      <div className="md:hidden bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 backdrop-blur-md shadow-lg space-y-3 max-w-full min-w-0">
+      <div className={`md:hidden bg-slate-900/90 border rounded-2xl p-3.5 backdrop-blur-md shadow-lg space-y-3 max-w-full min-w-0 transition-all ${
+        strategyViewMode === 'RECOMMENDED' ? 'border-emerald-500/25' : 'border-indigo-500/30'
+      }`}>
         {/* 상단 2분할 그리드: [총 평가 자산] | [주문 가능 원화] */}
         <div className="grid grid-cols-2 gap-2.5 divide-x divide-slate-800">
           {/* 총 평가 자산 */}

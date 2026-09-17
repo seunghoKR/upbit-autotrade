@@ -35,11 +35,14 @@ export default function Header({
   onLogout,
   marketCount = 134,
   btcProtection = null,
-  activeBuyRestriction = null
+  activeBuyRestriction = null,
+  strategyViewMode = 'RECOMMENDED',
+  onToggleStrategyMode
 }) {
   const role = user?.role || 'USER';
   const tier = user?.tier || 'FREE_TRIAL';
-  const isPrivileged = (role === 'OPERATOR' || role === 'ADMIN' || role === 'DEVELOPER' || tier === 'VIP');
+  const isOperator = (role === 'OPERATOR' || role === 'ADMIN' || role === 'DEVELOPER');
+  const isPrivileged = isOperator || tier === 'VIP';
   const isAdmin = (role === 'ADMIN' || role === 'DEVELOPER');
   const isPending = user?.approvalStatus === 'PENDING' && !isAdmin;
 
@@ -116,7 +119,11 @@ export default function Header({
     : user.nickname;
 
   return (
-    <header className="border-b border-slate-800 bg-slate-950/90 backdrop-blur-md sticky top-0 z-40 w-full max-w-full overflow-x-hidden">
+    <header className={`border-b ${
+      strategyViewMode === 'RECOMMENDED'
+        ? 'border-emerald-500/35 bg-slate-950/90 shadow-lg shadow-emerald-950/30'
+        : 'border-indigo-500/40 bg-slate-950/90 shadow-lg shadow-indigo-950/40'
+    } backdrop-blur-md sticky top-0 z-40 w-full max-w-full overflow-x-hidden transition-all duration-500`}>
       <div className="app-container-80 px-2.5 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between gap-1.5 sm:gap-2 flex-nowrap w-full min-w-0">
         
         {/* 좌측: 로고 & 👤 대표님 프로필 미니 위젯 (주황색 화살표 위치로 통합) */}
@@ -258,6 +265,66 @@ export default function Header({
         <div className="flex items-center gap-1.5 shrink-0">
           {/* 데스크톱 전용 메뉴 버튼 바 (md 이상에서만 표시) */}
           <div className="hidden md:flex items-center gap-1 sm:gap-1.5 shrink-0 justify-end">
+            {/* 🌟 추천전략 ⇄ 셀프전략 프리미엄 슬라이딩 스위치 */}
+            {onToggleStrategyMode && (
+              <div
+                onClick={onToggleStrategyMode}
+                className="relative flex items-center p-0.5 rounded-xl bg-slate-950/90 border border-slate-700/80 shadow-inner cursor-pointer select-none shrink-0 group transition-all"
+                title={strategyViewMode === 'RECOMMENDED' ? '클릭 시 셀프전략(PRO) 모드로 슬라이딩 전환합니다' : '클릭 시 AI 추천전략(EASY) 모드로 슬라이딩 전환합니다'}
+              >
+                {/* 슬라이딩 인디케이터 (부드럽게 이동하는 활성 배경 알약) */}
+                <div
+                  className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-lg transition-all duration-300 ease-out shadow-md ${
+                    strategyViewMode === 'RECOMMENDED'
+                      ? 'left-0.5 bg-gradient-to-r from-emerald-600 to-teal-600 border border-emerald-400/40 shadow-emerald-500/25'
+                      : 'left-[calc(50%)] bg-gradient-to-r from-indigo-600 to-purple-600 border border-indigo-400/40 shadow-indigo-500/25'
+                  }`}
+                />
+
+                {/* 1. 추천전략 탭 */}
+                <div
+                  className={`relative z-10 flex items-center gap-1 px-2.5 py-1 text-xs font-black transition-colors duration-200 ${
+                    strategyViewMode === 'RECOMMENDED'
+                      ? 'text-white'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <span>🌿</span>
+                  <span>추천전략</span>
+                  <span
+                    className={`text-[9px] px-1 py-0.2 rounded font-mono font-bold transition-all ${
+                      strategyViewMode === 'RECOMMENDED'
+                        ? 'bg-emerald-950/80 text-emerald-200 border border-emerald-400/40'
+                        : 'bg-slate-800/80 text-slate-500'
+                    }`}
+                  >
+                    EASY
+                  </span>
+                </div>
+
+                {/* 2. 셀프전략 탭 */}
+                <div
+                  className={`relative z-10 flex items-center gap-1 px-2.5 py-1 text-xs font-black transition-colors duration-200 ${
+                    strategyViewMode === 'CUSTOM'
+                      ? 'text-white'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <span>⚡</span>
+                  <span>셀프전략</span>
+                  <span
+                    className={`text-[9px] px-1 py-0.2 rounded font-mono font-bold transition-all ${
+                      strategyViewMode === 'CUSTOM'
+                        ? 'bg-indigo-950/80 text-indigo-200 border border-indigo-400/40'
+                        : 'bg-slate-800/80 text-slate-500'
+                    }`}
+                  >
+                    PRO
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* 1. 👤 마이페이지 */}
             <button
               onClick={onOpenMyPage}
@@ -282,16 +349,16 @@ export default function Header({
               </button>
             )}
 
-            {/* 3. 📊 전략관리 (운영자 / 개발자 / 관리자 전용 - 1개 전략 튜닝 & 제외코인) */}
-            {isPrivileged && (
+            {/* 3. 📊 시스템 추천전략 관리 (운영자 / 개발자 / 관리자 전용 - 마스터 추천 전략 튜닝 & 제외코인) */}
+            {isOperator && (
               <button
                 onClick={onOpenOperatorDashboard}
                 className="px-2 py-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/70 border border-emerald-500/40 text-emerald-200 text-xs font-bold transition cursor-pointer flex items-center gap-1 shrink-0 active:scale-95"
-                title="전략 파라미터 및 제외코인 관리"
+                title="운영자 전용 시스템 추천전략 파라미터 및 제외코인 관리"
               >
                 <BarChart3 className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="hidden sm:inline">전략관리</span>
-                <span className="sm:hidden text-[11px]">전략</span>
+                <span className="hidden sm:inline">시스템 추천전략 관리</span>
+                <span className="sm:hidden text-[11px]">추천전략</span>
               </button>
             )}
 
@@ -378,6 +445,43 @@ export default function Header({
       {/* 📱 모바일 드롭다운 메뉴 (삼선 메뉴 클릭 시 열림) */}
       {isMobileMenuOpen && (
         <div className="md:hidden border-t border-slate-800/90 bg-slate-950/98 backdrop-blur-xl px-4 py-4 space-y-3 shadow-2xl animate-in slide-in-from-top-2 duration-200">
+          {/* 🌟 추천전략 ⇄ 셀프전략 슬라이딩 스위치 (모바일) */}
+          {onToggleStrategyMode && (
+            <div
+              onClick={() => { onToggleStrategyMode(); }}
+              className="w-full relative flex items-center p-1 rounded-2xl bg-slate-900 border border-slate-700/80 shadow-inner cursor-pointer select-none"
+            >
+              {/* 슬라이딩 인디케이터 */}
+              <div
+                className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-xl transition-all duration-300 ease-out shadow-md ${
+                  strategyViewMode === 'RECOMMENDED'
+                    ? 'left-1 bg-gradient-to-r from-emerald-600 to-teal-600 border border-emerald-400/40 shadow-emerald-500/25'
+                    : 'left-[calc(50%)] bg-gradient-to-r from-indigo-600 to-purple-600 border border-indigo-400/40 shadow-indigo-500/25'
+                }`}
+              />
+
+              {/* 추천전략 탭 */}
+              <div
+                className={`flex-1 relative z-10 flex items-center justify-center gap-1.5 py-2 text-xs font-black transition-colors duration-200 ${
+                  strategyViewMode === 'RECOMMENDED' ? 'text-white' : 'text-slate-400'
+                }`}
+              >
+                <span>🌿</span>
+                <span>추천전략 (EASY)</span>
+              </div>
+
+              {/* 셀프전략 탭 */}
+              <div
+                className={`flex-1 relative z-10 flex items-center justify-center gap-1.5 py-2 text-xs font-black transition-colors duration-200 ${
+                  strategyViewMode === 'CUSTOM' ? 'text-white' : 'text-slate-400'
+                }`}
+              >
+                <span>⚡</span>
+                <span>셀프전략 (PRO)</span>
+              </div>
+            </div>
+          )}
+
           <div className="text-xs font-bold text-slate-400 px-1 mb-1">빠른 메뉴</div>
           <div className="grid grid-cols-2 gap-2">
             {/* 1. 마이페이지 */}
@@ -400,14 +504,14 @@ export default function Header({
               </button>
             )}
 
-            {/* 3. 전략관리 */}
-            {isPrivileged && (
+            {/* 3. 시스템 추천전략 관리 */}
+            {isOperator && (
               <button
                 onClick={() => { setIsMobileMenuOpen(false); onOpenOperatorDashboard(); }}
                 className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-950/50 border border-emerald-500/30 text-emerald-200 text-xs font-semibold hover:bg-emerald-900/60 transition text-left"
               >
                 <BarChart3 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>전략관리</span>
+                <span>시스템 추천전략 관리</span>
               </button>
             )}
 

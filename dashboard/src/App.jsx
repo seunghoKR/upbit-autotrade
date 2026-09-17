@@ -197,6 +197,26 @@ export default function App() {
     return null;
   });
 
+  // 🌟 [투트랙 UX] 추천전략(초보/간편) vs 셀프전략(전문가/상세) 모드
+  const [strategyViewMode, setStrategyViewMode] = useState(() => {
+    try {
+      return localStorage.getItem('nurioh_strategy_view_mode') || 'RECOMMENDED';
+    } catch (e) {
+      return 'RECOMMENDED';
+    }
+  });
+
+  const handleToggleStrategyMode = () => {
+    setStrategyViewMode(prev => {
+      const next = prev === 'RECOMMENDED' ? 'SELF' : 'RECOMMENDED';
+      try {
+        localStorage.setItem('nurioh_strategy_view_mode', next);
+      } catch (e) {}
+      soundService?.playClick?.();
+      return next;
+    });
+  };
+
   // 트레이딩 설정 및 데이터 상태
   const [settings, setSettings] = useState({
     DEFAULT_MARKET: 'KRW-BTC',
@@ -1991,6 +2011,42 @@ export default function App() {
     }
   };
 
+  // ⚙️ [v3.6.2] 사용자가 오전/오후/야간 모드별 세부 전략 설정값을 직접 수정하여 저장 & 즉시 적용하는 핸들러
+  const handleSaveCustomPreset = async (presetKey, presetData, applyImmediately = false) => {
+    try {
+      try {
+        const res = await saveSchedulerPreset(presetKey, presetData);
+        if (res?.scheduler) setSchedulerData(res.scheduler);
+      } catch (err) {
+        console.warn('API saveSchedulerPreset error, saving locally:', err);
+      }
+
+      setSchedulerData(prev => {
+        const updated = {
+          ...prev,
+          userPresets: {
+            ...(prev?.userPresets || {}),
+            [presetKey]: presetData
+          }
+        };
+        try {
+          localStorage.setItem('nurioh_user_presets', JSON.stringify(updated.userPresets));
+        } catch (e) {}
+        return updated;
+      });
+
+      if (applyImmediately) {
+        await handleLoadPresetToSlots(presetKey);
+        alert(`🚀 [${presetData.name}] 설정이 저장되고 1~12번 슬롯에 즉시 적용되었습니다!`);
+      } else {
+        alert(`💾 [${presetData.name}] 설정이 성공적으로 저장되었습니다! (정규 장세 시간대에 자동 적용됩니다)`);
+      }
+    } catch (e) {
+      console.error('커스텀 프리셋 저장 실패:', e);
+      throw e;
+    }
+  };
+
   // 📥 [제안서 1부/3.5.0] 특정 프리셋을 1~12번 슬롯에 적용하기 (Apply/Load)
   const handleLoadPresetToSlots = async (presetKey) => {
     try {
@@ -2115,19 +2171,15 @@ export default function App() {
     );
   }
 
-  // 🎨 플랜별 차별화된 테마 바탕색 스타일
+  // 🎨 [투트랙 테마 시스템] 추천전략 vs 셀프전략이 전체적인 색상 분위기의 최우선 기준!
   const getThemeBgClass = () => {
-    const tier = currentUser?.tier || 'FREE_TRIAL';
-    if (tier === 'VIP' || currentUser?.role === 'ADMIN') {
-      // 💎 VIP / 마스터: 럭셔리 딥 퍼플 & 로열 골드 테마
-      return 'bg-[#0a0514] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-950/40 via-[#0a0514] to-[#040208]';
+    if (strategyViewMode === 'RECOMMENDED') {
+      // 🌿 [추천전략 모드] 청량하고 편안하며 신뢰감 주는 "에메랄드 숲 & 틸 오로라" 테마
+      return 'bg-[#02130e] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-950/80 via-[#031611] to-[#010a07]';
+    } else {
+      // ⚡ [셀프전략 모드] 강력하고 프로페셔널한 트레이딩 룸 "사이버 인디고 & 바이올렛 퍼플" 테마
+      return 'bg-[#06071a] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-950/85 via-[#070719] to-[#02020a]';
     }
-    if (tier === 'PRO') {
-      // ⚡ PRO 플랜: 세련된 딥 인디고 & 사이버 블루 테마
-      return 'bg-[#060c1c] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-950/40 via-[#060c1c] to-[#03060e]';
-    }
-    // 🆓 무료 체험: 모던하고 깔끔한 딥 슬레이트 & 차콜 테마
-    return 'bg-[#090d16] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900/40 via-[#090d16] to-[#04060b]';
   };
 
   // 🔄 강력 새로고침 (PWA 캐시 스토리지 초기화 & 최신 빌드 버전 강제 리로드)
@@ -2152,7 +2204,11 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen ${getThemeBgClass()} text-slate-100 selection:bg-emerald-500 selection:text-black flex flex-col font-sans pb-12 transition-colors duration-500 w-full max-w-full overflow-x-hidden`}>
+    <div className={`min-h-screen ${getThemeBgClass()} text-slate-100 ${
+      strategyViewMode === 'RECOMMENDED' 
+        ? 'selection:bg-emerald-500 selection:text-black' 
+        : 'selection:bg-indigo-500 selection:text-white'
+    } flex flex-col font-sans pb-12 transition-colors duration-700 w-full max-w-full overflow-x-hidden`}>
       {/* 글로벌 네비게이션 헤더 */}
       <Header
         user={currentUser}
@@ -2171,6 +2227,8 @@ export default function App() {
         marketCount={marketCount}
         btcProtection={btcProtection}
         activeBuyRestriction={activeBuyRestriction}
+        strategyViewMode={strategyViewMode}
+        onToggleStrategyMode={handleToggleStrategyMode}
       />
 
       {/* 🏛️ [연구실/실험실 전용 상단 띠 배너] 운영자/개발자 사전 체험 전용 안내 */}
@@ -2206,7 +2264,7 @@ export default function App() {
         </div>
       ) : null}
 
-      {/* 메인 콘텐츠 영역 (PC 모드: 화면 너비의 80% 고정 레이아웃, 가로 4열 x 세로 3행) */}
+      {/* 메인 콘텐츠 영역 (PC 모드: 화면 너비의 90% 고정 레이아웃, 가로 4열 x 세로 3행) */}
       <main className="flex-1 app-container-80 px-3 sm:px-4 py-4 sm:py-6 space-y-6 max-w-full min-w-0">
         {/* ⚡ [제안서 1~3부] 글로벌 통합 제어 타워 (3단계 장세 스케줄러 & 일일 킬 스위치 & 전략 모드) */}
         <GlobalControlPanel
@@ -2217,8 +2275,11 @@ export default function App() {
           onUpdateTimetable={handleUpdateTimetable}
           onSwitchMode={handleSwitchStrategyMode}
           onSaveCurrentSlotsToPreset={handleSaveCurrentSlotsToPreset}
+          onSaveCustomPreset={handleSaveCustomPreset}
           onLoadPresetToSlots={handleLoadPresetToSlots}
           onUpdateKillSwitch={handleUpdateKillSwitch}
+          strategyViewMode={strategyViewMode}
+          onToggleStrategyMode={handleToggleStrategyMode}
           isDevMode={currentUser?.role === 'DEVELOPER' || currentUser?.role === 'ADMIN'}
         />
 
@@ -2231,6 +2292,7 @@ export default function App() {
           accountError={accountError}
           onOpenApiModal={() => setIsApiModalOpen(true)}
           marketCount={marketCount}
+          strategyViewMode={strategyViewMode}
         />
 
         {/* 🎛️ 1~9번 독립 멀티 슬롯 분산 트레이딩 매니저 */}
@@ -2250,6 +2312,7 @@ export default function App() {
           onSelectSlot={setSelectedSlotId}
           krwBalance={parseFloat(accounts.find(a => a.currency === 'KRW')?.balance || '0')}
           currentUser={currentUser}
+          strategyViewMode={strategyViewMode}
         />
 
         {/* 🌟 NURIOH TRADER 브랜드 소개 및 핵심 기능 자랑 쇼케이스 배너 */}
