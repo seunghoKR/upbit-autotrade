@@ -1584,72 +1584,18 @@ export default function SlotManager({
                           </span>
                         </div>
                       ) : (
-                        <span className={`text-xs font-mono font-bold block mt-1 ${
+                        <span className={`text-[11px] sm:text-xs font-mono font-bold block mt-1 whitespace-nowrap ${
                           strategyViewMode === 'RECOMMENDED'
                             ? 'text-emerald-400/90'
                             : (isBreakout ? 'text-amber-400/90' : (isSwing ? 'text-sky-400/90' : 'text-emerald-400/90'))
                         }`}>
                           {strategyViewMode === 'RECOMMENDED'
                             ? '🌿 AI 추천 상시 감시'
-                            : (isBreakout ? '🚀 모드 B (신고가) 상시 감시' : (isSwing ? '🌊 모드 C (추세스윙) 상시 감시' : '⚡ 모드 A (스캘핑) 상시 감시'))}
+                            : (isBreakout ? '🚀 모드 B (신고가) 상시 감시' : (isSwing ? '🌊 모드 C (스윙) 상시 감시' : '⚡ 모드 A (스캘핑) 상시 감시'))}
                         </span>
                       )}
                     </div>
                   </div>
-
-                  {/* ⚡ [셀프전략 모드] 슬롯 카드 내 A / B / C 원클릭 빠른 전환 바 */}
-                  {strategyViewMode !== 'RECOMMENDED' && (
-                    <div className="flex items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800/80 my-2 shadow-inner">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onUpdateSlot?.(slot.slotId, { strategyMode: 'SCALPING' });
-                        }}
-                        className={`flex-1 py-1.5 px-1 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95 ${
-                          !isBreakout && !isSwing
-                            ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/30 ring-1 ring-emerald-400 font-extrabold'
-                            : 'text-slate-400 hover:text-white hover:bg-slate-900'
-                        }`}
-                        title="모드 A: 5초 +1.5% VWAP 초단타 스캘핑"
-                      >
-                        <span>⚡</span>
-                        <span>모드 A</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onUpdateSlot?.(slot.slotId, { strategyMode: 'BREAKOUT_DAY_HIGH', breakoutHighEnabled: true });
-                        }}
-                        className={`flex-1 py-1.5 px-1 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95 ${
-                          isBreakout
-                            ? 'bg-amber-500 text-black shadow-md shadow-amber-500/30 ring-1 ring-amber-400 font-extrabold'
-                            : 'text-slate-400 hover:text-white hover:bg-slate-900'
-                        }`}
-                        title="모드 B: 09:00 당일 신고가 돌파 매수"
-                      >
-                        <span>🚀</span>
-                        <span>모드 B</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onUpdateSlot?.(slot.slotId, { strategyMode: 'TREND_SWING' });
-                        }}
-                        className={`flex-1 py-1.5 px-1 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95 ${
-                          isSwing
-                            ? 'bg-sky-500 text-black shadow-md shadow-sky-500/30 ring-1 ring-sky-400 font-extrabold'
-                            : 'text-slate-400 hover:text-white hover:bg-slate-900'
-                        }`}
-                        title="모드 C: 4시간봉/일봉 이평 정배열 추세 스윙"
-                      >
-                        <span>🌊</span>
-                        <span>모드 C</span>
-                      </button>
-                    </div>
-                  )}
 
                   {/* 🌿 [추천전략 모드] 깔끔하고 직관적인 AI 추천 운용 요약 카드 */}
                   {strategyViewMode === 'RECOMMENDED' ? (
