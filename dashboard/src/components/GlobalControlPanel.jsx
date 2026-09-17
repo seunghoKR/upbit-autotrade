@@ -264,41 +264,53 @@ export default function GlobalControlPanel({
   if (strategyViewMode === 'RECOMMENDED') {
     const currentModeCard = modeCards.find(m => m.periodKey === currentPeriod) || modeCards[0];
     return (
-      <div className="w-full mb-6 rounded-2xl bg-gradient-to-r from-emerald-950/80 via-slate-900/90 to-teal-950/80 border border-emerald-500/50 shadow-xl backdrop-blur-xl p-4 sm:p-5 transition-all">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center text-2xl shadow-lg shadow-emerald-500/20 shrink-0">
-              🌿
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-2 py-0.5 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">
+      <div className="w-full mb-4 sm:mb-6 rounded-2xl bg-gradient-to-r from-emerald-950/80 via-slate-900/90 to-teal-950/80 border border-emerald-500/50 shadow-xl backdrop-blur-xl p-3.5 sm:p-5 transition-all">
+        <div className="flex items-start sm:items-center gap-3 sm:gap-4">
+          {/* 좌측 싱그러운 추천전략 아이콘 */}
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center text-xl sm:text-2xl shadow-lg shadow-emerald-500/20 shrink-0 mt-0.5 sm:mt-0">
+            🌿
+          </div>
+
+          {/* 중앙 및 우측 콘텐츠 */}
+          <div className="flex-1 min-w-0">
+            {/* 상단 뱃지 & 킬스위치 행 */}
+            <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] sm:text-xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 inline-flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                   누리오 AI 추천전략 가동 중
                 </span>
-                <span className="text-xs text-slate-400 font-medium hidden sm:inline">
+                <span className="text-[11px] sm:text-xs text-slate-400 font-medium hidden md:inline">
                   한국 표준시(KST) 장세 자동 분석
                 </span>
               </div>
-              <h3 className="font-extrabold text-base sm:text-lg text-white mt-1 flex items-center gap-2">
-                <span>현재 장세:</span>
-                <span className="text-emerald-300 drop-shadow">{currentModeCard.icon} {currentModeCard.title}</span>
-                <span className="text-xs font-mono text-emerald-400/80 font-normal">({currentModeCard.timeRange})</span>
-              </h3>
-              <p className="text-xs text-slate-300 mt-0.5">
-                대표님을 위해 최적의 손익비와 리스크 관리 파라미터로 자동 운용되고 있습니다.
-              </p>
-            </div>
-          </div>
 
-          <div className="flex items-center gap-2 sm:gap-3 ml-auto">
-            {/* 킬스위치 요약 */}
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs font-medium">
-              <span>{isKillTriggered ? '🚨' : '🛡️'}</span>
-              <span className="text-slate-300">일일 킬스위치:</span>
-              <span className={killSwitchConfig.enabled ? 'text-emerald-400 font-bold' : 'text-slate-400'}>
-                {killSwitchConfig.enabled ? `ON (-${killSwitchConfig.maxLossPct}%)` : 'OFF'}
+              {/* 킬스위치 상태 요약 뱃지 */}
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900/90 border border-slate-700/80 text-[11px] sm:text-xs font-medium shrink-0">
+                <span>{isKillTriggered ? '🚨' : '🛡️'}</span>
+                <span className="text-slate-400 hidden sm:inline">일일 킬스위치:</span>
+                <span className="text-slate-400 sm:hidden">킬스위치:</span>
+                <span className={killSwitchConfig.enabled ? 'text-emerald-400 font-bold' : 'text-slate-400'}>
+                  {killSwitchConfig.enabled ? `ON (-${killSwitchConfig.maxLossPct}%)` : 'OFF'}
+                </span>
+              </div>
+            </div>
+
+            {/* 메인 장세 타이틀 및 운영 시간표 ("현재 장세:" 제거 & 모바일 줄바꿈 최적화) */}
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5">
+              <h3 className="font-extrabold text-base sm:text-lg text-emerald-300 drop-shadow flex items-center gap-1.5 break-keep">
+                <span>{currentModeCard.icon}</span>
+                <span>{currentModeCard.title}</span>
+              </h3>
+              <span className="text-[11px] sm:text-xs font-mono text-emerald-400/90 bg-emerald-950/70 border border-emerald-500/30 px-2 py-0.5 rounded-md font-semibold whitespace-nowrap">
+                {currentModeCard.timeRange}
               </span>
             </div>
+
+            {/* 안내 문구 */}
+            <p className="text-[11px] sm:text-xs text-slate-300/90 mt-1 leading-snug break-keep">
+              대표님을 위해 최적의 손익비와 리스크 관리 파라미터로 자동 운용되고 있습니다.
+            </p>
           </div>
         </div>
       </div>
@@ -336,7 +348,7 @@ export default function GlobalControlPanel({
           {/* 장세 뱃지 */}
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border font-bold bg-indigo-950/80 text-indigo-300 border-indigo-500/40">
             <span>⏰</span>
-            <span>현재 KST 장세: {currentPeriod === 'MORNING' ? '오전 모드' : (currentPeriod === 'AFTERNOON' ? '오후 모드' : '야간 모드')}</span>
+            <span>KST {currentPeriod === 'MORNING' ? '오전 모드' : (currentPeriod === 'AFTERNOON' ? '오후 모드' : '야간 모드')}</span>
           </div>
 
           {/* 킬스위치 상태 뱃지 */}
