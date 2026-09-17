@@ -36,25 +36,25 @@ class MarketScheduler {
       NIGHT: 'PRESET_C'
     };
 
-    // 🔀 사용자 정의 동적 프리셋 템플릿 (오전/오후/야간 모드)
+    // 🔀 사용자 정의 동적 프리셋 템플릿 (A/B/C 모드)
     this.userPresets = {
       PRESET_A: {
         id: 'PRESET_A',
-        name: '오전 모드 (오전장 돌파)',
+        name: 'A 모드 (오전장 돌파)',
         description: '오전 08:50~12:00 변동성 돌파 및 시가 베팅에 최적화된 1~12번 슬롯 설정입니다.',
         updatedAt: new Date().toISOString(),
         slots: []
       },
       PRESET_B: {
         id: 'PRESET_B',
-        name: '오후 모드 (오후장 횡보방어)',
+        name: 'B 모드 (오후장 횡보방어)',
         description: '오후 12:00~21:00 지루한 횡보 구간에서 뇌동매매를 방지하고 저점 반등을 노리는 설정입니다.',
         updatedAt: new Date().toISOString(),
         slots: []
       },
       PRESET_C: {
         id: 'PRESET_C',
-        name: '야간 모드 (야간장 트레일링)',
+        name: 'C 모드 (야간장 트레일링)',
         description: '야간 21:00~익일 08:50 글로벌 변동성에 대응하며 트레일링 스탑으로 수익을 지키는 설정입니다.',
         updatedAt: new Date().toISOString(),
         slots: []

@@ -5,7 +5,7 @@ import { soundService } from '../services/soundService';
 export const DEFAULT_MODE_PRESETS = {
   PRESET_A: {
     id: 'PRESET_A',
-    name: '오전 모드 (오전장 돌파)',
+    name: 'A 모드 (오전장 돌파)',
     icon: '🌅',
     periodKey: 'MORNING',
     tagText: '오전 경주마 & 변동성 돌파',
@@ -27,7 +27,7 @@ export const DEFAULT_MODE_PRESETS = {
   },
   PRESET_B: {
     id: 'PRESET_B',
-    name: '오후 모드 (오후장 횡보방어)',
+    name: 'B 모드 (오후장 횡보방어)',
     icon: '🌤️',
     periodKey: 'AFTERNOON',
     tagText: '오후 횡보 방어 & 저점 반등',
@@ -49,7 +49,7 @@ export const DEFAULT_MODE_PRESETS = {
   },
   PRESET_C: {
     id: 'PRESET_C',
-    name: '야간 모드 (야간장 트레일링)',
+    name: 'C 모드 (야간장 트레일링)',
     icon: '🌙',
     periodKey: 'NIGHT',
     tagText: '미 증시 연동 & 트레일링 스탑',

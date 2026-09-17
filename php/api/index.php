@@ -233,28 +233,28 @@ function getSchedulerDataFromDb($pdo): array {
         'isEnabled' => true,
         'currentPeriod' => $curPeriod,
         'currentPresetKey' => $curPresetKey,
-        'currentPresetName' => $curPeriod === 'MORNING' ? '오전 모드 (오전장 돌파)' : ($curPeriod === 'AFTERNOON' ? '오후 모드 (오후장 횡보방어)' : '야간 모드 (야간장 트레일링)'),
+        'currentPresetName' => $curPeriod === 'MORNING' ? 'A 모드 (오전장 돌파)' : ($curPeriod === 'AFTERNOON' ? 'B 모드 (오후장 횡보방어)' : 'C 모드 (야간장 트레일링)'),
         'globalStrategyMode' => 'MODE_A',
         'timeTable' => $timeTable,
         'scheduleMapping' => $scheduleMapping,
         'userPresets' => [
             'PRESET_A' => [
                 'id' => 'PRESET_A',
-                'name' => '오전 모드 (오전장 돌파)',
+                'name' => 'A 모드 (오전장 돌파)',
                 'description' => '오전 08:50~12:00 변동성 돌파 및 시가 베팅에 최적화된 1~12번 슬롯 설정입니다.',
                 'updatedAt' => date('c'),
                 'slots' => []
             ],
             'PRESET_B' => [
                 'id' => 'PRESET_B',
-                'name' => '오후 모드 (오후장 횡보방어)',
+                'name' => 'B 모드 (오후장 횡보방어)',
                 'description' => '오후 12:00~21:00 지루한 횡보 구간에서 뇌동매매를 방지하고 저점 반등을 노리는 설정입니다.',
                 'updatedAt' => date('c'),
                 'slots' => []
             ],
             'PRESET_C' => [
                 'id' => 'PRESET_C',
-                'name' => '야간 모드 (야간장 트레일링)',
+                'name' => 'C 모드 (야간장 트레일링)',
                 'description' => '야간 21:00~익일 08:50 글로벌 변동성에 대응하며 트레일링 스탑으로 수익을 지키는 설정입니다.',
                 'updatedAt' => date('c'),
                 'slots' => []
@@ -265,19 +265,19 @@ function getSchedulerDataFromDb($pdo): array {
     $merged = array_replace_recursive($defaultScheduler, $decoded);
     $merged['currentPeriod'] = $curPeriod;
     $merged['currentPresetKey'] = $curPresetKey;
-    if ($curPeriod === 'MORNING') $merged['currentPresetName'] = '오전 모드 (오전장 돌파)';
-    else if ($curPeriod === 'AFTERNOON') $merged['currentPresetName'] = '오후 모드 (오후장 횡보방어)';
-    else $merged['currentPresetName'] = '야간 모드 (야간장 트레일링)';
+    if ($curPeriod === 'MORNING') $merged['currentPresetName'] = 'A 모드 (오전장 돌파)';
+    else if ($curPeriod === 'AFTERNOON') $merged['currentPresetName'] = 'B 모드 (오후장 횡보방어)';
+    else $merged['currentPresetName'] = 'C 모드 (야간장 트레일링)';
 
-    // 구버전 A/B/C 모드 명칭 자동 보정
-    if (isset($merged['userPresets']['PRESET_A']['name']) && strpos($merged['userPresets']['PRESET_A']['name'], '메모리') !== false) {
-        $merged['userPresets']['PRESET_A']['name'] = '오전 모드 (오전장 돌파)';
+    // 프리셋 A/B/C 모드 명칭 자동 동기화
+    if (isset($merged['userPresets']['PRESET_A']['name'])) {
+        $merged['userPresets']['PRESET_A']['name'] = 'A 모드 (오전장 돌파)';
     }
-    if (isset($merged['userPresets']['PRESET_B']['name']) && strpos($merged['userPresets']['PRESET_B']['name'], '메모리') !== false) {
-        $merged['userPresets']['PRESET_B']['name'] = '오후 모드 (오후장 횡보방어)';
+    if (isset($merged['userPresets']['PRESET_B']['name'])) {
+        $merged['userPresets']['PRESET_B']['name'] = 'B 모드 (오후장 횡보방어)';
     }
-    if (isset($merged['userPresets']['PRESET_C']['name']) && strpos($merged['userPresets']['PRESET_C']['name'], '메모리') !== false) {
-        $merged['userPresets']['PRESET_C']['name'] = '야간 모드 (야간장 트레일링)';
+    if (isset($merged['userPresets']['PRESET_C']['name'])) {
+        $merged['userPresets']['PRESET_C']['name'] = 'C 모드 (야간장 트레일링)';
     }
 
     return $merged;

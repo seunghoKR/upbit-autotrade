@@ -34,25 +34,25 @@ export default function GlobalControlPanel({
     NIGHT: 'PRESET_C'
   });
 
-  // 3. 3가지 장세 모드 프리셋 상태 (오전/오후/야간 모드)
+  // 3. 3가지 장세 모드 프리셋 상태 (A/B/C 모드)
   const [userPresets, setUserPresets] = useState({
     PRESET_A: {
       id: 'PRESET_A',
-      name: '오전 모드 (오전장 돌파)',
+      name: 'A 모드 (오전장 돌파)',
       description: '오전 08:50~12:00 변동성 돌파 및 시가 베팅에 최적화된 1~12번 슬롯 설정입니다.',
       updatedAt: null,
       slots: []
     },
     PRESET_B: {
       id: 'PRESET_B',
-      name: '오후 모드 (오후장 횡보방어)',
+      name: 'B 모드 (오후장 횡보방어)',
       description: '오후 12:00~21:00 지루한 횡보 구간에서 뇌동매매를 방지하고 저점 반등을 노리는 설정입니다.',
       updatedAt: null,
       slots: []
     },
     PRESET_C: {
       id: 'PRESET_C',
-      name: '야간 모드 (야간장 트레일링)',
+      name: 'C 모드 (야간장 트레일링)',
       description: '야간 21:00~익일 08:50 글로벌 변동성에 대응하며 트레일링 스탑으로 수익을 지키는 설정입니다.',
       updatedAt: null,
       slots: []
@@ -217,13 +217,13 @@ export default function GlobalControlPanel({
   const capital = killSwitchData?.totalCapitalKrw || 1000000;
   const currentLossPct = ((dailyProfitKrw / capital) * 100);
 
-  // 3개 모드 메타 데이터
+  // 3개 모드 메타 데이터 (A/B/C 모드)
   const modeCards = [
     {
       periodKey: 'MORNING',
       presetKey: 'PRESET_A',
-      modeName: '오전 모드',
-      title: '오전 모드 (오전장 돌파)',
+      modeName: 'A 모드',
+      title: 'A 모드 (오전장 돌파)',
       timeRange: `${timeTable.MORNING_START || '08:50'} ~ ${timeTable.AFTERNOON_START || '12:00'}`,
       icon: '🌅',
       themeColor: 'from-amber-500/20 to-orange-500/10 border-amber-500/40 text-amber-300',
@@ -235,8 +235,8 @@ export default function GlobalControlPanel({
     {
       periodKey: 'AFTERNOON',
       presetKey: 'PRESET_B',
-      modeName: '오후 모드',
-      title: '오후 모드 (오후장 횡보방어)',
+      modeName: 'B 모드',
+      title: 'B 모드 (오후장 횡보방어)',
       timeRange: `${timeTable.AFTERNOON_START || '12:00'} ~ ${timeTable.NIGHT_START || '21:00'}`,
       icon: '🌤️',
       themeColor: 'from-blue-500/20 to-indigo-500/10 border-blue-500/40 text-blue-300',
@@ -248,8 +248,8 @@ export default function GlobalControlPanel({
     {
       periodKey: 'NIGHT',
       presetKey: 'PRESET_C',
-      modeName: '야간 모드',
-      title: '야간 모드 (야간장 트레일링)',
+      modeName: 'C 모드',
+      title: 'C 모드 (야간장 트레일링)',
       timeRange: `${timeTable.NIGHT_START || '21:00'} ~ 익일 ${timeTable.MORNING_START || '08:50'}`,
       icon: '🌙',
       themeColor: 'from-purple-500/20 to-fuchsia-500/10 border-purple-500/40 text-purple-300',
@@ -348,7 +348,7 @@ export default function GlobalControlPanel({
           {/* 장세 뱃지 */}
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border font-bold bg-indigo-950/80 text-indigo-300 border-indigo-500/40">
             <span>⏰</span>
-            <span>KST {currentPeriod === 'MORNING' ? '오전 모드' : (currentPeriod === 'AFTERNOON' ? '오후 모드' : '야간 모드')}</span>
+            <span>KST {currentPeriod === 'MORNING' ? 'A 모드 (오전)' : (currentPeriod === 'AFTERNOON' ? 'B 모드 (오후)' : 'C 모드 (야간)')}</span>
           </div>
 
           {/* 킬스위치 상태 뱃지 */}

@@ -526,7 +526,7 @@ export default function SlotManager({
                   }`}>
                     {strategyViewMode === 'RECOMMENDED'
                       ? '🌿 AI 추천'
-                      : (isSwing ? '🌊 추세 스윙' : (isBreakout ? '🚀 신고가 돌파' : '⚡ 커스텀 스캘핑'))}
+                      : (isSwing ? '🌊 모드 C (스윙)' : (isBreakout ? '🚀 모드 B (돌파)' : '⚡ 모드 A (스캘핑)'))}
                   </span>
 
                   {/* 🚀 와이드 트레일링 2단계 대시세 진입 뱃지 */}
@@ -912,17 +912,57 @@ export default function SlotManager({
                       </div>
                     </div>
                   ) : (
-                    /* ⚡ [셀프전략 모드] 슬롯 수정창: 전문가용 전체 파라미터 노출 (모드 A/B/C 및 추천/셀프 선택 탭 완전 제거) */
+                    /* ⚡ [셀프전략 모드] 슬롯 수정창: A / B / C 전략 모드 선택 복원 및 전체 파라미터 튜닝 */
                     <>
-                      {/* 헤더 안내 */}
-                      <div className="p-2 rounded-xl bg-indigo-950/40 border border-indigo-500/30 flex items-center justify-between shadow-inner">
-                        <span className="text-xs text-indigo-300 font-bold flex items-center gap-1.5">
-                          <Sliders className="w-3.5 h-3.5 text-indigo-400" />
-                          <span>{slot.slotId}번 슬롯 알고리즘 세부 파라미터 튜닝</span>
-                        </span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
-                          {editForm.strategyMode === 'BREAKOUT_DAY_HIGH' ? '신고가 돌파' : (editForm.strategyMode === 'TREND_SWING' ? '추세 스윙' : '초단타 스캘핑')}
-                        </span>
+                      {/* 🎛️ 전략 모드 A/B/C 선택 복원 */}
+                      <div className="p-2 rounded-xl bg-indigo-950/50 border border-indigo-500/40 space-y-1.5 shadow-inner">
+                        <div className="flex items-center justify-between text-xs font-bold px-1">
+                          <span className="flex items-center gap-1.5 text-indigo-300">
+                            <Sliders className="w-3.5 h-3.5 text-indigo-400" />
+                            <span>전략 모드 선택 (A / B / C)</span>
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-mono font-normal">
+                            {editForm.strategyMode === 'SCALPING' ? '1~8번 권장' : (editForm.strategyMode === 'BREAKOUT_DAY_HIGH' ? '9~10번 권장' : '11~12번 권장')}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setEditForm(prev => ({ ...prev, strategyMode: 'SCALPING' }))}
+                            className={`py-2 px-1 rounded-xl text-xs font-black border transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-95 ${
+                              editForm.strategyMode === 'SCALPING'
+                                ? 'bg-emerald-500 text-black border-emerald-400 shadow-md shadow-emerald-500/30 ring-2 ring-emerald-400'
+                                : 'bg-slate-900/90 text-slate-400 border-slate-800 hover:text-white hover:bg-slate-800'
+                            }`}
+                          >
+                            <span className="flex items-center gap-1">⚡ <span>모드 A</span></span>
+                            <span className="text-[10px] font-semibold opacity-90">초단타 스캘핑</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditForm(prev => ({ ...prev, strategyMode: 'BREAKOUT_DAY_HIGH', breakoutHighEnabled: true }))}
+                            className={`py-2 px-1 rounded-xl text-xs font-black border transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-95 ${
+                              editForm.strategyMode === 'BREAKOUT_DAY_HIGH'
+                                ? 'bg-amber-500 text-black border-amber-400 shadow-md shadow-amber-500/30 ring-2 ring-amber-400'
+                                : 'bg-slate-900/90 text-slate-400 border-slate-800 hover:text-white hover:bg-slate-800'
+                            }`}
+                          >
+                            <span className="flex items-center gap-1">🚀 <span>모드 B</span></span>
+                            <span className="text-[10px] font-semibold opacity-90">신고가 돌파</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditForm(prev => ({ ...prev, strategyMode: 'TREND_SWING' }))}
+                            className={`py-2 px-1 rounded-xl text-xs font-black border transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-95 ${
+                              editForm.strategyMode === 'TREND_SWING'
+                                ? 'bg-sky-500 text-black border-sky-400 shadow-md shadow-sky-500/30 ring-2 ring-sky-400'
+                                : 'bg-slate-900/90 text-slate-400 border-slate-800 hover:text-white hover:bg-slate-800'
+                            }`}
+                          >
+                            <span className="flex items-center gap-1">🌊 <span>모드 C</span></span>
+                            <span className="text-[10px] font-semibold opacity-90">추세 스윙</span>
+                          </button>
+                        </div>
                       </div>
 
                   {/* 💰 2. 매수금액(KRW) - 1줄 컴팩트 레이아웃 */}
@@ -1551,11 +1591,65 @@ export default function SlotManager({
                         }`}>
                           {strategyViewMode === 'RECOMMENDED'
                             ? '🌿 AI 추천 상시 감시'
-                            : (isBreakout ? '🚀 신고가 상시 감시' : (isSwing ? '🌊 추세스윙 상시 감시' : '⚡ 스캘핑 상시 감시'))}
+                            : (isBreakout ? '🚀 모드 B (신고가) 상시 감시' : (isSwing ? '🌊 모드 C (추세스윙) 상시 감시' : '⚡ 모드 A (스캘핑) 상시 감시'))}
                         </span>
                       )}
                     </div>
                   </div>
+
+                  {/* ⚡ [셀프전략 모드] 슬롯 카드 내 A / B / C 원클릭 빠른 전환 바 */}
+                  {strategyViewMode !== 'RECOMMENDED' && (
+                    <div className="flex items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800/80 my-2 shadow-inner">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onUpdateSlot?.(slot.slotId, { strategyMode: 'SCALPING' });
+                        }}
+                        className={`flex-1 py-1.5 px-1 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95 ${
+                          !isBreakout && !isSwing
+                            ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/30 ring-1 ring-emerald-400 font-extrabold'
+                            : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                        }`}
+                        title="모드 A: 5초 +1.5% VWAP 초단타 스캘핑"
+                      >
+                        <span>⚡</span>
+                        <span>모드 A</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onUpdateSlot?.(slot.slotId, { strategyMode: 'BREAKOUT_DAY_HIGH', breakoutHighEnabled: true });
+                        }}
+                        className={`flex-1 py-1.5 px-1 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95 ${
+                          isBreakout
+                            ? 'bg-amber-500 text-black shadow-md shadow-amber-500/30 ring-1 ring-amber-400 font-extrabold'
+                            : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                        }`}
+                        title="모드 B: 09:00 당일 신고가 돌파 매수"
+                      >
+                        <span>🚀</span>
+                        <span>모드 B</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onUpdateSlot?.(slot.slotId, { strategyMode: 'TREND_SWING' });
+                        }}
+                        className={`flex-1 py-1.5 px-1 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95 ${
+                          isSwing
+                            ? 'bg-sky-500 text-black shadow-md shadow-sky-500/30 ring-1 ring-sky-400 font-extrabold'
+                            : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                        }`}
+                        title="모드 C: 4시간봉/일봉 이평 정배열 추세 스윙"
+                      >
+                        <span>🌊</span>
+                        <span>모드 C</span>
+                      </button>
+                    </div>
+                  )}
 
                   {/* 🌿 [추천전략 모드] 깔끔하고 직관적인 AI 추천 운용 요약 카드 */}
                   {strategyViewMode === 'RECOMMENDED' ? (
@@ -1615,7 +1709,7 @@ export default function SlotManager({
                           {/* 표 헤더 */}
                           <div className="grid grid-cols-2 bg-slate-900/90 border-b border-amber-500/20 text-xs sm:text-[13px] font-extrabold">
                             <div className="px-2.5 py-1.5 flex items-center justify-between border-r border-slate-800/80 text-amber-300">
-                              <span className="flex items-center gap-1">🚀 당일 신고가 돌파</span>
+                              <span className="flex items-center gap-1">🚀 모드 B (신고가 돌파)</span>
                             </div>
                             <div className="px-2.5 py-1.5 flex items-center justify-between text-orange-300">
                               <span className="flex items-center gap-1">🎯 와이드 트레일링</span>
@@ -1676,7 +1770,7 @@ export default function SlotManager({
                           {/* 표 헤더 */}
                           <div className="grid grid-cols-2 bg-slate-900/90 border-b border-sky-500/20 text-xs sm:text-[13px] font-extrabold">
                             <div className="px-2.5 py-1.5 flex items-center justify-between border-r border-slate-800/80 text-sky-300">
-                              <span className="flex items-center gap-1">🌊 정배열 추세 스윙</span>
+                              <span className="flex items-center gap-1">🌊 모드 C (추세 스윙)</span>
                             </div>
                             <div className="px-2.5 py-1.5 flex items-center justify-between text-indigo-300">
                               <span className="flex items-center gap-1">🎯 스윙 익절 / 청산</span>
@@ -1748,7 +1842,7 @@ export default function SlotManager({
                         {/* 표 헤더 */}
                         <div className="grid grid-cols-2 bg-slate-900/90 border-b border-emerald-500/20 text-xs sm:text-[13px] font-extrabold">
                           <div className="px-2.5 py-1.5 flex items-center justify-between border-r border-slate-800/80 text-emerald-400">
-                            <span className="flex items-center gap-1">⚡ 초단타 스캘핑</span>
+                            <span className="flex items-center gap-1">⚡ 모드 A (초단타 스캘핑)</span>
                           </div>
                           <div className="px-2.5 py-1.5 flex items-center justify-between text-teal-300">
                             <span className="flex items-center gap-1">🎯 다단 트레일링 익절</span>
