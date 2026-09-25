@@ -1,23 +1,6 @@
-<IfModule mod_headers.c>
-    # HTML, JS, JSON 캐시 방지 (항상 최신 버전 보장)
-    <FilesMatch "\.(html|htm|json)$">
-        Header set Cache-Control "max-age=0, no-cache, no-store, must-revalidate"
-        Header set Pragma "no-cache"
-        Header set Expires "Wed, 11 Jan 1984 05:00:00 GMT"
-    </FilesMatch>
-    <FilesMatch "^sw\.js$">
-        Header set Cache-Control "max-age=0, no-cache, no-store, must-revalidate"
-    </FilesMatch>
-</IfModule>
-
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /
-
-    # 🔒 HTTP -> HTTPS 자동 리다이렉트 (보안서버 강제 적용)
-    RewriteCond %{HTTPS} !=on
-    RewriteCond %{HTTP:X-Forwarded-Proto} !=https
-    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
     # 1. API 라우팅
     RewriteRule ^api/(.*)$ api/index.php [QSA,L]
