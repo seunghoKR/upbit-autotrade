@@ -46,7 +46,7 @@ export default function MyPageModal({
   onReloadUser,
   onResetSlotStats,
   onResetAllSlotStats,
-  serverIp = '115.68.168.243' 
+  serverIp = '115.68.168.242' 
 }) {
   const [activeTab, setActiveTab] = useState('PROFILE'); // PROFILE | TIME_RESTRICTION | SLOT_REPORT | APP_SOUND | TELEGRAM | PRICING
   const [copiedTable, setCopiedTable] = useState(false);
@@ -1264,11 +1264,11 @@ export default function MyPageModal({
                   </div>
                 </div>
 
-                {/* 💡 누리오 AI 디자인실장의 전략 분석 인사이트 */}
+                {/* 💡 AI 디자인실장 영자의 전략 분석 인사이트 */}
                 <div className="p-3 rounded-2xl bg-indigo-950/30 border border-indigo-500/30 flex items-start gap-2.5 text-xs text-slate-300">
                   <Sparkles className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" />
                   <div className="space-y-0.5">
-                    <strong className="text-yellow-300">💡 누리오 AI 디자인실장의 슬롯 분석 브리핑:</strong>
+                    <strong className="text-yellow-300">💡 AI 디자인실장 영자의 슬롯 분석 브리핑:</strong>
                     <p className="text-[11px] text-slate-400 leading-relaxed">
                       3번 슬롯(15초 / +2.5% / 3,000만원)에서 총 63회의 가장 활발한 돌파가 포착되었습니다.  
                       상승률 조건을 <strong>+0.5% ~ +1.5%</strong>로 완화할 경우 거래 회전율이 대폭 증가하며, 상단 <strong>[📋 엑셀 복사]</strong> 버튼을 누르시면 위 표를 엑셀에 그대로 붙여넣어 보관하실 수 있습니다! ✨
@@ -1761,12 +1761,12 @@ export default function MyPageModal({
               <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-2">
                 <div className="text-xs text-slate-300">
                   <span className="text-slate-400 block text-[10px]">입금 계좌 안내:</span>
-                  <strong>국민은행 123-456-789012 (예금주: 누리오)</strong>
+                  <strong>국민은행 123-456-789012 (예금주: Any Life)</strong>
                 </div>
                 <button
                   type="button"
                   onClick={() => {
-                    navigator.clipboard.writeText('국민은행 123-456-789012 (예금주: 누리오)');
+                    navigator.clipboard.writeText('국민은행 123-456-789012 (예금주: Any Life)');
                     alert('계좌번호가 복사되었습니다!');
                   }}
                   className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 transition flex items-center gap-1 cursor-pointer shrink-0"

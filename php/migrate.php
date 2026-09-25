@@ -11,20 +11,34 @@ try {
     $pdo->exec("CREATE TABLE IF NOT EXISTS `nurioh_users` (
         `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
         `kakao_id` VARCHAR(100) UNIQUE NOT NULL,
+        `name` VARCHAR(100) DEFAULT NULL,
         `nickname` VARCHAR(100) NOT NULL,
         `email` VARCHAR(150) DEFAULT NULL,
+        `phone` VARCHAR(50) DEFAULT NULL,
+        `birthyear` VARCHAR(10) DEFAULT '1990',
         `profile_image` VARCHAR(500) DEFAULT NULL,
-        `role` ENUM('USER', 'ADMIN') DEFAULT 'USER',
+        `role` VARCHAR(32) DEFAULT 'USER',
         `tier` ENUM('FREE_TRIAL', 'PRO', 'VIP') DEFAULT 'FREE_TRIAL',
+        `approval_status` VARCHAR(32) DEFAULT 'APPROVED',
         `subscription_expires_at` DATETIME DEFAULT NULL,
-        `max_slots` INT DEFAULT 1,
+        `max_slots` INT DEFAULT 12,
         `telegram_chat_id` VARCHAR(50) DEFAULT NULL,
         `is_active` TINYINT(1) DEFAULT 1,
         `agreed_terms` TINYINT(1) DEFAULT 1,
+        `auto_trading` TEXT DEFAULT NULL,
         `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX `idx_kakao_id` (`kakao_id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    // 컬럼 누락 방지 ALTER TABLE
+    try { $pdo->exec("ALTER TABLE `nurioh_users` ADD COLUMN `name` VARCHAR(100) DEFAULT NULL AFTER `kakao_id`"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE `nurioh_users` ADD COLUMN `phone` VARCHAR(50) DEFAULT NULL AFTER `email`"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE `nurioh_users` ADD COLUMN `birthyear` VARCHAR(10) DEFAULT '1990' AFTER `phone`"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE `nurioh_users` ADD COLUMN `approval_status` VARCHAR(32) DEFAULT 'APPROVED' AFTER `is_active`"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE `nurioh_users` ADD COLUMN `auto_trading` TEXT DEFAULT NULL AFTER `agreed_terms`"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE `nurioh_users` MODIFY COLUMN `role` VARCHAR(32) DEFAULT 'USER'"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE `nurioh_users` MODIFY COLUMN `max_slots` INT DEFAULT 12"); } catch (Exception $e) {}
 
     // 2. nurioh_user_apikeys
     $pdo->exec("CREATE TABLE IF NOT EXISTS `nurioh_user_apikeys` (
@@ -137,6 +151,50 @@ try {
     try {
         $pdo->exec("ALTER TABLE `nurioh_settings` ADD COLUMN `killswitch_data` LONGTEXT NULL");
     } catch (Exception $ex) {}
+    try {
+        $pdo->exec("ALTER TABLE `nurioh_settings` ADD COLUMN `telegram_bot_token` VARCHAR(255) DEFAULT NULL");
+    } catch (Exception $ex) {}
+    try {
+        $pdo->exec("ALTER TABLE `nurioh_settings` ADD COLUMN `excluded_markets` TEXT DEFAULT NULL");
+    } catch (Exception $ex) {}
+
+    // 🛡️ nurioh_settings 기본 레코드 (id=1) 보장
+    $pdo->exec("INSERT INTO `nurioh_settings` (`id`, `bot_enabled`, `server_ip`, `bank_info`)
+        VALUES (1, 0, '115.68.168.242', '국민은행 123-456-789012 (예금주: Any Life AI)')
+        ON DUPLICATE KEY UPDATE `server_ip` = '115.68.168.242'");
+
+    // 🛡️ nurioh_slots 신규 전략 컬럼 누락 방지
+    try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `strategy_mode` VARCHAR(30) DEFAULT 'SCALPING'"); } catch (Exception $ex) {}
+    try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `use_wide_trailing` TINYINT(1) DEFAULT 1"); } catch (Exception $ex) {}
+    try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `trailing_tier1_target_profit_pct` DECIMAL(5,2) DEFAULT 5.00"); } catch (Exception $ex) {}
+    try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `trailing_tier1_callback_pct` DECIMAL(5,2) DEFAULT 0.50"); } catch (Exception $ex) {}
+    try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `trailing_tier2_hurdle_pct` DECIMAL(5,2) DEFAULT 15.00"); } catch (Exception $ex) {}
+    try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `trailing_tier2_callback_pct` DECIMAL(5,2) DEFAULT 3.00"); } catch (Exception $ex) {}
+    try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `use_atr_stop_loss` TINYINT(1) DEFAULT 0"); } catch (Exception $ex) {}
+    try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `breakout_high_enabled` TINYINT(1) DEFAULT 1"); } catch (Exception $ex) {}
+    try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `breakout_candle_unit` INT DEFAULT 1"); } catch (Exception $ex) {}
+    try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `breakout_min_volume_krw_eok` INT DEFAULT 150"); } catch (Exception $ex) {}
+    try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `swing_candle_unit` VARCHAR(20) DEFAULT 'minutes/240'"); } catch (Exception $ex) {}
+    try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `swing_short_ma` INT DEFAULT 5"); } catch (Exception $ex) {}
+    try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `swing_long_ma` INT DEFAULT 20"); } catch (Exception $ex) {}
+    try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `swing_min_trade_price_24h_eok` INT DEFAULT 1000"); } catch (Exception $ex) {}
+    try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `min24h_acc_trade_price_krw` BIGINT DEFAULT 100000000000"); } catch (Exception $ex) {}
+    try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `surge_base_mode` VARCHAR(10) DEFAULT 'VWAP'"); } catch (Exception $ex) {}
+    try { $pdo->exec("ALTER TABLE `nurioh_slots` MODIFY COLUMN `position_status` VARCHAR(32) DEFAULT 'IDLE'"); } catch (Exception $ex) {}
+
+    // 🛡️ 1~12번 슬롯 기본 레코드 자동 생성 (id=1 유저)
+    $defaultMarkets = [
+        1 => 'KRW-BTC', 2 => 'KRW-ETH', 3 => 'KRW-SOL',
+        4 => 'KRW-XRP', 5 => 'KRW-DOGE', 6 => 'KRW-ADA',
+        7 => 'KRW-AVAX', 8 => 'KRW-DOT', 9 => 'KRW-NEAR',
+        10 => 'KRW-LINK', 11 => 'KRW-STX', 12 => 'KRW-SUI'
+    ];
+    for ($sId = 1; $sId <= 12; $sId++) {
+        $mkt = $defaultMarkets[$sId] ?? 'KRW-BTC';
+        $pdo->exec("INSERT INTO `nurioh_slots` (`user_id`, `slot_id`, `slot_name`, `is_enabled`, `target_market`, `trade_amount_krw`, `strategy_mode`)
+            VALUES (1, {$sId}, '{$sId}번 슬롯', 1, '{$mkt}', 50000.00, 'SCALPING')
+            ON DUPLICATE KEY UPDATE `slot_name` = '{$sId}번 슬롯'");
+    }
 
     $pdo->exec("UPDATE `nurioh_slots` SET 
         `position_status` = 'IDLE',

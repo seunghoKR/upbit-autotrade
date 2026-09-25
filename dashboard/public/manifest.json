@@ -1,8 +1,8 @@
 {
-  "id": "nurioh-trader-pwa",
-  "name": "NURIOH LAB (누리오 연구실)",
-  "short_name": "NURIOH LAB",
-  "description": "🧪 누리오 AI 자동매매 연구실 (LAB) - 안전 테스트 및 전략 검증 시스템",
+  "id": "anylife-trader-pwa",
+  "name": "Any Life AI (AI 자동매매 연구실)",
+  "short_name": "Any Life AI",
+  "description": "🧪 Any Life AI 자동매매 시스템 - 안전 테스트 및 전략 검증 시스템",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

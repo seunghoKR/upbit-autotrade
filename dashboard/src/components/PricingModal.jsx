@@ -6,7 +6,7 @@ export default function PricingModal({ isOpen, onClose, currentTier = 'FREE_TRIA
 
   if (!isOpen) return null;
 
-  const bankAccount = '국민은행 123-456-789012 (예금주: 누리오)';
+  const bankAccount = '국민은행 123-456-789012 (예금주: Any Life)';
 
   const handleCopyBank = () => {
     navigator.clipboard.writeText(bankAccount);
@@ -20,7 +20,7 @@ export default function PricingModal({ isOpen, onClose, currentTier = 'FREE_TRIA
       name: '무료 체험 (Free Trial)',
       price: '0원',
       period: '3일간 무료',
-      description: '누리오 자동매매 엔진을 직접 경험해 보세요',
+      description: 'Any Life AI 자동매매 엔진을 직접 경험해 보세요',
       slots: '1개 주력 슬롯',
       badge: '기본 제공',
       badgeColor: 'bg-slate-800 text-slate-300 border-slate-700',
@@ -84,7 +84,7 @@ export default function PricingModal({ isOpen, onClose, currentTier = 'FREE_TRIA
         {/* 헤더 */}
         <div className="text-center pb-4 border-b border-slate-800 shrink-0">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-xs font-semibold mb-2">
-            <Sparkles className="w-3.5 h-3.5" /> 누리오 트레이더 멤버십 플랜
+            <Sparkles className="w-3.5 h-3.5" /> Any Life AI 멤버십 플랜
           </div>
           <h3 className="text-xl font-bold text-slate-100">
             더 많은 슬롯과 고성능 알고리즘으로 수익을 확장하세요

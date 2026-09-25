@@ -42,8 +42,8 @@ export default function KakaoAuthModal({ isOpen, onClose, onLoginSuccess, onLabD
     try {
       const payload = {
         kakaoId: realData.kakaoId || `kakao_${Date.now()}`,
-        name: realData.name || defaultNickname || '누리오 회원',
-        nickname: defaultNickname || realData.name || '누리오 회원',
+        name: realData.name || defaultNickname || 'Any Life 회원',
+        nickname: defaultNickname || realData.name || 'Any Life 회원',
         phone: realData.phone || '010-0000-0000',
         email: realData.email || '',
         birthyear: realData.birthyear || '1990',
@@ -77,7 +77,7 @@ export default function KakaoAuthModal({ isOpen, onClose, onLoginSuccess, onLabD
                 
                 const realData = {
                   kakaoId: `kakao_${res.id}`,
-                  name: kakaoAccount.name || profile.nickname || '누리오 회원',
+                  name: kakaoAccount.name || profile.nickname || 'Any Life 회원',
                   phone: kakaoAccount.phone_number || '010-0000-0000',
                   email: kakaoAccount.email || '',
                   birthyear: kakaoAccount.birthyear || '1990',
@@ -119,7 +119,7 @@ export default function KakaoAuthModal({ isOpen, onClose, onLoginSuccess, onLabD
     }
 
     const emailVal = directEmail.trim();
-    const nameVal = directName.trim() || (emailVal ? emailVal.split('@')[0] : '누리오 회원');
+    const nameVal = directName.trim() || (emailVal ? emailVal.split('@')[0] : 'Any Life 회원');
     const safeKakaoId = `kakao_direct_${emailVal.replace(/[^a-zA-Z0-9]/g, '_') || Date.now()}`;
 
     const userData = {

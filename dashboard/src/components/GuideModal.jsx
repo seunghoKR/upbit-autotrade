@@ -22,7 +22,7 @@ export default function GuideModal({ isOpen, onClose }) {
             <BookOpen className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-white">누리오(NURIOH) 자동매매 시스템 사용 가이드</h2>
+            <h2 className="text-lg font-bold text-white">Any Life AI 자동매매 시스템 사용 가이드</h2>
             <p className="text-xs text-slate-400">비즈니스 파트너를 위한 쉽고 안전한 트레이딩 솔루션</p>
           </div>
         </div>

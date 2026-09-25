@@ -103,9 +103,9 @@ function sendTelegramDirectMessage(string $text, ?string $targetChatId = null): 
     }
     $desc = $json['description'] ?? "HTTP {$httpCode} 전송 오류";
     if (stripos($desc, 'chat not found') !== false) {
-        $desc = "누리오 봇(@nurioh_trade_bot)과 아직 대화를 시작하지 않았습니다. 텔레그램에서 @nurioh_trade_bot 에 접속하여 [시작(Start)] 버튼을 먼저 눌러주셔야 메시지를 수신할 수 있습니다!";
+        $desc = "Any Life AI 봇과 아직 대화를 시작하지 않았습니다. 텔레그램에서 봇에 접속하여 [시작(Start)] 버튼을 먼저 눌러주셔야 메시지를 수신할 수 있습니다!";
     } else if (stripos($desc, 'bot was blocked by the user') !== false) {
-        $desc = "사용자가 누리오 텔레그램 봇을 차단했습니다. 텔레그램에서 봇 차단을 해제해 주세요.";
+        $desc = "사용자가 Any Life AI 텔레그램 봇을 차단했습니다. 텔레그램에서 봇 차단을 해제해 주세요.";
     }
     return ['success' => false, 'error' => $desc, 'httpCode' => $httpCode];
 }
@@ -215,11 +215,11 @@ function getSchedulerDataFromDb($pdo): array {
     $nMin = $nH * 60 + $nM;
 
     if ($curMin >= $mMin && $curMin < $aMin) {
-        $curPeriod = 'MORNING';
+        $clockPeriod = 'MORNING';
     } else if ($curMin >= $aMin && $curMin < $nMin) {
-        $curPeriod = 'AFTERNOON';
+        $clockPeriod = 'AFTERNOON';
     } else {
-        $curPeriod = 'NIGHT';
+        $clockPeriod = 'NIGHT';
     }
 
     $scheduleMapping = $decoded['scheduleMapping'] ?? [
@@ -227,35 +227,77 @@ function getSchedulerDataFromDb($pdo): array {
         'AFTERNOON' => 'PRESET_B',
         'NIGHT' => 'PRESET_C'
     ];
-    $curPresetKey = $scheduleMapping[$curPeriod] ?? 'PRESET_A';
+
+    // 👑 [Last Action Wins 핵심 원칙]
+    // 정규 시간대 경계(08:50, 12:00, 21:00)를 새로 통과할 때만 스케줄러가 자동 개입!
+    // 그 사이 사용자가 수동으로 특정 모드를 켜두었더라도 5초 폴링 시 취소되지 않고 안전하게 유지됩니다.
+    $lastScheduled = $decoded['lastScheduledPeriod'] ?? null;
+    $shouldAutoSwitch = ($lastScheduled !== null && $lastScheduled !== $clockPeriod);
+
+    $modeNames = [
+        'MORNING' => '오전 모드 (09:00 당일 돌파 & 대형주 스윙)',
+        'AFTERNOON' => '오후 모드 (횡보 방어 & 수급 집중)',
+        'NIGHT' => '야간 모드 (야간 단기 청산 & 허수 트릭 방어)'
+    ];
+
+    if ($shouldAutoSwitch) {
+        $curPeriod = $clockPeriod;
+        $curPresetKey = $scheduleMapping[$clockPeriod] ?? 'PRESET_A';
+        $decoded['currentPeriod'] = $curPeriod;
+        $decoded['currentPresetKey'] = $curPresetKey;
+        $decoded['currentPresetName'] = $modeNames[$curPeriod] ?? '오전 모드 (09:00 당일 돌파 & 대형주 스윙)';
+        $decoded['lastScheduledPeriod'] = $clockPeriod;
+        $decoded['lastAction'] = [
+            'source' => 'AUTO_TIME_SCHEDULE',
+            'period' => $clockPeriod,
+            'presetKey' => $curPresetKey,
+            'timestamp' => date('c')
+        ];
+        try {
+            $encoded = json_encode($decoded, JSON_UNESCAPED_UNICODE);
+            $pdo->prepare("UPDATE nurioh_settings SET scheduler_data = ? WHERE id = 1")->execute([$encoded]);
+        } catch (Exception $e) {}
+    } else {
+        $curPeriod = $decoded['currentPeriod'] ?? $clockPeriod;
+        $curPresetKey = $decoded['currentPresetKey'] ?? ($scheduleMapping[$curPeriod] ?? 'PRESET_A');
+        if (!isset($decoded['lastScheduledPeriod'])) {
+            $decoded['lastScheduledPeriod'] = $clockPeriod;
+            try {
+                $encoded = json_encode($decoded, JSON_UNESCAPED_UNICODE);
+                $pdo->prepare("UPDATE nurioh_settings SET scheduler_data = ? WHERE id = 1")->execute([$encoded]);
+            } catch (Exception $e) {}
+        }
+    }
+
+    $curPresetName = $modeNames[$curPeriod] ?? '오전 모드 (09:00 당일 돌파 & 대형주 스윙)';
 
     $defaultScheduler = [
         'isEnabled' => true,
         'currentPeriod' => $curPeriod,
         'currentPresetKey' => $curPresetKey,
-        'currentPresetName' => $curPeriod === 'MORNING' ? 'A 모드 (초단타 스캘핑)' : ($curPeriod === 'AFTERNOON' ? 'B 모드 (신고가 돌파)' : 'C 모드 (추세 스윙)'),
+        'currentPresetName' => $curPresetName,
         'globalStrategyMode' => 'MODE_A',
         'timeTable' => $timeTable,
         'scheduleMapping' => $scheduleMapping,
         'userPresets' => [
             'PRESET_A' => [
                 'id' => 'PRESET_A',
-                'name' => 'A 모드 (초단타 스캘핑)',
-                'description' => '급등 포착 및 단기 수급 코인에 최적화된 1~12번 슬롯 설정입니다.',
+                'name' => '오전 모드 (09:00 당일 돌파 & 대형주 스윙)',
+                'description' => '09:00 리셋 직후 당일 돌파(100~500억) 및 우량주 스윙(1~2천억)',
                 'updatedAt' => date('c'),
                 'slots' => []
             ],
             'PRESET_B' => [
                 'id' => 'PRESET_B',
-                'name' => 'B 모드 (신고가 돌파)',
-                'description' => '당일 고가 돌파 및 거래대금 상위 코인을 선별 진입하는 설정입니다.',
+                'name' => '오후 모드 (횡보 방어 & 수급 집중)',
+                'description' => '오후 횡보장 휩쏘 방어 및 검증된 수급 상위 코인 선별 공략',
                 'updatedAt' => date('c'),
                 'slots' => []
             ],
             'PRESET_C' => [
                 'id' => 'PRESET_C',
-                'name' => 'C 모드 (추세 스윙)',
-                'description' => '이평선 정배열 추세 추종 및 다단 트레일링 스탑으로 수익을 지키는 설정입니다.',
+                'name' => '야간 모드 (야간 단기 청산 & 허수 트릭 방어)',
+                'description' => '미 증시 개장 전후 변동성 대응 및 9~10번 슬롯 30% 허수 트릭 방어',
                 'updatedAt' => date('c'),
                 'slots' => []
             ]
@@ -265,20 +307,12 @@ function getSchedulerDataFromDb($pdo): array {
     $merged = array_replace_recursive($defaultScheduler, $decoded);
     $merged['currentPeriod'] = $curPeriod;
     $merged['currentPresetKey'] = $curPresetKey;
-    if ($curPeriod === 'MORNING') $merged['currentPresetName'] = 'A 모드 (초단타 스캘핑)';
-    else if ($curPeriod === 'AFTERNOON') $merged['currentPresetName'] = 'B 모드 (신고가 돌파)';
-    else $merged['currentPresetName'] = 'C 모드 (추세 스윙)';
+    $merged['currentPresetName'] = $curPresetName;
 
-    // 프리셋 A/B/C 모드 명칭 자동 동기화
-    if (isset($merged['userPresets']['PRESET_A']['name'])) {
-        $merged['userPresets']['PRESET_A']['name'] = 'A 모드 (초단타 스캘핑)';
-    }
-    if (isset($merged['userPresets']['PRESET_B']['name'])) {
-        $merged['userPresets']['PRESET_B']['name'] = 'B 모드 (신고가 돌파)';
-    }
-    if (isset($merged['userPresets']['PRESET_C']['name'])) {
-        $merged['userPresets']['PRESET_C']['name'] = 'C 모드 (추세 스윙)';
-    }
+    // 프리셋 명칭 표준화
+    $merged['userPresets']['PRESET_A']['name'] = '오전 모드 (09:00 당일 돌파 & 대형주 스윙)';
+    $merged['userPresets']['PRESET_B']['name'] = '오후 모드 (횡보 방어 & 수급 집중)';
+    $merged['userPresets']['PRESET_C']['name'] = '야간 모드 (야간 단기 청산 & 허수 트릭 방어)';
 
     return $merged;
 }
@@ -579,7 +613,7 @@ try {
             $newNick = ($user['nickname'] === '??' || !$user['nickname']) ? $nickname : $user['nickname'];
             $newImg = $profileImage ?: $user['profile_image'];
             // 🛡️ 사용자가 마이페이지에서 수정한 실명(name)과 연락처(phone)는 카카오 재로그인 시 덮어쓰지 않고 영구 보존!
-            $newName = (!empty($user['name']) && $user['name'] !== '누리오 회원' && $user['name'] !== '??') ? $user['name'] : ($name ?: $newNick);
+            $newName = (!empty($user['name']) && $user['name'] !== '누리오 회원' && $user['name'] !== 'Any Life 회원' && $user['name'] !== '??') ? $user['name'] : ($name ?: $newNick);
             $newPhone = (!empty($user['phone']) && $user['phone'] !== '010-0000-0000') ? $user['phone'] : ($phone ?: '');
             
             $upd = $pdo->prepare("UPDATE nurioh_users SET 
@@ -1591,7 +1625,7 @@ try {
         // 🔔 운영진 및 회원에게 텔레그램 입금 승인 알림 발송
         $userName = $targetUser['name'] ?: $targetUser['nickname'];
         $userChatId = $targetUser['telegram_chat_id'] ?: null;
-        $alertMsg = "<b>💰 [누리오 트레이더] 회비 입금 확인 및 1개월 연장 완료</b>\n\n"
+        $alertMsg = "<b>💰 [Any Life AI] 회비 입금 확인 및 1개월 연장 완료</b>\n\n"
             . "✨ <b>{$userName}</b>님의 회비 입금이 확인되어 <b>1개월(+30일) 이용 연장</b>이 완료되었습니다!\n\n"
             . "━━━━━━━━━━━━━━━━━━━\n"
             . "👤 <b>회원명:</b> {$userName} (연락처: {$targetUser['phone']})\n"
@@ -1600,7 +1634,7 @@ try {
             . "📅 <b>연장된 만료일:</b> {$newExpiresDate}\n"
             . "⚡ <b>이용 상태:</b> 승인 완료 (정상 가동 🟢)\n"
             . "━━━━━━━━━━━━━━━━━━━\n\n"
-            . "🚀 <i>누리오 AI 트레이더가 24시간 실시간 감시를 이어갑니다.</i>";
+            . "🚀 <i>Any Life AI 트레이더가 24시간 실시간 감시를 이어갑니다.</i>";
 
         sendTelegramAdminAlert($alertMsg);
         $notifySettings = !empty($targetUser['telegram_notify_settings']) ? json_decode($targetUser['telegram_notify_settings'], true) : [];
@@ -2803,9 +2837,142 @@ try {
         exit;
     }
 
+    $defaultPeriodSlots = [
+        'MORNING' => [
+            ['slotId' => 1, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 1, 'breakoutMinVolumeKrwEok' => 100, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 2, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 1, 'breakoutMinVolumeKrwEok' => 150, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 3, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 3, 'breakoutMinVolumeKrwEok' => 300, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 30000],
+            ['slotId' => 4, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 3, 'breakoutMinVolumeKrwEok' => 400, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 30000],
+            ['slotId' => 5, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'minutes/240', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 1000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 6, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'minutes/240', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 1000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 7, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'days', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 8, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'days', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 9, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 1, 'breakoutMinVolumeKrwEok' => 160, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 10, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 3, 'breakoutMinVolumeKrwEok' => 500, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 11, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'minutes/240', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 1000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 100000],
+            ['slotId' => 12, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'days', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 100000]
+        ],
+        'AFTERNOON' => [
+            ['slotId' => 1, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 1, 'breakoutMinVolumeKrwEok' => 160, 'trailingTier1TargetProfitPct' => 4.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 2, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 1, 'breakoutMinVolumeKrwEok' => 200, 'trailingTier1TargetProfitPct' => 4.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 3, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 3, 'breakoutMinVolumeKrwEok' => 400, 'trailingTier1TargetProfitPct' => 4.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 30000],
+            ['slotId' => 4, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 3, 'breakoutMinVolumeKrwEok' => 500, 'trailingTier1TargetProfitPct' => 4.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 30000],
+            ['slotId' => 5, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'minutes/240', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 1000, 'trailingTier1TargetProfitPct' => 4.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.5, 'tradeAmountKrw' => 50000],
+            ['slotId' => 6, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'minutes/240', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 1000, 'trailingTier1TargetProfitPct' => 4.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.5, 'tradeAmountKrw' => 50000],
+            ['slotId' => 7, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'days', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 8, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'days', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 9, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 1, 'breakoutMinVolumeKrwEok' => 200, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 10, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 3, 'breakoutMinVolumeKrwEok' => 600, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 11, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'minutes/240', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 100000],
+            ['slotId' => 12, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'days', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 100000]
+        ],
+        'NIGHT' => [
+            ['slotId' => 1, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 1, 'breakoutMinVolumeKrwEok' => 200, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 2, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 1, 'breakoutMinVolumeKrwEok' => 250, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 3, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 3, 'breakoutMinVolumeKrwEok' => 500, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 30000],
+            ['slotId' => 4, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 3, 'breakoutMinVolumeKrwEok' => 600, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 30000],
+            ['slotId' => 5, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'minutes/240', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 1000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 6, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'minutes/240', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 1000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 7, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'days', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 8, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'days', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 9, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 1, 'breakoutMinVolumeKrwEok' => 250, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 30.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 10, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 3, 'breakoutMinVolumeKrwEok' => 700, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 30.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 11, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'minutes/240', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 100000],
+            ['slotId' => 12, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'days', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 100000]
+        ]
+    ];
+
+    $applyPresetSlotsToDb = function(PDO $pdo, array $slotsToApply, int $targetUserId = 0) {
+        if (empty($slotsToApply)) return;
+
+        $userIds = [];
+        if ($targetUserId > 0) {
+            $userIds[] = $targetUserId;
+        } else {
+            $stmt = $pdo->query("SELECT DISTINCT user_id FROM nurioh_slots");
+            $userIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            if (empty($userIds)) $userIds = [1];
+        }
+
+        $stmt = $pdo->prepare("UPDATE nurioh_slots SET 
+            strategy_mode = ?,
+            trade_amount_krw = COALESCE(?, trade_amount_krw),
+            target_profit_pct = ?,
+            trailing_callback_pct = ?,
+            stop_loss_pct = ?,
+            use_wide_trailing = ?,
+            trailing_tier1_target_profit_pct = ?,
+            trailing_tier1_callback_pct = ?,
+            trailing_tier2_hurdle_pct = ?,
+            trailing_tier2_callback_pct = ?,
+            use_atr_stop_loss = ?,
+            breakout_high_enabled = ?,
+            breakout_candle_unit = ?,
+            breakout_min_volume_krw_eok = ?,
+            swing_candle_unit = ?,
+            swing_short_ma = ?,
+            swing_long_ma = ?,
+            swing_min_trade_price_24h_eok = ?,
+            min24h_acc_trade_price_krw = ?
+            WHERE user_id = ? AND slot_id = ?");
+
+        foreach ($userIds as $uid) {
+            $uid = (int)$uid;
+            foreach ($slotsToApply as $s) {
+                $slotId = (int)($s['slotId'] ?? 0);
+                if ($slotId <= 0) continue;
+
+                $stratMode = $s['strategyMode'] ?? 'SCALPING';
+                $tradeAmt = isset($s['tradeAmountKrw']) ? (float)$s['tradeAmountKrw'] : null;
+                $targetProfit = (float)($s['targetProfitPct'] ?? ($s['trailingTier1TargetProfitPct'] ?? 3.0));
+                $trailingCallback = (float)($s['trailingCallbackPct'] ?? ($s['trailingTier1CallbackPct'] ?? 1.0));
+                $stopLoss = (float)($s['stopLossPct'] ?? 2.0);
+                $useWide = isset($s['useWideTrailing']) ? ((bool)$s['useWideTrailing'] ? 1 : 0) : 1;
+                $t1Target = (float)($s['trailingTier1TargetProfitPct'] ?? 5.0);
+                $t1Callback = (float)($s['trailingTier1CallbackPct'] ?? 0.5);
+                $t2Hurdle = (float)($s['trailingTier2HurdlePct'] ?? 15.0);
+                $t2Callback = (float)($s['trailingTier2CallbackPct'] ?? 3.0);
+                $useAtr = isset($s['useAtrStopLoss']) ? ((bool)$s['useAtrStopLoss'] ? 1 : 0) : 0;
+                $breakoutHigh = isset($s['breakoutHighEnabled']) ? ((bool)$s['breakoutHighEnabled'] ? 1 : 0) : 1;
+                $breakoutCandle = (int)($s['breakoutCandleUnit'] ?? 1);
+                $breakoutMinVol = (int)($s['breakoutMinVolumeKrwEok'] ?? 150);
+                $swingCandle = (string)($s['swingCandleUnit'] ?? 'minutes/240');
+                $swingShort = (int)($s['swingShortMa'] ?? 5);
+                $swingLong = (int)($s['swingLongMa'] ?? 20);
+                $swingMinTrade = (int)($s['swingMinTradePrice24hEok'] ?? 1000);
+                $min24hAcc = (int)($s['min24hAccTradePriceKrw'] ?? ($swingMinTrade * 100000000));
+
+                $stmt->execute([
+                    $stratMode,
+                    $tradeAmt,
+                    $targetProfit,
+                    $trailingCallback,
+                    $stopLoss,
+                    $useWide,
+                    $t1Target,
+                    $t1Callback,
+                    $t2Hurdle,
+                    $t2Callback,
+                    $useAtr,
+                    $breakoutHigh,
+                    $breakoutCandle,
+                    $breakoutMinVol,
+                    $swingCandle,
+                    $swingShort,
+                    $swingLong,
+                    $swingMinTrade,
+                    $min24hAcc,
+                    $uid,
+                    $slotId
+                ]);
+            }
+        }
+    };
+
     if ($path === 'scheduler/preset/save' && $method === 'POST') {
         $presetKey = strtoupper((string)($input['presetKey'] ?? 'PRESET_A'));
         $preset = $input['preset'] ?? [];
+        $targetUserId = (int)($input['userId'] ?? 0);
 
         $stmt = $pdo->query("SELECT scheduler_data FROM nurioh_settings WHERE id = 1");
         $row = $stmt ? $stmt->fetch() : null;
@@ -2813,10 +2980,26 @@ try {
         if (!is_array($decoded)) $decoded = [];
         if (!isset($decoded['userPresets'])) $decoded['userPresets'] = [];
 
+        $mappedPeriod = $presetKey;
+        if ($presetKey === 'PRESET_A') $mappedPeriod = 'MORNING';
+        else if ($presetKey === 'PRESET_B') $mappedPeriod = 'AFTERNOON';
+        else if ($presetKey === 'PRESET_C') $mappedPeriod = 'NIGHT';
+
         $decoded['userPresets'][$presetKey] = $preset;
+        $decoded['userPresets'][$mappedPeriod] = $preset;
+
         $encoded = json_encode($decoded, JSON_UNESCAPED_UNICODE);
         $pdo->prepare("INSERT INTO nurioh_settings (id, scheduler_data) VALUES (1, ?) ON DUPLICATE KEY UPDATE scheduler_data = ?")
             ->execute([$encoded, $encoded]);
+
+        // 🚀 현재 가동 중인 시간대라면 nurioh_slots에도 즉각 동기화!
+        $currentPeriod = $decoded['currentPeriod'] ?? 'MORNING';
+        if ($currentPeriod === $mappedPeriod || $currentPeriod === $presetKey) {
+            $slotsToApply = $preset['slots'] ?? [];
+            if (!empty($slotsToApply)) {
+                $applyPresetSlotsToDb($pdo, $slotsToApply, $targetUserId);
+            }
+        }
 
         echo json_encode(['success' => true, 'preset' => $preset, 'scheduler' => $decoded], JSON_UNESCAPED_UNICODE);
         exit;
@@ -2824,25 +3007,52 @@ try {
 
     if ($path === 'scheduler/preset/apply' && $method === 'POST') {
         $presetKey = strtoupper((string)($input['presetKey'] ?? 'PRESET_A'));
+        $targetUserId = (int)($input['userId'] ?? ($input['user_id'] ?? 0));
 
         $stmt = $pdo->query("SELECT scheduler_data FROM nurioh_settings WHERE id = 1");
         $row = $stmt ? $stmt->fetch() : null;
         $decoded = ($row && !empty($row['scheduler_data'])) ? json_decode($row['scheduler_data'], true) : [];
         if (!is_array($decoded)) $decoded = [];
 
-        $decoded['currentPresetKey'] = $presetKey;
-        if (isset($decoded['userPresets'][$presetKey]['name'])) {
-            $decoded['currentPresetName'] = $decoded['userPresets'][$presetKey]['name'];
+        // KST 현재 클록 기준 시간대 계산
+        $timeTable = $decoded['timeTable'] ?? ['MORNING_START' => '08:50', 'AFTERNOON_START' => '12:00', 'NIGHT_START' => '21:00'];
+        list($mH, $mM) = array_map('intval', explode(':', $timeTable['MORNING_START'] ?? '08:50'));
+        list($aH, $aM) = array_map('intval', explode(':', $timeTable['AFTERNOON_START'] ?? '12:00'));
+        list($nH, $nM) = array_map('intval', explode(':', $timeTable['NIGHT_START'] ?? '21:00'));
+        $curMin = (int)date('G') * 60 + (int)date('i');
+        $clockPeriod = ($curMin >= $mH * 60 + $mM && $curMin < $aH * 60 + $aM) ? 'MORNING' : (($curMin >= $aH * 60 + $aM && $curMin < $nH * 60 + $nM) ? 'AFTERNOON' : 'NIGHT');
+
+        $modeNames = [
+            'MORNING' => '오전 모드 (09:00 당일 돌파 & 대형주 스윙)',
+            'AFTERNOON' => '오후 모드 (횡보 방어 & 수급 집중)',
+            'NIGHT' => '야간 모드 (야간 단기 청산 & 허수 트릭 방어)'
+        ];
+
+        $mappedPeriod = 'MORNING';
+        foreach (($decoded['scheduleMapping'] ?? ['MORNING' => 'PRESET_A', 'AFTERNOON' => 'PRESET_B', 'NIGHT' => 'PRESET_C']) as $prd => $prst) {
+            if ($prst === $presetKey) { $mappedPeriod = $prd; break; }
         }
+
+        $decoded['currentPeriod'] = $mappedPeriod;
+        $decoded['currentPresetKey'] = $presetKey;
+        $decoded['currentPresetName'] = $modeNames[$mappedPeriod] ?? '오전 모드 (09:00 당일 돌파 & 대형주 스윙)';
+        $decoded['lastScheduledPeriod'] = $clockPeriod; // 현재 클록 시간대로 설정하여 다음 정규 경계 도달 전까지 수동 모드 100% 유지!
         $decoded['lastAction'] = [
             'source' => 'MANUAL_USER',
             'presetKey' => $presetKey,
-            'period' => $decoded['currentPeriod'] ?? 'MORNING',
+            'period' => $mappedPeriod,
             'timestamp' => date('c')
         ];
         $encoded = json_encode($decoded, JSON_UNESCAPED_UNICODE);
         $pdo->prepare("INSERT INTO nurioh_settings (id, scheduler_data) VALUES (1, ?) ON DUPLICATE KEY UPDATE scheduler_data = ?")
             ->execute([$encoded, $encoded]);
+
+        // 🚀 nurioh_slots 테이블에 해당 프리셋의 전략 파라미터를 즉시 일괄 동기화!
+        $slotsToApply = $decoded['userPresets'][$presetKey]['slots'] ?? [];
+        if (empty($slotsToApply)) {
+            $slotsToApply = $defaultPeriodSlots[$mappedPeriod] ?? $defaultPeriodSlots['MORNING'];
+        }
+        $applyPresetSlotsToDb($pdo, $slotsToApply, $targetUserId);
 
         echo json_encode(['success' => true, 'scheduler' => $decoded], JSON_UNESCAPED_UNICODE);
         exit;
@@ -2850,17 +3060,32 @@ try {
 
     if ($path === 'scheduler/switch' && $method === 'POST') {
         $presetKey = strtoupper((string)($input['presetKey'] ?? 'MORNING'));
+        $targetUserId = (int)($input['userId'] ?? ($input['user_id'] ?? 0));
+
         $stmt = $pdo->query("SELECT scheduler_data FROM nurioh_settings WHERE id = 1");
         $row = $stmt ? $stmt->fetch() : null;
         $decoded = ($row && !empty($row['scheduler_data'])) ? json_decode($row['scheduler_data'], true) : [];
         if (!is_array($decoded)) $decoded = [];
 
+        // KST 현재 클록 기준 시간대 계산
+        $timeTable = $decoded['timeTable'] ?? ['MORNING_START' => '08:50', 'AFTERNOON_START' => '12:00', 'NIGHT_START' => '21:00'];
+        list($mH, $mM) = array_map('intval', explode(':', $timeTable['MORNING_START'] ?? '08:50'));
+        list($aH, $aM) = array_map('intval', explode(':', $timeTable['AFTERNOON_START'] ?? '12:00'));
+        list($nH, $nM) = array_map('intval', explode(':', $timeTable['NIGHT_START'] ?? '21:00'));
+        $curMin = (int)date('G') * 60 + (int)date('i');
+        $clockPeriod = ($curMin >= $mH * 60 + $mM && $curMin < $aH * 60 + $aM) ? 'MORNING' : (($curMin >= $aH * 60 + $aM && $curMin < $nH * 60 + $nM) ? 'AFTERNOON' : 'NIGHT');
+
+        $modeNames = [
+            'MORNING' => '오전 모드 (09:00 당일 돌파 & 대형주 스윙)',
+            'AFTERNOON' => '오후 모드 (횡보 방어 & 수급 집중)',
+            'NIGHT' => '야간 모드 (야간 단기 청산 & 허수 트릭 방어)'
+        ];
+
         $decoded['currentPeriod'] = $presetKey;
         $mappedPreset = $decoded['scheduleMapping'][$presetKey] ?? $presetKey;
         $decoded['currentPresetKey'] = $mappedPreset;
-        if (isset($decoded['userPresets'][$mappedPreset]['name'])) {
-            $decoded['currentPresetName'] = $decoded['userPresets'][$mappedPreset]['name'];
-        }
+        $decoded['currentPresetName'] = $modeNames[$presetKey] ?? '오전 모드 (09:00 당일 돌파 & 대형주 스윙)';
+        $decoded['lastScheduledPeriod'] = $clockPeriod; // 현재 클록 시간대로 설정하여 다음 정규 경계 도달 전까지 수동 모드 100% 유지!
         $decoded['lastAction'] = [
             'source' => 'MANUAL_PERIOD_BUTTON',
             'period' => $presetKey,
@@ -2871,6 +3096,14 @@ try {
         $encoded = json_encode($decoded, JSON_UNESCAPED_UNICODE);
         $pdo->prepare("INSERT INTO nurioh_settings (id, scheduler_data) VALUES (1, ?) ON DUPLICATE KEY UPDATE scheduler_data = ?")
             ->execute([$encoded, $encoded]);
+
+        // 🚀 nurioh_slots 테이블에 해당 프리셋의 전략 파라미터를 즉시 일괄 동기화!
+        $slotsToApply = $decoded['userPresets'][$mappedPreset]['slots'] ?? [];
+        if (empty($slotsToApply)) {
+            $periodName = in_array($presetKey, ['MORNING', 'AFTERNOON', 'NIGHT'], true) ? $presetKey : 'MORNING';
+            $slotsToApply = $defaultPeriodSlots[$periodName] ?? $defaultPeriodSlots['MORNING'];
+        }
+        $applyPresetSlotsToDb($pdo, $slotsToApply, $targetUserId);
 
         echo json_encode(['success' => true, 'scheduler' => $decoded], JSON_UNESCAPED_UNICODE);
         exit;

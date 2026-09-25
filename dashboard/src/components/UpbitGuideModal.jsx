@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Copy, Check, ExternalLink, ShieldCheck, AlertCircle, KeyRound, Server } from 'lucide-react';
 
-export default function UpbitGuideModal({ isOpen, onClose, serverIp = '49.171.41.10' }) {
+export default function UpbitGuideModal({ isOpen, onClose, serverIp = '115.68.168.242' }) {
   const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;
@@ -41,7 +41,7 @@ export default function UpbitGuideModal({ isOpen, onClose, serverIp = '49.171.41
             <div className="flex items-center gap-3">
               <Server className="w-5 h-5 text-blue-400 shrink-0" />
               <div>
-                <span className="text-xs text-slate-400 block mb-0.5">업비트에 등록할 누리오 전용 서버 IP</span>
+                <span className="text-xs text-slate-400 block mb-0.5">업비트에 등록할 Any Life AI 전용 서버 IP</span>
                 <span className="font-mono font-bold text-base text-blue-300">{serverIp}</span>
               </div>
             </div>
@@ -96,7 +96,7 @@ export default function UpbitGuideModal({ isOpen, onClose, serverIp = '49.171.41
               </div>
             </div>
             <p className="text-xs sm:text-[13px] text-slate-400 pl-8 leading-relaxed">
-              💡 <strong>출금 권한을 제외</strong>하여 누리오 시스템은 오직 매매 주문만 집행하며, 회원의 자금을 외부로 출금할 수 없어 100% 안전합니다.
+              💡 <strong>출금 권한을 제외</strong>하여 Any Life AI 시스템은 오직 매매 주문만 집행하며, 회원의 자금을 외부로 출금할 수 없어 100% 안전합니다.
             </p>
           </div>
 
@@ -118,7 +118,7 @@ export default function UpbitGuideModal({ isOpen, onClose, serverIp = '49.171.41
               <span>키 복사 후 등록 폼에 입력</span>
             </div>
             <p className="text-slate-300 text-xs sm:text-[13px] leading-relaxed pl-8">
-              발급된 <strong>Access Key</strong>와 <strong>Secret Key</strong>를 복사하여 누리오 등록창에 입력하고 [연결 테스트]를 진행합니다.
+              발급된 <strong>Access Key</strong>와 <strong>Secret Key</strong>를 복사하여 Any Life AI 등록창에 입력하고 [연결 테스트]를 진행합니다.
             </p>
           </div>
         </div>

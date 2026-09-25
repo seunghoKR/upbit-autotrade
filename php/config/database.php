@@ -13,8 +13,8 @@ class Database {
         if (self::$instance === null) {
             $host = getenv('DB_HOST') ?: 'localhost';
             $port = getenv('DB_PORT') ?: '3306';
-            $dbname = getenv('DB_NAME') ?: 'nuriohtrade';
-            $user = getenv('DB_USER') ?: 'nuriohtrade';
+            $dbname = getenv('DB_NAME') ?: 'aitrade';
+            $user = getenv('DB_USER') ?: 'aitrade';
             $pass = getenv('DB_PASS') ?: '#seungho0409';
             $charset = 'utf8mb4';
 

@@ -31,33 +31,101 @@ class MarketScheduler {
 
     // ⏰ [제안서 2부/3.5.0] 장세별 프리셋 매핑 (오전/오후/야간)
     this.scheduleMapping = {
-      MORNING: 'PRESET_A',
-      AFTERNOON: 'PRESET_B',
-      NIGHT: 'PRESET_C'
+      MORNING: 'MORNING',
+      AFTERNOON: 'AFTERNOON',
+      NIGHT: 'NIGHT'
     };
 
-    // 🔀 사용자 정의 동적 프리셋 템플릿 (A/B/C 모드)
+    // 🎯 공식 표준 12개 슬롯 디폴트 템플릿 (대표님 전략표 100% 반영)
+    this.defaultPeriodSlots = {
+      MORNING: [
+        { slotId: 1, name: '1번 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutCandleUnit: 1, breakoutMinVolumeKrwEok: 100, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, tradeAmountKrw: 50000 },
+        { slotId: 2, name: '2번 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutCandleUnit: 1, breakoutMinVolumeKrwEok: 150, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, tradeAmountKrw: 50000 },
+        { slotId: 3, name: '3번 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutCandleUnit: 3, breakoutMinVolumeKrwEok: 300, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, tradeAmountKrw: 30000 },
+        { slotId: 4, name: '4번 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutCandleUnit: 3, breakoutMinVolumeKrwEok: 400, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, tradeAmountKrw: 30000 },
+        { slotId: 5, name: '5번 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'minutes/240', swingShortMa: 5, swingLongMa: 20, swingMinTradePrice24hEok: 1000, min24hAccTradePriceKrw: 100000000000, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 3.0, tradeAmountKrw: 50000 },
+        { slotId: 6, name: '6번 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'minutes/240', swingShortMa: 5, swingLongMa: 20, swingMinTradePrice24hEok: 1000, min24hAccTradePriceKrw: 100000000000, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 3.0, tradeAmountKrw: 50000 },
+        { slotId: 7, name: '7번 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'days', swingShortMa: 5, swingLongMa: 20, swingMinTradePrice24hEok: 2000, min24hAccTradePriceKrw: 200000000000, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 3.0, tradeAmountKrw: 50000 },
+        { slotId: 8, name: '8번 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'days', swingShortMa: 5, swingLongMa: 20, swingMinTradePrice24hEok: 2000, min24hAccTradePriceKrw: 200000000000, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 3.0, tradeAmountKrw: 50000 },
+        { slotId: 9, name: '9번 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutCandleUnit: 1, breakoutMinVolumeKrwEok: 160, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, tradeAmountKrw: 50000 },
+        { slotId: 10, name: '10번 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutCandleUnit: 3, breakoutMinVolumeKrwEok: 500, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, tradeAmountKrw: 50000 },
+        { slotId: 11, name: '11번 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'minutes/240', swingShortMa: 5, swingLongMa: 20, swingMinTradePrice24hEok: 1000, min24hAccTradePriceKrw: 100000000000, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 3.0, tradeAmountKrw: 100000 },
+        { slotId: 12, name: '12번 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'days', swingShortMa: 5, swingLongMa: 20, swingMinTradePrice24hEok: 2000, min24hAccTradePriceKrw: 200000000000, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 3.0, tradeAmountKrw: 100000 }
+      ],
+      AFTERNOON: [
+        { slotId: 1, name: '1번 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutCandleUnit: 1, breakoutMinVolumeKrwEok: 160, trailingTier1TargetProfitPct: 4.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, tradeAmountKrw: 50000 },
+        { slotId: 2, name: '2번 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutCandleUnit: 1, breakoutMinVolumeKrwEok: 200, trailingTier1TargetProfitPct: 4.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, tradeAmountKrw: 50000 },
+        { slotId: 3, name: '3번 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutCandleUnit: 3, breakoutMinVolumeKrwEok: 400, trailingTier1TargetProfitPct: 4.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, tradeAmountKrw: 30000 },
+        { slotId: 4, name: '4번 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutCandleUnit: 3, breakoutMinVolumeKrwEok: 500, trailingTier1TargetProfitPct: 4.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, tradeAmountKrw: 30000 },
+        { slotId: 5, name: '5번 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'minutes/240', swingShortMa: 5, swingLongMa: 20, swingMinTradePrice24hEok: 1000, min24hAccTradePriceKrw: 100000000000, trailingTier1TargetProfitPct: 4.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.5, tradeAmountKrw: 50000 },
+        { slotId: 6, name: '6번 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'minutes/240', swingShortMa: 5, swingLongMa: 20, swingMinTradePrice24hEok: 1000, min24hAccTradePriceKrw: 100000000000, trailingTier1TargetProfitPct: 4.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.5, tradeAmountKrw: 50000 },
+        { slotId: 7, name: '7번 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'days', swingShortMa: 5, swingLongMa: 20, swingMinTradePrice24hEok: 2000, min24hAccTradePriceKrw: 200000000000, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 3.0, tradeAmountKrw: 50000 },
+        { slotId: 8, name: '8번 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'days', swingShortMa: 5, swingLongMa: 20, swingMinTradePrice24hEok: 2000, min24hAccTradePriceKrw: 200000000000, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 3.0, tradeAmountKrw: 50000 },
+        { slotId: 9, name: '9번 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutCandleUnit: 1, breakoutMinVolumeKrwEok: 200, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, tradeAmountKrw: 50000 },
+        { slotId: 10, name: '10번 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutCandleUnit: 3, breakoutMinVolumeKrwEok: 600, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, tradeAmountKrw: 50000 },
+        { slotId: 11, name: '11번 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'minutes/240', swingShortMa: 5, swingLongMa: 20, swingMinTradePrice24hEok: 2000, min24hAccTradePriceKrw: 200000000000, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 3.0, tradeAmountKrw: 100000 },
+        { slotId: 12, name: '12번 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'days', swingShortMa: 5, swingLongMa: 20, swingMinTradePrice24hEok: 2000, min24hAccTradePriceKrw: 200000000000, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 3.0, tradeAmountKrw: 100000 }
+      ],
+      NIGHT: [
+        { slotId: 1, name: '1번 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutCandleUnit: 1, breakoutMinVolumeKrwEok: 200, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, tradeAmountKrw: 50000 },
+        { slotId: 2, name: '2번 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutCandleUnit: 1, breakoutMinVolumeKrwEok: 250, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, tradeAmountKrw: 50000 },
+        { slotId: 3, name: '3번 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutCandleUnit: 3, breakoutMinVolumeKrwEok: 500, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, tradeAmountKrw: 30000 },
+        { slotId: 4, name: '4번 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutCandleUnit: 3, breakoutMinVolumeKrwEok: 600, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, tradeAmountKrw: 30000 },
+        { slotId: 5, name: '5번 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'minutes/240', swingShortMa: 5, swingLongMa: 20, swingMinTradePrice24hEok: 1000, min24hAccTradePriceKrw: 100000000000, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 3.0, tradeAmountKrw: 50000 },
+        { slotId: 6, name: '6번 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'minutes/240', swingShortMa: 5, swingLongMa: 20, swingMinTradePrice24hEok: 1000, min24hAccTradePriceKrw: 100000000000, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 3.0, tradeAmountKrw: 50000 },
+        { slotId: 7, name: '7번 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'days', swingShortMa: 5, swingLongMa: 20, swingMinTradePrice24hEok: 2000, min24hAccTradePriceKrw: 200000000000, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 3.0, tradeAmountKrw: 50000 },
+        { slotId: 8, name: '8번 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'days', swingShortMa: 5, swingLongMa: 20, swingMinTradePrice24hEok: 2000, min24hAccTradePriceKrw: 200000000000, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 3.0, tradeAmountKrw: 50000 },
+        { slotId: 9, name: '9번 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutCandleUnit: 1, breakoutMinVolumeKrwEok: 250, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 30.0, trailingTier2CallbackPct: 3.0, isHesuTrick: true, stopLossPct: 2.0, tradeAmountKrw: 50000 },
+        { slotId: 10, name: '10번 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutCandleUnit: 3, breakoutMinVolumeKrwEok: 700, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 30.0, trailingTier2CallbackPct: 3.0, isHesuTrick: true, stopLossPct: 2.0, tradeAmountKrw: 50000 },
+        { slotId: 11, name: '11번 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'minutes/240', swingShortMa: 5, swingLongMa: 20, swingMinTradePrice24hEok: 2000, min24hAccTradePriceKrw: 200000000000, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 3.0, tradeAmountKrw: 100000 },
+        { slotId: 12, name: '12번 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'days', swingShortMa: 5, swingLongMa: 20, swingMinTradePrice24hEok: 2000, min24hAccTradePriceKrw: 200000000000, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 15.0, trailingTier2CallbackPct: 3.0, stopLossPct: 3.0, tradeAmountKrw: 100000 }
+      ]
+    };
+
+    // 🔀 사용자 정의 동적 프리셋 템플릿 (오전/오후/야간 장세)
     this.userPresets = {
+      MORNING: {
+        id: 'MORNING',
+        name: '오전 모드',
+        description: '09:00 리셋 직후 당일 돌파(100~500억) 및 우량주 스윙(1~2천억)',
+        updatedAt: new Date().toISOString(),
+        slots: this.defaultPeriodSlots.MORNING
+      },
+      AFTERNOON: {
+        id: 'AFTERNOON',
+        name: '오후 모드',
+        description: '오후 횡보장 휩쏘 방어 및 검증된 수급 상위 코인 선별 공략',
+        updatedAt: new Date().toISOString(),
+        slots: this.defaultPeriodSlots.AFTERNOON
+      },
+      NIGHT: {
+        id: 'NIGHT',
+        name: '야간 모드',
+        description: '미 증시 개장 전후 변동성 대응 및 9~10번 슬롯 30% 허수 트릭 방어',
+        updatedAt: new Date().toISOString(),
+        slots: this.defaultPeriodSlots.NIGHT
+      },
+      // 하위 호환 매핑
       PRESET_A: {
         id: 'PRESET_A',
-        name: 'A 모드 (초단타 스캘핑)',
-        description: '급등 포착 및 단기 수급 코인에 최적화된 1~12번 슬롯 설정입니다.',
+        name: '오전 모드',
+        description: '09:00 리셋 직후 당일 돌파(100~500억) 및 우량주 스윙(1~2천억)',
         updatedAt: new Date().toISOString(),
-        slots: []
+        slots: this.defaultPeriodSlots.MORNING
       },
       PRESET_B: {
         id: 'PRESET_B',
-        name: 'B 모드 (신고가 돌파)',
-        description: '당일 고가 돌파 및 거래대금 상위 코인을 선별 진입하는 설정입니다.',
+        name: '오후 모드',
+        description: '오후 횡보장 휩쏘 방어 및 검증된 수급 상위 코인 선별 공략',
         updatedAt: new Date().toISOString(),
-        slots: []
+        slots: this.defaultPeriodSlots.AFTERNOON
       },
       PRESET_C: {
         id: 'PRESET_C',
-        name: 'C 모드 (추세 스윙)',
-        description: '이평선 정배열 추세 추종 및 다단 트레일링 스탑으로 수익을 지키는 설정입니다.',
+        name: '야간 모드',
+        description: '미 증시 개장 전후 변동성 대응 및 9~10번 슬롯 30% 허수 트릭 방어',
         updatedAt: new Date().toISOString(),
-        slots: []
+        slots: this.defaultPeriodSlots.NIGHT
       }
     };
 

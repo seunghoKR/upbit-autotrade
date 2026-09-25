@@ -14,7 +14,8 @@ import {
   Volume2,
   VolumeX,
   Menu,
-  X
+  X,
+  Smartphone
 } from 'lucide-react';
 import { soundService } from '../services/soundService';
 import { APP_VERSION } from '../version';
@@ -51,41 +52,62 @@ export default function Header({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // 🏛️ 3단계 환경 감지: 🧪 연구실(로컬) | 🔬 실험실(호스팅 Staging) | 🏛️ 실서버(상용 Live)
+  // 📱 PWA / 독립형 앱(Standalone) 모드로 실행 중인지 감지 (앱으로 실행 시 앱설치 버튼 자동 숨김)
+  const [isStandalone, setIsStandalone] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return Boolean(
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.matchMedia('(display-mode: window-controls-overlay)').matches ||
+      window.navigator.standalone === true ||
+      document.referrer.includes('android-app://')
+    );
+  });
+
+  useEffect(() => {
+    const checkStandalone = () => {
+      const standalone = Boolean(
+        window.matchMedia('(display-mode: standalone)').matches ||
+        window.matchMedia('(display-mode: window-controls-overlay)').matches ||
+        window.navigator.standalone === true ||
+        document.referrer.includes('android-app://')
+      );
+      setIsStandalone(standalone);
+    };
+    checkStandalone();
+    const mediaQuery = window.matchMedia('(display-mode: standalone)');
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', checkStandalone);
+      return () => mediaQuery.removeEventListener('change', checkStandalone);
+    }
+  }, []);
+
+  // 🏛️ 2단계 환경 감지: 🧪 연구실(로컬) | 🟢 Any Life AI 실서버(Live)
   const isLocalLab = typeof window !== 'undefined' && (
     window.location.hostname === 'localhost' ||
     window.location.hostname === '127.0.0.1' ||
     Boolean(import.meta.env?.DEV)
   );
-  const isStagingLab = typeof window !== 'undefined' && (
-    window.location.pathname.startsWith('/lab') ||
-    window.location.hostname.includes('lab')
-  );
 
   useEffect(() => {
     let faviconName = 'favicon.png';
     if (isLocalLab) {
-      document.title = `🧪 [연구실 v${APP_VERSION}] NURIOH AI TRADER`;
-      faviconName = 'favicon-lab.png';
-    } else if (isStagingLab) {
-      document.title = `🔬 [실험실 v${APP_VERSION}] NURIOH AI TRADER`;
+      document.title = `🧪 [연구실 v${APP_VERSION}] Any Life AI TRADER`;
       faviconName = 'favicon-lab.png';
     } else {
-      document.title = `NURIOH AI TRADER (누리오 AI v${APP_VERSION})`;
+      document.title = `Any Life AI - Smart Trading for Any Lifestyle. (v${APP_VERSION})`;
       faviconName = 'favicon.png';
     }
 
     try {
       const linkEl = document.querySelector("link[rel*='icon']");
       if (linkEl) {
-        const basePath = isStagingLab ? '/lab/' : './';
         const vQuery = APP_VERSION.replace(/\./g, '');
-        linkEl.href = `${basePath}${faviconName}?v=${vQuery}`;
+        linkEl.href = `./${faviconName}?v=${vQuery}`;
       }
     } catch (e) {
       console.warn('Favicon switch error:', e);
     }
-  }, [isLocalLab, isStagingLab]);
+  }, [isLocalLab]);
 
   useEffect(() => {
     const handleSoundToggle = (e) => {
@@ -115,7 +137,7 @@ export default function Header({
 
   // 닉네임 표시명 계산
   const displayName = (!user?.nickname || user?.nickname === '??') 
-    ? (user?.name || (user?.email ? user.email.split('@')[0] : '누리오 마스터 대표님')) 
+    ? (user?.name || (user?.email ? user.email.split('@')[0] : 'Any Life AI 마스터 대표님')) 
     : user.nickname;
 
   return (
@@ -130,17 +152,17 @@ export default function Header({
         <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1 overflow-hidden">
           {/* 로고 */}
           <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-            <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-xl overflow-hidden shadow-md shadow-emerald-500/20 border border-emerald-500/30 flex items-center justify-center bg-slate-950 shrink-0">
+            <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-xl overflow-hidden shadow-md shadow-indigo-500/20 border border-indigo-500/30 flex items-center justify-center bg-slate-950 shrink-0">
               <img 
                 src="/assets/logos/nurioh_logo.png" 
-                alt="NURIOH" 
+                alt="Any Life AI" 
                 className="w-full h-full object-cover"
               />
             </div>
             <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
               <div className="flex items-center gap-0.5 sm:gap-1">
-                <h1 className="text-sm sm:text-lg font-black text-white tracking-tight whitespace-nowrap">NURIOH</h1>
-                <span className="hidden xs:inline text-[9px] sm:text-[10px] px-1 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
+                <h1 className="text-sm sm:text-lg font-black text-white tracking-tight whitespace-nowrap">Any Life</h1>
+                <span className="hidden xs:inline text-[9px] sm:text-[10px] px-1 py-0.2 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-bold">
                   AI
                 </span>
               </div>
@@ -148,21 +170,16 @@ export default function Header({
                 v{APP_VERSION}
               </span>
 
-              {/* 🏛️ 3단계 시각적 직관 배지: 🧪 연구실 | 🔬 실험실 | 🟢 실서버 */}
+              {/* 🏛️ 2단계 시각적 직관 배지: 🧪 연구실 | 🟢 실서버 */}
               {isLocalLab ? (
                 <span className="hidden md:flex text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-purple-950/80 text-purple-300 font-black border border-purple-500/60 shadow-md shadow-purple-900/40 items-center gap-1 animate-pulse shrink-0" title="🧪 대표님 로컬 연구실(LAB) 개발 환경입니다.">
                   <span className="inline-block w-1.5 h-1.5 rounded-full bg-purple-400"></span>
                   🧪 연구실 (로컬)
                 </span>
-              ) : isStagingLab ? (
-                <span className="hidden md:flex text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-amber-950/90 text-amber-300 font-black border border-amber-500/70 shadow-md shadow-amber-900/50 items-center gap-1 animate-pulse shrink-0" title="🔬 운영자 실전 검증용 실험실(Staging) 환경입니다.">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                  🔬 실험실 (Staging)
-                </span>
               ) : (
-                <span className="hidden md:flex text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 font-black border border-emerald-500/50 items-center gap-1 shrink-0" title="🟢 회원 실거래 상용 서버(LIVE)입니다.">
+                <span className="hidden md:flex text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 font-black border border-emerald-500/50 items-center gap-1 shrink-0" title="🟢 Any Life AI 실서버(anylifeai.kr)입니다.">
                   <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                  LIVE 실서버
+                  🟢 실서버 (anylifeai.kr)
                 </span>
               )}
 
@@ -374,6 +391,18 @@ export default function Header({
               <span className="w-2 h-2 rounded-full bg-cyan-400 absolute -top-0.5 -right-0.5"></span>
             </button>
 
+            {/* 📱 앱 설치 버튼 (이미 앱으로 실행 중일 때는 완벽 숨김!) */}
+            {!isStandalone && (
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent('trigger_pwa_install'))}
+                className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/70 border border-emerald-500/40 text-emerald-200 text-xs font-bold transition cursor-pointer flex items-center gap-1 shrink-0 active:scale-95"
+                title="스마트폰/PC 앱 설치 (PWA 바로가기)"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="hidden md:inline">앱 설치</span>
+              </button>
+            )}
+
             {/* 📖 매뉴얼 버튼 */}
             <button
               onClick={onOpenManual}
@@ -524,6 +553,17 @@ export default function Header({
               <span>거래소 공지</span>
               <span className="w-2 h-2 rounded-full bg-cyan-400 absolute top-2 right-2"></span>
             </button>
+
+            {/* 📱 앱 설치 (이미 앱으로 실행 중일 때는 완벽 숨김!) */}
+            {!isStandalone && (
+              <button
+                onClick={() => { setIsMobileMenuOpen(false); window.dispatchEvent(new CustomEvent('trigger_pwa_install')); }}
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-950/50 border border-emerald-500/30 text-emerald-200 text-xs font-semibold hover:bg-emerald-900/60 transition text-left"
+              >
+                <Smartphone className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>스마트폰/PC 앱 설치 (PWA)</span>
+              </button>
+            )}
 
             {/* 5. 매뉴얼 */}
             <button

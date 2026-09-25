@@ -3,8 +3,8 @@ import sys
 import ftplib
 from pathlib import Path
 
-FTP_HOST = '115.68.168.243'
-FTP_USER = 'nuriohtrade'
+FTP_HOST = '115.68.168.242'
+FTP_USER = 'aitrade'
 FTP_PASS = 'seungho0409#'
 REMOTE_ROOT = '/public_html'
 

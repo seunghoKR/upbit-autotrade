@@ -1,8 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = (typeof window !== 'undefined' && window.location.pathname.startsWith('/lab'))
-  ? '/lab/api'
-  : '/api';
+const API_BASE = '/api';
 
 // ==========================================
 // 회원 인증 & SaaS API
@@ -230,8 +228,8 @@ export const getSchedulerStatus = async () => {
   return res.data;
 };
 
-export const switchSchedulerPreset = async (presetKey) => {
-  const res = await axios.post(`${API_BASE}/scheduler/switch`, { presetKey });
+export const switchSchedulerPreset = async (presetKey, userId = null) => {
+  const res = await axios.post(`${API_BASE}/scheduler/switch`, { presetKey, userId });
   return res.data;
 };
 
@@ -245,8 +243,8 @@ export const saveSchedulerPreset = async (presetKey, preset) => {
   return res.data;
 };
 
-export const applySchedulerPreset = async (presetKey) => {
-  const res = await axios.post(`${API_BASE}/scheduler/preset/apply`, { presetKey });
+export const applySchedulerPreset = async (presetKey, userId = null) => {
+  const res = await axios.post(`${API_BASE}/scheduler/preset/apply`, { presetKey, userId });
   return res.data;
 };
 

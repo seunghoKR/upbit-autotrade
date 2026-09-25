@@ -19,3 +19,4 @@ yarn-error.log*
 Thumbs.db
 .vscode/
 .idea/
+old_server_data.json

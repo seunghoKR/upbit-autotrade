@@ -7,7 +7,7 @@ export default function BalanceCard({
   slots = [],
   livePriceMap = {}, 
   accountError = null, 
-  serverIp = '115.68.168.243',
+  serverIp = '115.68.168.242',
   onOpenApiModal,
   marketCount = 134,
   strategyViewMode = 'RECOMMENDED'
@@ -62,20 +62,16 @@ export default function BalanceCard({
     totalCoinEvalValue += coin.evalAmount;
   });
 
-  // 🛡️ accounts가 비어있거나 0원일 때 → 슬롯 포지션 + 실시간 시세로 총자산 보정
+  // 슬롯 데이터 기반 자산 계산 (계좌 API 응답 지연 시 슬롯 데이터로 즉시 렌더링)
+  const slotHasPosition = Array.isArray(slots) && slots.some(s => s.positionStatus === 'IN_POSITION' && s.entryPrice > 0);
   let slotBasedCoinValue = 0;
-  let slotHasPosition = false;
-  if (!hasRealAccounts && Array.isArray(slots)) {
-    slots.forEach(slot => {
-      if (slot.positionStatus === 'IN_POSITION' && slot.entryVolume > 0) {
-        const slotMkt = slot.targetMarket || '';
-        const slotSym = slotMkt.replace('KRW-', '');
-        const tick = livePriceMap[slotMkt] || livePriceMap[slotSym] || livePriceMap[slotMkt.toLowerCase()] || livePriceMap[slotSym.toLowerCase()];
-        const livePrice = tick?.trade_price || slot.entryPrice || 0;
-        if (livePrice > 0) {
-          slotBasedCoinValue += slot.entryVolume * livePrice;
-          slotHasPosition = true;
-        }
+  if (!hasRealAccounts && slotHasPosition) {
+    slots.forEach(s => {
+      if (s.positionStatus === 'IN_POSITION' && s.entryPrice > 0) {
+        const mkt = s.targetMarket || '';
+        const curPrice = (livePriceMap[mkt]?.trade_price || livePriceMap[mkt.replace('KRW-', '')]?.trade_price || s.entryPrice);
+        const evalAmt = (s.entryVolume || 0) * curPrice;
+        slotBasedCoinValue += (evalAmt > 0 ? evalAmt : (s.entryAmountKrw || 0));
       }
     });
   }
@@ -121,6 +117,57 @@ export default function BalanceCard({
           </div>
         )}
       </div>
+
+      {/* ⚠️ 업비트 연동 안내 배너 (IP 미등록 등) */}
+      {accountError && (
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-950/80 via-slate-900/90 to-amber-950/80 border border-amber-500/60 text-amber-200 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
+          <div className="flex items-start gap-3 min-w-0">
+            <span className="text-2xl shrink-0">⚠️</span>
+            <div className="space-y-1 min-w-0">
+              <div className="font-extrabold text-xs sm:text-sm text-amber-100 flex items-center gap-1.5 flex-wrap">
+                <span>업비트 Open API 연동 안내:</span>
+                {accountError.includes('no_authorization_ip') ? (
+                  <span className="px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/40 font-black">
+                    서버 허용 IP 등록 필요
+                  </span>
+                ) : (
+                  <span className="text-amber-300">{accountError}</span>
+                )}
+              </div>
+              <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed">
+                {accountError.includes('no_authorization_ip') ? (
+                  <>
+                    새 실서버 IP(<strong className="text-amber-300 font-mono font-black">115.68.168.242</strong>)가 업비트에 등록되지 않아 조회가 대기 중입니다.<br />
+                    업비트(PC) ➔ 마이페이지 ➔ <strong>[Open API 관리]</strong>의 허용 IP에 <strong className="text-amber-300 font-mono font-black">115.68.168.242</strong>를 등록해 주시면 즉시 연동됩니다.
+                  </>
+                ) : (
+                  accountError
+                )}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end pt-1 sm:pt-0">
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText('115.68.168.242');
+                alert('새 서버 IP [115.68.168.242]가 복사되었습니다!\n업비트 Open API 관리 페이지의 허용 IP에 붙여넣어 주세요.');
+              }}
+              className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black shadow-lg shadow-amber-500/20 transition-all cursor-pointer whitespace-nowrap active:scale-95"
+            >
+              📋 서버 IP 복사
+            </button>
+            <a
+              href="https://upbit.com/mypage/open_api_management"
+              target="_blank"
+              rel="noreferrer"
+              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-200 text-xs font-bold border border-amber-500/40 shadow transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 active:scale-95"
+            >
+              <span>업비트 바로가기</span>
+              <span>↗</span>
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* 2-A. 모바일 전용 초슬림 통합 자산 카드 (md:hidden) */}
       <div className={`md:hidden bg-slate-900/90 border rounded-2xl p-3.5 backdrop-blur-md shadow-lg space-y-3 max-w-full min-w-0 transition-all ${

@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { soundService } from '../services/soundService';
 
-// 각 장세 모드별 누리오 AI 기본 추천 표준값 (디폴트 템플릿)
+// 각 장세 모드별 Any Life AI 기본 추천 표준값 (디폴트 템플릿)
 export const DEFAULT_MODE_PRESETS = {
   PRESET_A: {
     id: 'PRESET_A',
-    name: 'A 모드 (초단타 스캘핑)',
+    name: '오전 모드 (09:00 당일 돌파 & 대형주 스윙)',
     icon: '⚡',
     periodKey: 'MORNING',
     tagText: '초단타 급등 & VWAP 돌파',
-    description: '급등 포착 및 단기 수급 코인 집중 공략',
+    description: '09:00 리셋 직후 당일 돌파(100~500억) 및 우량주 스윙(1~2천억)',
     common: {
       tradeAmountKrw: 50000,
       trailingTier1TargetProfitPct: 3.5,
@@ -27,11 +27,11 @@ export const DEFAULT_MODE_PRESETS = {
   },
   PRESET_B: {
     id: 'PRESET_B',
-    name: 'B 모드 (신고가 돌파)',
+    name: '오후 모드 (횡보 방어 & 수급 집중)',
     icon: '🚀',
     periodKey: 'AFTERNOON',
     tagText: '당일 신고가 & 돌파 매수',
-    description: '당일 고가 돌파 및 거래대금 상위 코인 선별 진입',
+    description: '오후 횡보장 휩쏘 방어 및 검증된 수급 상위 코인 선별 공략',
     common: {
       tradeAmountKrw: 50000,
       trailingTier1TargetProfitPct: 2.0,
@@ -49,11 +49,11 @@ export const DEFAULT_MODE_PRESETS = {
   },
   PRESET_C: {
     id: 'PRESET_C',
-    name: 'C 모드 (추세 스윙)',
+    name: '야간 모드 (야간 단기 청산 & 허수 트릭 방어)',
     icon: '🌊',
     periodKey: 'NIGHT',
     tagText: '이평 정배열 & 트레일링 스탑',
-    description: '중장기 이평선 정배열 추세 추종 및 다단 트레일링 스탑으로 수익 보존',
+    description: '미 증시 개장 전후 변동성 대응 및 9~10번 슬롯 30% 허수 트릭 방어',
     common: {
       tradeAmountKrw: 50000,
       trailingTier1TargetProfitPct: 2.0,

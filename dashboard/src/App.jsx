@@ -22,7 +22,6 @@ import AdminUserManagement from './components/AdminUserManagement';
 import DevModeSwitcher from './components/DevModeSwitcher';
 import OperatorDashboardModal from './components/OperatorDashboardModal';
 import DeveloperDashboardModal from './components/DeveloperDashboardModal';
-import SettingsModal from './components/SettingsModal';
 import MyPageModal from './components/MyPageModal';
 import ManualModal from './components/ManualModal';
 import NoticeBoardModal from './components/NoticeBoardModal';
@@ -31,6 +30,7 @@ import { COIN_NOTICES } from './data/coinNotices';
 import { soundService } from './services/soundService';
 import { APP_VERSION } from './version';
 import { DEFAULT_BUY_TIME_BLOCKS, checkBuyRestricted } from './services/timeBlockService';
+import { DEFAULT_PERIOD_SLOTS } from './constants/periodPresets';
 
 import {
   getBotStatus,
@@ -105,26 +105,21 @@ const LAB_DEV_USER = {
   approvalStatus: 'APPROVED'
 };
 
-// 🏛️ 3단계 환경 감지 플래그: 🧪 연구실(로컬) | 🔬 실험실(호스팅 Staging) | 🏛️ 실서버(상용 Live)
+// 🏛️ 환경 감지 플래그: 🧪 로컬 연구실(localhost) | 🏛️ 정식 실서버(anylifeai.kr)
 const isLocalLab = typeof window !== 'undefined' && (
   window.location.hostname === 'localhost' ||
   window.location.hostname === '127.0.0.1' ||
   Boolean(import.meta.env?.DEV)
 );
-const isStagingLab = typeof window !== 'undefined' && (
-  window.location.pathname.startsWith('/lab') ||
-  window.location.hostname.includes('lab')
-);
-const isLabEnvironment = isLocalLab || isStagingLab;
+const isLabEnvironment = isLocalLab;
 
 export default function App() {
   const [botRunning, setBotRunning] = useState(false);
-  const [serverIp, setServerIp] = useState('115.68.168.243');
+  const [serverIp, setServerIp] = useState('115.68.168.242');
   
   // 모달 상태 관리
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isPanicSellOpen, setIsPanicSellOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isMyPageOpen, setIsMyPageOpen] = useState(false);
   const [isManualOpen, setIsManualOpen] = useState(false);
   const [isKakaoModalOpen, setIsKakaoModalOpen] = useState(false);
@@ -217,6 +212,123 @@ export default function App() {
     });
   };
 
+  // 🎛️ [감시모드 vs 수정모드] 화면 전환 상태 (MONITOR: 12개 카드 박스, EDIT_TABLE: 12개 슬롯 통합 표)
+  const [slotViewMode, setSlotViewMode] = useState('MONITOR');
+  const [editingPeriod, setEditingPeriod] = useState('MORNING');
+  const [themePreviewOverride, setThemePreviewOverride] = useState(null); // 'MORNING' | 'AFTERNOON' | 'NIGHT' | null (연구실 테마 즉시 체험용)
+  const [periodSlotsMap, setPeriodSlotsMap] = useState(() => {
+    try {
+      const cached = localStorage.getItem('nurioh_period_slots_map');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return DEFAULT_PERIOD_SLOTS;
+  });
+
+  const handleOpenTableEdit = (periodKey) => {
+    setEditingPeriod(periodKey || 'MORNING');
+    setSlotViewMode('EDIT_TABLE');
+    setTimeout(() => {
+      const slotEl = document.getElementById('slot-manager-container') || document.querySelector('main');
+      if (slotEl) {
+        slotEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 50);
+  };
+
+  const handleSaveTableEdit = async (periodKey, updatedSlots, allSlotsMap = null) => {
+    try {
+      const newMap = allSlotsMap ? { ...periodSlotsMap, ...allSlotsMap } : {
+        ...periodSlotsMap,
+        [periodKey]: updatedSlots
+      };
+      setPeriodSlotsMap(newMap);
+      try {
+        localStorage.setItem('nurioh_period_slots_map', JSON.stringify(newMap));
+      } catch (e) {}
+
+      // 서버 프리셋 영구 저장 (경우 1과 경우 2의 완벽 동기화)
+      const saveTargetKeys = allSlotsMap ? Object.keys(allSlotsMap) : [periodKey];
+      for (const pKey of saveTargetKeys) {
+        const slotsToSave = newMap[pKey];
+        if (!slotsToSave) continue;
+        const presetKey = pKey === 'MORNING' ? 'PRESET_A' : (pKey === 'AFTERNOON' ? 'PRESET_B' : 'PRESET_C');
+        const modeTitle = pKey === 'MORNING' ? '오전 모드' : (pKey === 'AFTERNOON' ? '오후 모드' : '야간 모드');
+        try {
+          await saveSchedulerPreset(presetKey, {
+            name: modeTitle,
+            periodKey: pKey,
+            slots: slotsToSave
+          });
+        } catch (err) {
+          console.warn(`Backend saveSchedulerPreset error for ${presetKey}, saved locally:`, err);
+        }
+      }
+
+      // 글로벌 제어 타워(경우 1)의 schedulerData 상태 즉시 업데이트
+      setSchedulerData(prev => {
+        if (!prev) return prev;
+        const updatedPresets = { ...(prev.userPresets || {}) };
+        saveTargetKeys.forEach(pKey => {
+          const prKey = pKey === 'MORNING' ? 'PRESET_A' : (pKey === 'AFTERNOON' ? 'PRESET_B' : 'PRESET_C');
+          updatedPresets[prKey] = {
+            ...(updatedPresets[prKey] || {}),
+            name: pKey === 'MORNING' ? '오전 모드' : (pKey === 'AFTERNOON' ? '오후 모드' : '야간 모드'),
+            slots: newMap[pKey]
+          };
+          updatedPresets[pKey] = {
+            ...(updatedPresets[pKey] || {}),
+            name: pKey === 'MORNING' ? '오전 모드' : (pKey === 'AFTERNOON' ? '오후 모드' : '야간 모드'),
+            slots: newMap[pKey]
+          };
+        });
+        return {
+          ...prev,
+          userPresets: updatedPresets
+        };
+      });
+
+      // 현재 가동 중인 시간대라면 1~12번 실시간 슬롯(경우 3)에도 즉시 일괄 적용!
+      const curPeriod = (schedulerData?.currentPeriod || 'MORNING').toUpperCase();
+      if (curPeriod === periodKey || (allSlotsMap && newMap[curPeriod])) {
+        const activeUpdatedSlots = newMap[curPeriod] || updatedSlots;
+        setSlots(prevSlots => prevSlots.map(slot => {
+          const match = activeUpdatedSlots.find(s => s.slotId === slot.slotId);
+          if (!match) return slot;
+          return {
+            ...slot,
+            strategyMode: match.strategyMode || slot.strategyMode,
+            tradeAmountKrw: match.tradeAmountKrw !== undefined ? match.tradeAmountKrw : slot.tradeAmountKrw,
+            targetProfitPct: match.trailingTier1TargetProfitPct || match.targetProfitPct || slot.targetProfitPct,
+            trailingTargetProfitPct: match.trailingTier1TargetProfitPct || slot.trailingTargetProfitPct,
+            trailingCallbackPct: match.trailingTier1CallbackPct || slot.trailingCallbackPct,
+            trailingTier1TargetProfitPct: match.trailingTier1TargetProfitPct || slot.trailingTier1TargetProfitPct,
+            trailingTier1CallbackPct: match.trailingTier1CallbackPct || slot.trailingTier1CallbackPct,
+            trailingTier2HurdlePct: match.trailingTier2HurdlePct || slot.trailingTier2HurdlePct,
+            trailingTier2CallbackPct: match.trailingTier2CallbackPct || slot.trailingTier2CallbackPct,
+            stopLossPct: match.stopLossPct !== undefined ? match.stopLossPct : slot.stopLossPct,
+            useWideTrailing: true,
+            breakoutCandleUnit: match.breakoutCandleUnit || slot.breakoutCandleUnit,
+            breakoutMinVolumeKrwEok: match.breakoutMinVolumeKrwEok || slot.breakoutMinVolumeKrwEok,
+            swingCandleUnit: match.swingCandleUnit || slot.swingCandleUnit,
+            swingShortMa: match.swingShortMa || slot.swingShortMa,
+            swingLongMa: match.swingLongMa || slot.swingLongMa,
+            swingMinTradePrice24hEok: match.swingMinTradePrice24hEok || slot.swingMinTradePrice24hEok,
+            id: slot.id || slot.slotId,
+            isTemporaryOverride: false,
+            overridePeriod: null
+          };
+        }));
+      }
+
+      setSlotViewMode('MONITOR');
+      soundService?.playSuccess?.();
+      alert(`💾 [${periodKey === 'MORNING' ? '오전 모드' : (periodKey === 'AFTERNOON' ? '오후 모드' : '야간 모드')}] 12개 슬롯 설정이 성공적으로 저장되었습니다!\n\n경우 1(글로벌 타워) 및 경우 3(실시간 슬롯)에 즉시 동기화되었습니다.`);
+    } catch (err) {
+      console.error('Failed to save table edit:', err);
+      alert('설정 저장 중 오류가 발생했습니다: ' + err.message);
+    }
+  };
+
   // 트레이딩 설정 및 데이터 상태
   const [settings, setSettings] = useState({
     DEFAULT_MARKET: 'KRW-BTC',
@@ -274,6 +386,85 @@ export default function App() {
   const [schedulerData, setSchedulerData] = useState(null);
   // 🛡️ [제안서 1부/3부] 일일 킬 스위치 상태
   const [killSwitchData, setKillSwitchData] = useState(null);
+
+  // ⏰ [운영자 요청 1 & 2 & 3 통합]
+  // 1) schedulerData와 periodSlotsMap 상호 동기화 (경우 1 & 경우 2)
+  // 2) 현재 시간대 진입 시 1~12번 슬롯에 마스터 전략 자동 주입 (경우 3)
+  // 3) 시간대 전환 시 임시 설정(isTemporaryOverride) 자동 원복
+  const lastActivePeriodRef = useRef(null);
+
+  useEffect(() => {
+    if (!schedulerData) return;
+    const curPeriod = (schedulerData.currentPeriod || 'MORNING').toUpperCase();
+
+    // 1. 서버에 저장된 프리셋 슬롯이 있다면 periodSlotsMap과 동기화
+    if (schedulerData.userPresets) {
+      setPeriodSlotsMap(prevMap => {
+        let changed = false;
+        const updated = { ...prevMap };
+        ['MORNING', 'AFTERNOON', 'NIGHT'].forEach(pKey => {
+          const mappedKey = pKey === 'MORNING' ? 'PRESET_A' : (pKey === 'AFTERNOON' ? 'PRESET_B' : 'PRESET_C');
+          const serverPreset = schedulerData.userPresets[pKey] || schedulerData.userPresets[mappedKey];
+          if (serverPreset && Array.isArray(serverPreset.slots) && serverPreset.slots.length === 12) {
+            if (JSON.stringify(updated[pKey]) !== JSON.stringify(serverPreset.slots)) {
+              updated[pKey] = serverPreset.slots;
+              changed = true;
+            }
+          }
+        });
+        if (changed) {
+          try {
+            localStorage.setItem('nurioh_period_slots_map', JSON.stringify(updated));
+          } catch (e) {}
+          return updated;
+        }
+        return prevMap;
+      });
+    }
+
+    // 2. 시간대 전환 감지 또는 최초 로드 시 슬롯 마스터 설정 자동 주입
+    if (lastActivePeriodRef.current !== curPeriod) {
+      const isPeriodSwitched = lastActivePeriodRef.current !== null && lastActivePeriodRef.current !== curPeriod;
+      lastActivePeriodRef.current = curPeriod;
+
+      const masterSlots = periodSlotsMap[curPeriod] || DEFAULT_PERIOD_SLOTS[curPeriod] || DEFAULT_PERIOD_SLOTS.MORNING;
+
+      setSlots(prevSlots => {
+        return prevSlots.map(slot => {
+          const masterConfig = masterSlots.find(s => s.slotId === slot.slotId);
+          if (!masterConfig) return slot;
+
+          // 시간대가 완전히 새로 전환되었거나(임시 설정 리셋), 또는 임시 설정이 없는 경우 마스터 값 적용
+          if (isPeriodSwitched || !slot.isTemporaryOverride) {
+            return {
+              ...slot,
+              strategyMode: masterConfig.strategyMode || slot.strategyMode,
+              tradeAmountKrw: masterConfig.tradeAmountKrw !== undefined ? masterConfig.tradeAmountKrw : slot.tradeAmountKrw,
+              targetProfitPct: masterConfig.trailingTier1TargetProfitPct || masterConfig.targetProfitPct || slot.targetProfitPct,
+              trailingTargetProfitPct: masterConfig.trailingTier1TargetProfitPct || slot.trailingTargetProfitPct,
+              trailingCallbackPct: masterConfig.trailingTier1CallbackPct || slot.trailingCallbackPct,
+              trailingTier1TargetProfitPct: masterConfig.trailingTier1TargetProfitPct || slot.trailingTier1TargetProfitPct,
+              trailingTier1CallbackPct: masterConfig.trailingTier1CallbackPct || slot.trailingTier1CallbackPct,
+              trailingTier2HurdlePct: masterConfig.trailingTier2HurdlePct || slot.trailingTier2HurdlePct,
+              trailingTier2CallbackPct: masterConfig.trailingTier2CallbackPct || slot.trailingTier2CallbackPct,
+              stopLossPct: masterConfig.stopLossPct !== undefined ? masterConfig.stopLossPct : slot.stopLossPct,
+              useWideTrailing: true,
+              breakoutCandleUnit: masterConfig.breakoutCandleUnit || slot.breakoutCandleUnit,
+              breakoutMinVolumeKrwEok: masterConfig.breakoutMinVolumeKrwEok || slot.breakoutMinVolumeKrwEok,
+              swingCandleUnit: masterConfig.swingCandleUnit || slot.swingCandleUnit,
+              swingShortMa: masterConfig.swingShortMa || slot.swingShortMa,
+              swingLongMa: masterConfig.swingLongMa || slot.swingLongMa,
+              swingMinTradePrice24hEok: masterConfig.swingMinTradePrice24hEok || slot.swingMinTradePrice24hEok,
+              // 시간대 전환 시 임시 설정 완전 초기화 (요청 3)
+              isTemporaryOverride: false,
+              overridePeriod: null
+            };
+          }
+          return slot;
+        });
+      });
+    }
+  }, [schedulerData, periodSlotsMap]);
 
   // ⚡ 각 슬롯별 독립적인 실시간 급등 감지 3초 카운트다운 상태 ({ [slotId]: countdownData })
   const [pendingSurgeCountdowns, setPendingSurgeCountdowns] = useState({});
@@ -394,9 +585,14 @@ export default function App() {
 
       if (userRes && userRes.user) {
         const isUserPrivileged = (userRes.user.role === 'DEVELOPER' || userRes.user.role === 'ADMIN' || userRes.user.role === 'OPERATOR' || userRes.user.tier === 'VIP');
+        const rawNick = userRes.user.nickname || userRes.user.name || 'Any Life 회원';
+        const cleanNick = String(rawNick).replace(/누리오/g, 'Any Life');
+        const rawName = userRes.user.name || cleanNick;
+        const cleanName = String(rawName).replace(/누리오/g, 'Any Life');
         const sanitizedUser = {
           ...userRes.user,
-          nickname: userRes.user.nickname || userRes.user.name || '회원',
+          name: cleanName,
+          nickname: cleanNick,
           role: userRes.user.role || 'USER',
           tier: userRes.user.tier || 'FREE_TRIAL',
           maxSlots: isUserPrivileged ? 12 : (userRes.user.tier === 'PRO' ? 3 : (userRes.user.maxSlots || 1))
@@ -1449,12 +1645,17 @@ export default function App() {
       if (res && res.user) {
         setDevModeOverride(null);
         devModeRef.current = null;
-        setCurrentUser(res.user);
+        const rawNick = res.user.nickname || res.user.name || 'Any Life 회원';
+        const cleanNick = String(rawNick).replace(/누리오/g, 'Any Life');
+        const rawName = res.user.name || cleanNick;
+        const cleanName = String(rawName).replace(/누리오/g, 'Any Life');
+        const cleanUser = { ...res.user, name: cleanName, nickname: cleanNick };
+        setCurrentUser(cleanUser);
 
         if (rememberMe) {
           // 🔒 자동 로그인 체크(ON) 시: localStorage에 저장 (브라우저 닫아도 유지, 12시간 세션 타이머 가동)
-          localStorage.setItem('nurioh_user_id', String(res.user.id));
-          localStorage.setItem('nurioh_user_profile', JSON.stringify(res.user));
+          localStorage.setItem('nurioh_user_id', String(cleanUser.id));
+          localStorage.setItem('nurioh_user_profile', JSON.stringify(cleanUser));
           localStorage.setItem('nurioh_remember_me', 'true');
           localStorage.setItem('nurioh_login_timestamp', String(Date.now()));
           sessionStorage.removeItem('nurioh_user_id');
@@ -1884,8 +2085,16 @@ export default function App() {
   // ⏰ [제안서 2부/3부] 3단계 장세 프리셋 수동 전환 (Last Action Wins 보장)
   const handleSwitchPreset = async (presetKey) => {
     try {
-      const res = await switchSchedulerPreset(presetKey);
+      const validUserId = getValidAuthUserId();
+      const userId = currentUser?.id || validUserId || 1;
+      const res = await switchSchedulerPreset(presetKey, userId);
       if (res?.scheduler) setSchedulerData(res.scheduler);
+
+      // 🛡️ 낙관적 롤백 방지: 1~12번 슬롯 업데이트 타임스탬프 갱신
+      const now = Date.now();
+      for (let i = 1; i <= 12; i++) {
+        lastSlotUpdatesRef.current[i] = now;
+      }
 
       const period = (presetKey || 'MORNING').toUpperCase();
       const mappedKey = (res?.scheduler?.scheduleMapping?.[period] || schedulerData?.scheduleMapping?.[period]) || 
@@ -1976,9 +2185,9 @@ export default function App() {
       }));
 
       const defaultNames = {
-        PRESET_A: 'A모드 (메모리 1번)',
-        PRESET_B: 'B모드 (메모리 2번)',
-        PRESET_C: 'C모드 (메모리 3번)'
+        PRESET_A: '오전 모드 (09:00 당일 돌파 & 대형주 스윙)',
+        PRESET_B: '오후 모드 (횡보 방어 & 수급 집중)',
+        PRESET_C: '야간 모드 (야간 단기 청산 & 허수 트릭 방어)'
       };
 
       const presetData = {
@@ -2054,19 +2263,39 @@ export default function App() {
   };
 
   // 📥 [제안서 1부/3.5.0] 특정 프리셋을 1~12번 슬롯에 적용하기 (Apply/Load)
-  const handleLoadPresetToSlots = async (presetKey) => {
+  const handleLoadPresetToSlots = async (presetKey, optionalPeriodKey = null) => {
     try {
+      const validUserId = getValidAuthUserId();
+      const userId = currentUser?.id || validUserId || 1;
       try {
-        const res = await applySchedulerPreset(presetKey);
+        const res = await applySchedulerPreset(presetKey, userId);
         if (res?.scheduler) setSchedulerData(res.scheduler);
       } catch (err) {
         console.warn('API applySchedulerPreset error, applying locally:', err);
       }
 
+      // 🛡️ 낙관적 롤백 방지: 1~12번 슬롯 업데이트 타임스탬프 갱신
+      const now = Date.now();
+      for (let i = 1; i <= 12; i++) {
+        lastSlotUpdatesRef.current[i] = now;
+      }
+
       const targetPreset = schedulerData?.userPresets?.[presetKey] || null;
-      if (targetPreset && Array.isArray(targetPreset.slots) && targetPreset.slots.length > 0) {
+      let targetSlots = (targetPreset && Array.isArray(targetPreset.slots) && targetPreset.slots.length > 0)
+        ? targetPreset.slots
+        : null;
+
+      // 🛡️ 저장된 슬롯 데이터가 비어있는 경우, 공식 추천 디폴트(DEFAULT_PERIOD_SLOTS)로 자동 폴백!
+      if (!targetSlots || targetSlots.length === 0) {
+        const fallbackPeriod = optionalPeriodKey || (
+          presetKey === 'PRESET_A' ? 'MORNING' : (presetKey === 'PRESET_B' ? 'AFTERNOON' : 'NIGHT')
+        );
+        targetSlots = DEFAULT_PERIOD_SLOTS[fallbackPeriod] || DEFAULT_PERIOD_SLOTS.MORNING;
+      }
+
+      if (Array.isArray(targetSlots) && targetSlots.length > 0) {
         setSlots(prevSlots => prevSlots.map(slot => {
-          const config = targetPreset.slots.find(s => s.slotId === slot.slotId);
+          const config = targetSlots.find(s => s.slotId === slot.slotId);
           if (!config) return slot;
 
           const hasActivePosition = slot.positionStatus !== 'IDLE' && slot.position && slot.position.entryPrice > 0;
@@ -2075,7 +2304,7 @@ export default function App() {
               ...slot,
               pendingPreset: {
                 presetKey,
-                presetName: targetPreset.name,
+                presetName: targetPreset?.name || presetKey,
                 params: config
               }
             };
@@ -2083,7 +2312,7 @@ export default function App() {
 
           return {
             ...slot,
-            strategyMode: config.strategyMode || slot.strategyMode,
+            strategyMode: config.strategyMode || slot.strategyMode || 'SCALPING',
             tradeAmountKrw: config.tradeAmountKrw !== undefined ? config.tradeAmountKrw : slot.tradeAmountKrw,
             targetProfitPct: config.targetProfitPct !== undefined ? config.targetProfitPct : slot.targetProfitPct,
             trailingTargetProfitPct: config.trailingTargetProfitPct !== undefined ? config.trailingTargetProfitPct : slot.trailingTargetProfitPct,
@@ -2114,7 +2343,6 @@ export default function App() {
       }));
 
       soundService?.playSuccess?.();
-      await loadData();
     } catch (e) {
       console.error('프리셋 로드 실패:', e);
       throw e;
@@ -2177,15 +2405,44 @@ export default function App() {
     );
   }
 
-  // 🎨 [투트랙 테마 시스템] 추천전략 vs 셀프전략이 전체적인 색상 분위기의 최우선 기준!
-  const getThemeBgClass = () => {
-    if (strategyViewMode === 'RECOMMENDED') {
-      // 🌿 [추천전략 모드] 청량하고 편안하며 신뢰감 주는 "에메랄드 숲 & 틸 오로라" 테마
-      return 'bg-[#02130e] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-950/80 via-[#031611] to-[#010a07]';
-    } else {
-      // ⚡ [셀프전략 모드] 강력하고 프로페셔널한 트레이딩 룸 "사이버 인디고 & 바이올렛 퍼플" 테마
-      return 'bg-[#06071a] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-950/85 via-[#070719] to-[#02020a]';
+  // 🕒 현재 가동 중인 장세 모드 (KST 기준 및 스케줄러 데이터 동기화)
+  const getOperatingPeriod = () => {
+    if (schedulerData?.currentPeriod) {
+      return schedulerData.currentPeriod.toUpperCase();
     }
+    try {
+      const now = new Date();
+      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+      const kst = new Date(utc + (9 * 60 * 60000));
+      const curMin = kst.getHours() * 60 + kst.getMinutes();
+      const [mH, mM] = (schedulerData?.timeTable?.MORNING_START || '08:50').split(':').map(Number);
+      const [aH, aM] = (schedulerData?.timeTable?.AFTERNOON_START || '12:00').split(':').map(Number);
+      const [nH, nM] = (schedulerData?.timeTable?.NIGHT_START || '21:00').split(':').map(Number);
+      const mMin = (mH || 8) * 60 + (mM !== undefined ? mM : 50);
+      const aMin = (aH || 12) * 60 + (aM !== undefined ? aM : 0);
+      const nMin = (nH || 21) * 60 + (nM !== undefined ? nM : 0);
+      if (curMin >= mMin && curMin < aMin) return 'MORNING';
+      if (curMin >= aMin && curMin < nMin) return 'AFTERNOON';
+      return 'NIGHT';
+    } catch {
+      return 'MORNING';
+    }
+  };
+
+  // 🎨 [오전/오후/야간 장세 모드별 실시간 동적 배경 테마]
+  // 사용자가 어떤 모드가 가동되고 있는지 화면 색상만으로 즉시 직관적으로 인지할 수 있도록 차별화!
+  const activePeriod = themePreviewOverride || (slotViewMode === 'EDIT_TABLE' ? editingPeriod : getOperatingPeriod());
+
+  const getThemeBgClass = () => {
+    // 🌟 [대표님 피드백 반영] 전체 화면 배경색은 눈이 편안하고 안정적인 최고급 다크 슬레이트로 정갈하게 유지!
+    // 장세 모드별 시그니처 색상은 "글로벌 제어타워 섹션"에 집중하여 시각적 과함(Overpowering)을 방지합니다.
+    return 'bg-[#07090e] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900/85 via-[#080a11] to-[#040508]';
+  };
+
+  const getSelectionClass = () => {
+    if (activePeriod === 'MORNING') return 'selection:bg-amber-500 selection:text-black';
+    if (activePeriod === 'AFTERNOON') return 'selection:bg-sky-500 selection:text-black';
+    return 'selection:bg-indigo-500 selection:text-white';
   };
 
   // 🔄 강력 새로고침 (PWA 캐시 스토리지 초기화 & 최신 빌드 버전 강제 리로드)
@@ -2210,69 +2467,133 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen ${getThemeBgClass()} text-slate-100 ${
-      strategyViewMode === 'RECOMMENDED' 
-        ? 'selection:bg-emerald-500 selection:text-black' 
-        : 'selection:bg-indigo-500 selection:text-white'
-    } flex flex-col font-sans pb-12 transition-colors duration-700 w-full max-w-full overflow-x-hidden`}>
+    <div className={`min-h-screen ${getThemeBgClass()} text-slate-100 ${getSelectionClass()} flex flex-col font-sans pb-12 transition-colors duration-700 w-full max-w-full overflow-x-hidden relative`}>
       {/* 글로벌 네비게이션 헤더 */}
-      <Header
-        user={currentUser}
-        hasApiKey={!accountError && hasRealAccounts}
-        botRunning={botRunning}
-        onToggleBot={handleToggleBot}
-        onOpen2FA={() => setIs2FAModalOpen(true)}
-        is2FAActive={is2FAActive}
-        onOpenOperatorDashboard={() => setIsOperatorDashboardOpen(true)}
-        onOpenAdmin={() => setIsAdminUsersOpen(true)}
-        onOpenMyPage={() => setIsMyPageOpen(true)}
-        onOpenManual={() => setIsManualOpen(true)}
-        onOpenNotice={() => setIsNoticeModalOpen(true)}
-        onLogout={handleLogout}
-        onRefresh={handleHardRefresh}
-        marketCount={marketCount}
-        btcProtection={btcProtection}
-        activeBuyRestriction={activeBuyRestriction}
-        strategyViewMode={strategyViewMode}
-        onToggleStrategyMode={handleToggleStrategyMode}
-      />
+      <div className="relative z-10">
+        <Header
+          user={currentUser}
+          hasApiKey={!accountError && hasRealAccounts}
+          botRunning={botRunning}
+          onToggleBot={handleToggleBot}
+          onOpen2FA={() => setIs2FAModalOpen(true)}
+          is2FAActive={is2FAActive}
+          onOpenOperatorDashboard={() => setIsOperatorDashboardOpen(true)}
+          onOpenAdmin={() => setIsAdminUsersOpen(true)}
+          onOpenMyPage={() => setIsMyPageOpen(true)}
+          onOpenManual={() => setIsManualOpen(true)}
+          onOpenNotice={() => setIsNoticeModalOpen(true)}
+          onLogout={handleLogout}
+          onRefresh={handleHardRefresh}
+          marketCount={marketCount}
+          btcProtection={btcProtection}
+          activeBuyRestriction={activeBuyRestriction}
+          strategyViewMode={strategyViewMode}
+          onToggleStrategyMode={handleToggleStrategyMode}
+        />
 
-      {/* 🏛️ [연구실/실험실 전용 상단 띠 배너] 운영자/개발자 사전 체험 전용 안내 */}
-      {isStagingLab ? (
-        <div className="bg-gradient-to-r from-amber-600/90 via-orange-600/90 to-amber-700/90 text-white px-4 py-2 border-b border-amber-400/50 shadow-md w-full max-w-full overflow-hidden">
-          <div className="app-container-80 px-3 sm:px-4 flex items-center justify-between text-xs sm:text-sm font-bold gap-2 min-w-0 max-w-full">
-            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 truncate">
-              <span className="text-base animate-bounce shrink-0">🔬</span>
-              <span className="truncate">[실험실 v{APP_VERSION}] 운영자 전용 사전 검증 공간입니다.</span>
-              <span className="hidden md:inline text-amber-100/90 font-normal text-xs shrink-0">
-                (실서버 적용 전 신규 기능과 UI를 직접 테스트해 보세요. 개발자/운영자 승인 후 실서버로 배포됩니다.)
-              </span>
-            </div>
-            <span className="px-2 py-0.5 rounded bg-black/30 text-amber-200 text-[11px] font-mono border border-amber-300/40 shrink-0">
-              STAGING LAB
-            </span>
-          </div>
-        </div>
-      ) : isLocalLab ? (
-        <div className="bg-gradient-to-r from-purple-900/90 via-indigo-900/90 to-purple-950/90 text-white px-4 py-2 border-b border-purple-400/50 shadow-md w-full max-w-full overflow-hidden">
-          <div className="app-container-80 px-3 sm:px-4 flex items-center justify-between text-xs sm:text-sm font-bold gap-2 min-w-0 max-w-full">
-            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 truncate">
-              <span className="text-base animate-bounce shrink-0">🧪</span>
-              <span className="truncate">[연구실 v{APP_VERSION}] 대표님 로컬 연구 및 개발 전용 공간입니다.</span>
-              <span className="hidden md:inline text-purple-200/90 font-normal text-xs shrink-0">
-                (코드가 실시간으로 반영되는 로컬 테스트베드입니다.)
-              </span>
-            </div>
-            <span className="px-2 py-0.5 rounded bg-black/30 text-purple-200 text-[11px] font-mono border border-purple-300/40 shrink-0">
-              LOCAL LAB
-            </span>
-          </div>
-        </div>
-      ) : null}
+        {/* 🌅 장세 모드 실시간 앰비언트 글로우 라인 (오전: 앰버 골드 | 오후: 스카이 블루 | 야간: 인디고 바이올렛) */}
+        <div 
+          className={`h-[3px] w-full transition-all duration-700 ${
+            activePeriod === 'MORNING'
+              ? 'bg-gradient-to-r from-amber-500 via-orange-400 to-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.6)]'
+              : activePeriod === 'AFTERNOON'
+              ? 'bg-gradient-to-r from-sky-400 via-cyan-400 to-blue-500 shadow-[0_0_20px_rgba(14,165,233,0.6)]'
+              : 'bg-gradient-to-r from-indigo-500 via-purple-500 to-violet-500 shadow-[0_0_20px_rgba(99,102,241,0.6)]'
+          }`}
+        />
 
-      {/* 메인 콘텐츠 영역 (PC 모드: 화면 너비의 90% 고정 레이아웃, 가로 4열 x 세로 3행) */}
-      <main className="flex-1 app-container-80 px-3 sm:px-4 py-4 sm:py-6 space-y-6 max-w-full min-w-0">
-        {/* ⚡ [제안서 1~3부] 글로벌 통합 제어 타워 (3단계 장세 스케줄러 & 일일 킬 스위치 & 전략 모드) */}
+        {/* 🏛️ [연구실 로컬 전용 배너] 개발자 로컬 전용 안내 */}
+        {isLocalLab && (
+          <div className="bg-gradient-to-r from-purple-900/90 via-indigo-900/90 to-purple-950/90 text-white px-4 py-2 border-b border-purple-400/50 shadow-md w-full max-w-full overflow-hidden">
+            <div className="app-container-80 px-3 sm:px-4 flex flex-wrap items-center justify-between text-xs sm:text-sm font-bold gap-2 min-w-0 max-w-full">
+              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 truncate">
+                <span className="text-base animate-bounce shrink-0">🧪</span>
+                <span className="truncate">[연구실 v{APP_VERSION}] 대표님 로컬 연구 및 개발 전용 공간</span>
+                <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold border shrink-0 transition-colors ${
+                  activePeriod === 'MORNING'
+                    ? 'bg-amber-500/25 text-amber-300 border-amber-400/50'
+                    : activePeriod === 'AFTERNOON'
+                    ? 'bg-cyan-500/25 text-cyan-200 border-cyan-400/50'
+                    : 'bg-purple-500/25 text-purple-200 border-purple-400/50'
+                }`}>
+                  {activePeriod === 'MORNING' ? '☀️ 오전 모드 테마 (골든 앰버)' : activePeriod === 'AFTERNOON' ? '🌤️ 오후 모드 테마 (오션 청록 시안)' : '🌙 야간 모드 테마 (로열 바이올렛)'}
+                  {themePreviewOverride && ' [미리보기 중]'}
+                </span>
+              </div>
+              
+              {/* 🎨 [테마 무드 즉시 체험 스위처] */}
+              <div className="flex items-center gap-1 shrink-0">
+                <span className="text-[11px] text-purple-200 hidden lg:inline mr-1">테마 체험:</span>
+                <button
+                  type="button"
+                  onClick={() => setThemePreviewOverride('MORNING')}
+                  className={`px-2 py-0.5 rounded text-[11px] font-bold border transition cursor-pointer ${
+                    activePeriod === 'MORNING' && themePreviewOverride === 'MORNING'
+                      ? 'bg-amber-500 text-black border-amber-400 font-black'
+                      : 'bg-black/30 hover:bg-amber-950/60 text-amber-200 border-amber-400/30'
+                  }`}
+                  title="오전 모드 (골든 앰버) 테마 미리보기"
+                >
+                  ☀️ 오전
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setThemePreviewOverride('AFTERNOON')}
+                  className={`px-2 py-0.5 rounded text-[11px] font-bold border transition cursor-pointer ${
+                    activePeriod === 'AFTERNOON' && themePreviewOverride === 'AFTERNOON'
+                      ? 'bg-cyan-400 text-black border-cyan-300 font-black'
+                      : 'bg-black/30 hover:bg-cyan-950/60 text-cyan-200 border-cyan-400/30'
+                  }`}
+                  title="오후 모드 (오션 청록 시안) 테마 미리보기"
+                >
+                  🌤️ 오후
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setThemePreviewOverride('NIGHT')}
+                  className={`px-2 py-0.5 rounded text-[11px] font-bold border transition cursor-pointer ${
+                    activePeriod === 'NIGHT' && themePreviewOverride === 'NIGHT'
+                      ? 'bg-purple-500 text-white border-purple-400 font-black'
+                      : 'bg-black/30 hover:bg-purple-950/60 text-purple-200 border-purple-400/30'
+                  }`}
+                  title="야간 모드 (로열 바이올렛) 테마 미리보기"
+                >
+                  🌙 야간
+                </button>
+                {themePreviewOverride && (
+                  <button
+                    type="button"
+                    onClick={() => setThemePreviewOverride(null)}
+                    className="px-2 py-0.5 rounded text-[11px] font-bold bg-purple-700 hover:bg-purple-600 text-white border border-purple-400/50 cursor-pointer ml-1"
+                    title="현재 KST 실시간 자동 테마로 복귀"
+                  >
+                    ⏰ 자동(KST)
+                  </button>
+                )}
+                <span className="px-2 py-0.5 rounded bg-black/40 text-purple-200 text-[11px] font-mono border border-purple-300/40 ml-1">
+                  v{APP_VERSION}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 메인 콘텐츠 영역 (PC 모드: 화면 너비의 90% 고정 레이아웃) */}
+      <main className="flex-1 app-container-80 px-3 sm:px-4 py-4 sm:py-6 space-y-6 max-w-full min-w-0 relative z-10">
+        {/* 1. 💰 업비트 자산 동기화 섹션 (계좌 잔고 요약 카드) */}
+        <BalanceCard 
+          accounts={accounts} 
+          slots={visibleSlots}
+          livePriceMap={livePriceMap} 
+          serverIp={serverIp} 
+          accountError={accountError}
+          onOpenApiModal={() => setIsApiModalOpen(true)}
+          marketCount={marketCount}
+          strategyViewMode={strategyViewMode}
+        />
+
+        {/* 2. ⚡ 글로벌 통합 제어 타워 (오전 / 오후 / 야간 모드 섹션 & 스케줄러 & 킬 스위치) */}
         <GlobalControlPanel
           schedulerData={schedulerData}
           killSwitchData={killSwitchData}
@@ -2287,41 +2608,41 @@ export default function App() {
           strategyViewMode={strategyViewMode}
           onToggleStrategyMode={handleToggleStrategyMode}
           isDevMode={currentUser?.role === 'DEVELOPER' || currentUser?.role === 'ADMIN'}
+          onOpenTableEdit={handleOpenTableEdit}
+          activePeriodOverride={activePeriod}
         />
 
-        {/* 계좌 잔고 요약 카드 */}
-        <BalanceCard 
-          accounts={accounts} 
-          slots={visibleSlots}
-          livePriceMap={livePriceMap} 
-          serverIp={serverIp} 
-          accountError={accountError}
-          onOpenApiModal={() => setIsApiModalOpen(true)}
-          marketCount={marketCount}
-          strategyViewMode={strategyViewMode}
-        />
+        {/* 🎛️ 1~12번 독립 멀티 슬롯 분산 트레이딩 매니저 (1~12번 슬롯 카드 그리드 복원) */}
+        <div id="slot-manager-container">
+          <SlotManager
+            slots={visibleSlots}
+            onUpdateSlot={handleUpdateSlot}
+            onSellSlot={handleSellSlot}
+            onResetSlotStats={handleResetSlotStats}
+            onImportCoin={handleImportCoin}
+            accounts={accounts}
+            livePriceMap={livePriceMap}
+            botRunning={botRunning}
+            onToggleBot={handleToggleBot}
+            onTriggerMockSurge={handleTriggerMockSurge}
+            pendingSurgeCountdowns={pendingSurgeCountdowns}
+            selectedSlotId={selectedSlotId}
+            onSelectSlot={setSelectedSlotId}
+            krwBalance={parseFloat(accounts.find(a => a.currency === 'KRW')?.balance || '0')}
+            currentUser={currentUser}
+            strategyViewMode={strategyViewMode}
+            viewMode={slotViewMode}
+            editingPeriod={editingPeriod}
+            onCloseTableEdit={() => setSlotViewMode('MONITOR')}
+            onSaveTableEdit={handleSaveTableEdit}
+            onChangePeriod={(period) => setEditingPeriod(period)}
+            periodSlots={periodSlotsMap[editingPeriod]}
+            periodSlotsMap={periodSlotsMap}
+            currentPeriod={(schedulerData?.currentPeriod || 'MORNING').toUpperCase()}
+          />
+        </div>
 
-        {/* 🎛️ 1~9번 독립 멀티 슬롯 분산 트레이딩 매니저 */}
-        <SlotManager
-          slots={visibleSlots}
-          onUpdateSlot={handleUpdateSlot}
-          onSellSlot={handleSellSlot}
-          onResetSlotStats={handleResetSlotStats}
-          onImportCoin={handleImportCoin}
-          accounts={accounts}
-          livePriceMap={livePriceMap}
-          botRunning={botRunning}
-          onToggleBot={handleToggleBot}
-          onTriggerMockSurge={handleTriggerMockSurge}
-          pendingSurgeCountdowns={pendingSurgeCountdowns}
-          selectedSlotId={selectedSlotId}
-          onSelectSlot={setSelectedSlotId}
-          krwBalance={parseFloat(accounts.find(a => a.currency === 'KRW')?.balance || '0')}
-          currentUser={currentUser}
-          strategyViewMode={strategyViewMode}
-        />
-
-        {/* 🌟 NURIOH TRADER 브랜드 소개 및 핵심 기능 자랑 쇼케이스 배너 */}
+        {/* 🌟 Any Life AI 브랜드 소개 및 핵심 기능 자랑 쇼케이스 배너 */}
         <BrandShowcaseBanner marketCount={marketCount} />
       </main>
 
@@ -2397,23 +2718,6 @@ export default function App() {
         slots={slots}
       />
 
-      {/* ⚙️ 초단타 매매 & 트레일링 스탑 상세 설정 모달 (참고 이미지 완벽 구현) */}
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        settings={settings}
-        slots={slots}
-        botRunning={botRunning}
-        onToggleBot={handleToggleBot}
-        onSaveSettings={handleSaveSettings}
-        onUpdateSlot={handleUpdateSlot}
-        onSellSlot={handleSellSlot}
-        onOpenPanicSell={() => {
-          setIsSettingsOpen(false);
-          setIsPanicSellOpen(true);
-        }}
-      />
-
       {/* 👤 회원 마이페이지 & 자동매매 안전 관리 센터 모달 */}
       <MyPageModal
         isOpen={isMyPageOpen}
@@ -2436,7 +2740,7 @@ export default function App() {
         isOpen={isManualOpen}
         onClose={() => setIsManualOpen(false)}
         user={currentUser}
-        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenTableEdit={() => handleOpenTableEdit(schedulerData?.currentPeriod || 'MORNING')}
         onOpenMyPage={() => setIsMyPageOpen(true)}
       />
 

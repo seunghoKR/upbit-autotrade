@@ -38,10 +38,10 @@ export default function BrandShowcaseBanner({ marketCount = 288 }) {
           </div>
 
           <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-snug">
-            대한민국 0.001초 초광속 업비트 자동매매 <span className="bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400 bg-clip-text text-transparent">NURIOH TRADER</span>
+            모든 라이프스타일을 위한 지능형 금융 솔루션 <span className="bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400 bg-clip-text text-transparent">Any Life AI</span>
           </h2>
           <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-3xl">
-            잠자는 동안에도 시장의 세력 수급을 0.001초 만에 감지하고, <strong>4중 리스크 쉴드</strong>로 가짜 윗꼬리를 걸러내며, <strong>트레일링 스탑</strong>으로 최고점 익절을 실현합니다.
+            <strong>Any Life, Automated Intelligence:</strong> 사용자가 잠을 자거나 여행을 가거나 본업에 집중할 때, AI가 시장을 분석하고 자산을 운용해 삶의 자유를 되찾아드립니다.
           </p>
         </div>
 
@@ -134,7 +134,7 @@ export default function BrandShowcaseBanner({ marketCount = 288 }) {
 
         <div className="flex items-center gap-2">
           <span className="text-slate-500 text-[11px]">Powered by</span>
-          <span className="font-extrabold text-slate-300 tracking-wider font-mono">NURIOH AI QUANT LAB</span>
+          <span className="font-extrabold text-slate-300 tracking-wider font-mono">ANY LIFE AI QUANT LAB</span>
         </div>
       </div>
     </div>

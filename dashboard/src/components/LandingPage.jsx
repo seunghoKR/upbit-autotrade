@@ -20,37 +20,32 @@ import {
 import { APP_VERSION } from '../version';
 
 export default function LandingPage({ onOpenKakaoLogin, onLabDevLogin }) {
-  // 🏛️ 3단계 환경 감지: 🧪 연구실(로컬) | 🔬 실험실(호스팅 Staging) | 🏛️ 실서버(상용 Live)
+  // 🏛️ 2단계 환경 감지: 🧪 연구실(로컬) | 🟢 Any Life AI 실서버(Live)
   const isLocalLab = typeof window !== 'undefined' && (
     window.location.hostname === 'localhost' ||
     window.location.hostname === '127.0.0.1' ||
     Boolean(import.meta.env?.DEV)
   );
-  const isStagingLab = typeof window !== 'undefined' && (
-    window.location.pathname.startsWith('/lab') ||
-    window.location.hostname.includes('lab')
-  );
-  const isLabMode = isLocalLab || isStagingLab;
 
   return (
-    <div className="min-h-screen bg-[#07090E] text-slate-100 selection:bg-purple-500 selection:text-white flex flex-col font-sans">
+    <div className="min-h-screen bg-[#07090E] text-slate-100 selection:bg-indigo-500 selection:text-white flex flex-col font-sans">
       
       {/* 🌟 1. 상단 네비게이션 헤더 */}
       <header className="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl sticky top-0 z-40">
         <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 py-3 sm:py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden shadow-lg shadow-purple-500/20 border border-purple-500/30 flex items-center justify-center bg-slate-950 shrink-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden shadow-lg shadow-indigo-500/20 border border-indigo-500/30 flex items-center justify-center bg-slate-950 shrink-0">
               <img 
                 src="/assets/logos/nurioh_logo.png" 
-                alt="NURIOH" 
+                alt="Any Life AI" 
                 className="w-full h-full object-cover"
                 onError={(e) => { e.target.style.display = 'none'; }}
               />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="text-lg sm:text-xl font-black text-white tracking-tight">NURIOH</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 font-bold">
+                <span className="text-lg sm:text-xl font-black text-white tracking-tight">Any Life</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-bold">
                   AI TRADER
                 </span>
                 <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-mono font-bold border border-emerald-500/30">
@@ -60,11 +55,11 @@ export default function LandingPage({ onOpenKakaoLogin, onLabDevLogin }) {
                   <span className="text-[9px] px-2 py-0.5 rounded-full bg-purple-950/80 text-purple-300 font-bold border border-purple-500/50 animate-pulse">
                     🧪 연구실 (로컬)
                   </span>
-                ) : isStagingLab ? (
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-950/90 text-amber-300 font-bold border border-amber-500/60 animate-pulse">
-                    🔬 실험실 (Staging)
+                ) : (
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 font-bold border border-emerald-500/50">
+                    🟢 실서버 (anylifeai.kr)
                   </span>
-                ) : null}
+                )}
               </div>
             </div>
           </div>
@@ -87,24 +82,24 @@ export default function LandingPage({ onOpenKakaoLogin, onLabDevLogin }) {
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] sm:w-[800px] h-[350px] bg-gradient-to-tr from-indigo-600/15 via-emerald-500/15 to-purple-600/15 blur-[120px] pointer-events-none rounded-full" />
 
         <div className="max-w-4xl mx-auto text-center relative z-10 space-y-6">
-          {/* 상단 뱃지 */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs sm:text-sm font-semibold shadow-inner">
-            <Sparkles className="w-4 h-4 text-indigo-400 animate-pulse" />
-            <span>비수탁형 철통 보안 & 텔레그램 실시간 승인 트레이딩</span>
+          {/* 상단 슬로건 뱃지 */}
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs sm:text-sm font-bold shadow-inner">
+            <Sparkles className="w-4 h-4 text-emerald-400 animate-pulse" />
+            <span>Smart Trading for Any Lifestyle.</span>
           </div>
 
           {/* 메인 타이틀 */}
           <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-white tracking-tight leading-[1.2] sm:leading-[1.15]">
-            잠자는 동안에도 내 계좌를 지키는<br />
+            어떤 일상 속에서도 동작하는 지능<br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-cyan-400 to-indigo-400">
-              업비트 AI 스마트 자동매매
+              Any Life AI 스마트 자동매매
             </span>
           </h1>
 
-          {/* 서브 설명 */}
-          <p className="text-base sm:text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
-            원화 마켓 287개 전종목 실시간 시세 스캔부터 기술적 보조지표(RSI/볼린저 밴드) 분석까지.<br className="hidden sm:inline" />
-            내 스마트폰 텔레그램으로 승인 신호를 받아 원클릭으로 안전하게 거래하세요.
+          {/* 서브 설명 (철학 스토리텔링) */}
+          <p className="text-base sm:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
+            24시간 쉬지 않고 돌아가는 코인 시장에서, 사용자가 잠을 자거나 여행을 가거나 본업에 집중할 때—<br className="hidden sm:inline" />
+            <strong>언제, 어떤 삶의 순간이든</strong> AI가 시장을 정밀 분석하고 자산을 운용하여 <span className="text-emerald-400 font-bold">삶의 자유</span>를 되찾아드립니다.
           </p>
 
           {/* 메인 CTA 버튼 영역 */}
@@ -133,11 +128,11 @@ export default function LandingPage({ onOpenKakaoLogin, onLabDevLogin }) {
             </div>
             <div className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span>AES-256 철통 암호화</span>
+              <span>AES-256 비수탁형 철통 보안</span>
             </div>
             <div className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span>텔레그램 1:1 승인 알림</span>
+              <span>텔레그램 1:1 실시간 승인 알림</span>
             </div>
           </div>
         </div>
@@ -148,10 +143,10 @@ export default function LandingPage({ onOpenKakaoLogin, onLabDevLogin }) {
         <div className="max-w-6xl mx-auto">
           <div className="text-center space-y-3 mb-12 sm:mb-16">
             <h2 className="text-2xl sm:text-3xl font-black text-white">
-              왜 <span className="text-emerald-400">누리오 트레이더</span>인가요?
+              왜 <span className="text-emerald-400">Any Life AI</span>인가요?
             </h2>
             <p className="text-sm sm:text-base text-slate-400">
-              투자자의 자산 안전을 최우선으로 설계된 3가지 핵심 보안 원칙
+              모든 라이프스타일을 위한 지능형 금융 솔루션, 3가지 핵심 보안 원칙
             </p>
           </div>
 
@@ -175,10 +170,10 @@ export default function LandingPage({ onOpenKakaoLogin, onLabDevLogin }) {
                 <Zap className="w-6 h-6" />
               </div>
               <h3 className="text-lg sm:text-xl font-bold text-white mb-2.5">
-                24시간 287개 전종목 실시간 스캔
+                24시간 실시간 지능형 마켓 스캔
               </h3>
               <p className="text-sm text-slate-400 leading-relaxed">
-                업비트 원화 마켓 전체를 1초 단위로 감시합니다. RSI 과매도 구간 및 볼린저 밴드 하단 지지 반등 시점을 포착하여 급등 초입부를 놓치지 않고 포착합니다.
+                업비트 원화 마켓 전체를 실시간으로 감시합니다. 오전·오후·야간 장세별 맞춤 알고리즘과 다단 트레일링 익절로 변동성 장세에서도 스마트하게 자산을 운용합니다.
               </p>
             </div>
 
@@ -191,7 +186,7 @@ export default function LandingPage({ onOpenKakaoLogin, onLabDevLogin }) {
                 텔레그램 원클릭 매매 승인
               </h3>
               <p className="text-sm text-slate-400 leading-relaxed">
-                매매 신호가 감지되면 스마트폰 텔레그램(<code>@nurioh_trade_bot</code>)으로 <strong>[✅ 즉시 승인]</strong> 버튼이 전송됩니다. 회원의 최종 터치 승인이 있어야만 주문이 체결됩니다.
+                매매 신호가 감지되면 스마트폰 텔레그램으로 <strong>[✅ 즉시 승인]</strong> 버튼이 전송됩니다. 회원의 최종 터치 승인이 있어야만 주문이 체결되는 안심 매매를 지원합니다.
               </p>
             </div>
           </div>
@@ -248,7 +243,7 @@ export default function LandingPage({ onOpenKakaoLogin, onLabDevLogin }) {
               </div>
               <div>
                 <h3 className="text-base sm:text-lg font-bold text-white mb-1">
-                  내 업비트 API 키 등록 & 매매 가동
+                  내 업비트 API 키 등록 & Any Life AI 매매 가동
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-400">
                   승인 완료 후 업비트 Open API 키를 등록하고 스마트폰 텔레그램 연동으로 실시간 자동매매를 시작하세요.
@@ -286,7 +281,7 @@ export default function LandingPage({ onOpenKakaoLogin, onLabDevLogin }) {
 
       {/* 🌟 6. 푸터 */}
       <footer className="border-t border-slate-900 bg-slate-950 py-8 px-4 sm:px-6 text-center text-xs text-slate-500 space-y-2">
-        <p>© 2026 NURIOH TRADER. All rights reserved.</p>
+        <p>© 2026 Any Life AI. All rights reserved.</p>
         <p className="text-[11px] text-slate-600 max-w-xl mx-auto leading-normal">
           본 서비스는 암호화폐 투자 보조 소프트웨어 툴이며 투자 일임이나 자문을 제공하지 않습니다. 모든 매매 주문의 최종 집행 책임은 회원 본인에게 있습니다.
         </p>

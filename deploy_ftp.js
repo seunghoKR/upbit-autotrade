@@ -2,8 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-const FTP_HOST = '115.68.168.243';
-const FTP_USER = 'nuriohtrade';
+const FTP_HOST = '115.68.168.242';
+const FTP_USER = 'aitrade';
 const FTP_PASS = 'seungho0409#';
 const REMOTE_ROOT = '/public_html';
 
@@ -36,7 +36,7 @@ function uploadDirectory(dir, baseDir) {
 }
 
 async function main() {
-  console.log('🚀 Starting FTP Deployment to iwinv hosting server...');
+  console.log('🚀 Starting FTP Deployment to Any Life AI server (anylifeai.kr / 115.68.168.242)...');
 
   // 1. Upload .htaccess
   const htaccessContent = `<IfModule mod_headers.c>
@@ -100,7 +100,7 @@ async function main() {
     uploadFileWithCurl(migrateFile, 'migrate.php');
   }
 
-  console.log('\n🎉 Deployment to http://nuriohtrade.iwinv.net completed successfully!');
+  console.log('\n🎉 Deployment to https://anylifeai.kr completed successfully!');
 }
 
 main();

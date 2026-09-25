@@ -28,7 +28,7 @@ export default function NoticeBoardModal({ isOpen, onClose }) {
               <h2 className="text-lg md:text-xl font-bold flex items-center gap-2">
                 업비트 거래소 공지 & 종목 현황판
                 <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
-                  누리오 AI 실시간 감시
+                  Any Life AI 실시간 감시
                 </span>
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
@@ -175,7 +175,7 @@ export default function NoticeBoardModal({ isOpen, onClose }) {
 
                 <div className="p-3 rounded-xl bg-cyan-950/40 border border-cyan-500/30">
                   <div className="flex items-center gap-2 text-cyan-300 text-xs font-bold mb-1">
-                    <span>🛡️ 누리오 AI 엔진 보호 로직</span>
+                    <span>🛡️ Any Life AI 엔진 보호 로직</span>
                   </div>
                   <p className="text-xs text-slate-300 leading-normal">
                     {selectedNotice.riskNotice}

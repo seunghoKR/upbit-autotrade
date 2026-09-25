@@ -25,23 +25,28 @@ import {
   AlertTriangle,
   Crown,
   Copy,
-  Activity
+  Activity,
+  Smartphone,
+  Monitor,
+  Download
 } from 'lucide-react';
 import { APP_VERSION } from '../version';
 
-export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onOpenMyPage }) {
+export default function ManualModal({ isOpen, onClose, user, onOpenTableEdit, onOpenMyPage }) {
   const [activeTab, setActiveTab] = useState('MANUAL'); // 'MANUAL' | 'OPERATOR_GUIDE' | 'FEEDBACK'
   
-  // 의견 수렴 양식 상태
+  // 의견 수렴 양식 상태 (과거 캐시된 '누리오' 명칭 자동 필터링)
   const [feedbackCategory, setFeedbackCategory] = useState('기능 개선 제안');
-  const [authorName, setAuthorName] = useState(user?.nickname || '누리오 마스터 대표님');
+  const rawAuthor = user?.nickname || user?.name || 'Any Life 마스터 대표님';
+  const cleanAuthor = rawAuthor.replace(/누리오/g, 'Any Life');
+  const [authorName, setAuthorName] = useState(cleanAuthor);
   const [contact, setContact] = useState(user?.phone || '010-9999-8888');
   const [feedbackContent, setFeedbackContent] = useState('');
   const [feedbackList, setFeedbackList] = useState([
     {
       id: 1,
       category: 'UI/UX 개선',
-      author: '누리오 마스터 대표님',
+      author: 'Any Life 마스터 대표님',
       content: '모바일 화면에서 텍스트를 줄이고 슬롯과 차트가 한눈에 들어오도록 컴팩트하게 정리 요청 완료.',
       createdAt: '2026-08-27 01:25',
       status: '반영 완료 ✅'
@@ -49,7 +54,7 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
     {
       id: 2,
       category: '전략 알고리즘',
-      author: '누리오 마스터 대표님',
+      author: 'Any Life 마스터 대표님',
       content: '슬롯 1~5번에 대표 코인이 고정되지 않고, 업비트 전종목 중 급등 터진 알트코인이 자동으로 채워지도록 개편 요청 완료.',
       createdAt: '2026-08-27 01:10',
       status: '반영 완료 ✅'
@@ -91,7 +96,7 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-base sm:text-xl font-black text-slate-100">
-                  누리오 트레이더 (NURIOH TRADER) 통합 매뉴얼 & 의견 수렴 센터
+                  Any Life AI 매매 시스템 통합 매뉴얼 & 의견 수렴 센터
                 </h3>
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40 hidden sm:inline">
                   v{APP_VERSION}
@@ -138,6 +143,18 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
           </button>
 
           <button
+            onClick={() => setActiveTab('PWA_INSTALL')}
+            className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl transition flex items-center gap-1.5 sm:gap-2 cursor-pointer ${
+              activeTab === 'PWA_INSTALL'
+                ? 'bg-emerald-600 text-white shadow-md'
+                : 'text-emerald-300 hover:text-emerald-100 hover:bg-slate-800'
+            }`}
+          >
+            <Smartphone className="w-4 h-4" />
+            <span>📱 3. 스마트폰 & PC 앱 설치</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('FEEDBACK')}
             className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl transition flex items-center gap-1.5 sm:gap-2 cursor-pointer ${
               activeTab === 'FEEDBACK'
@@ -146,7 +163,7 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
             }`}
           >
             <MessageSquarePlus className="w-4 h-4" />
-            <span>💬 3. 기능 개선 & 의견 수렴 창구</span>
+            <span>💬 4. 기능 개선 의견 수렴</span>
           </button>
         </div>
 
@@ -164,7 +181,7 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
                   <span>🌟 글로벌 제어 타워 &amp; 3대 신규 핵심 엔진 (제안서 1~3부 실전 탑재)</span>
                 </h4>
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
-                  v3.5.1 NEW
+                  v{APP_VERSION} GRAND
                 </span>
               </div>
 
@@ -348,7 +365,7 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
             <div className="bg-slate-950/80 p-5 rounded-2xl border border-indigo-500/40 space-y-4">
               <h4 className="text-base font-black text-slate-100 flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-amber-400" />
-                3. 🌟 3대 독립 전략 모드 & 다단(와이드) 트레일링 스탑 시스템 (v3.4.0)
+                3. 🌟 3대 독립 전략 모드 &amp; 다단(와이드) 트레일링 스탑 시스템 (v{APP_VERSION})
               </h4>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs sm:text-[13px]">
@@ -493,7 +510,7 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
                   Q4. 업비트 Open API 발급 시 어떤 IP를 등록해야 하나요?
                 </h5>
                 <p className="text-slate-300 text-xs sm:text-sm leading-relaxed pl-7">
-                  👉 대표님의 서버 노드 고정 공인 IP인 <strong>`49.171.41.10`</strong>을 업비트 Open API 발급 페이지의 허용 IP란에 등록해 주시면 정상 승인됩니다.
+                  👉 대표님의 서버 노드 고정 공인 IP인 <strong>`115.68.168.242`</strong>을 업비트 Open API 발급 페이지의 허용 IP란에 등록해 주시면 정상 승인됩니다.
                 </p>
               </div>
 
@@ -557,7 +574,119 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
           </div>
         )}
 
-        {/* 탭 3: 기능 개선 & 운영자 의견 수렴 창구 (Interactive Feedback Form) */}
+        {/* 탭 3: 스마트폰 & PC 앱(PWA) 설치 가이드 (모든 브라우저 공통 표준) */}
+        {activeTab === 'PWA_INSTALL' && (
+          <div className="space-y-4 animate-in fade-in text-sm text-slate-200">
+            {/* 상단 안내 배너 */}
+            <div className="bg-gradient-to-r from-emerald-950/60 via-slate-950 to-teal-950/60 p-4 sm:p-5 rounded-2xl border border-emerald-500/40 space-y-1.5 shadow-lg">
+              <h4 className="text-base font-black text-emerald-300 flex items-center gap-2">
+                <Smartphone className="w-5 h-5 text-emerald-400" />
+                Any Life AI 전용 앱(PWA) 설치 가이드 📱💻
+              </h4>
+              <p className="text-slate-300 leading-relaxed text-xs sm:text-sm">
+                Any Life AI는 별도의 앱스토어 다운로드 없이, <strong>모든 주요 브라우저(Chrome, Edge, Whale, Safari 등)</strong>에서 홈 화면이나 바탕화면에 바로가기 앱으로 1초 만에 설치하여 <b>주소창 없는 전체화면 독립 앱</b>으로 쾌적하게 사용하실 수 있습니다! ✨
+              </p>
+            </div>
+
+            {/* 3대 환경별 가이드 그리드 */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+              
+              {/* 1. PC 브라우저 공통 (Chrome, Edge, Whale 등) */}
+              <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 space-y-3 flex flex-col justify-between">
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-2 text-sm font-bold text-emerald-400">
+                    <Monitor className="w-4 h-4" />
+                    <span>1. PC 브라우저 공통</span>
+                  </div>
+                  <span className="text-[11px] text-slate-400 block">Chrome, Edge, 네이버 Whale 등</span>
+                  
+                  <div className="space-y-2 text-xs text-slate-300 leading-relaxed">
+                    <div className="p-2 rounded-xl bg-slate-900/80 border border-slate-800">
+                      <strong>방법 A. 주소창 아이콘:</strong><br />
+                      주소창(URL) 맨 우측 끝의 모니터/다운로드 모양 <b>[앱 설치]</b> 아이콘 클릭 ➔ [설치]
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-900/80 border border-slate-800">
+                      <strong>방법 B. 브라우저 메뉴:</strong><br />
+                      우측 상단 <b>메뉴(⋮ 또는 …)</b> ➔ <b>[캐스팅, 저장, 공유 / 앱]</b> ➔ <b>[Any Life AI 설치...]</b> (또는 이미 설치된 경우 <b>[Any Life AI에서 열기]</b>) 클릭
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-900/80 border border-slate-800">
+                      <strong>방법 C. 바로가기 만들기:</strong><br />
+                      메뉴 ➔ <b>[바로가기 만들기...]</b> ➔ <b>'창으로 열기'</b> 체크 후 만들기 클릭
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-[11px] text-emerald-200 leading-relaxed mt-2">
+                  💡 <b>주소창에 설치 아이콘이 안 보이나요?</b><br />
+                  이미 컴퓨터에 Any Life AI 앱이 설치되어 있으면 브라우저가 주소창 아이콘을 숨깁니다. 메뉴에서 <b>[Any Life AI에서 열기]</b>를 누르시면 전용 창으로 즉시 열립니다! 🚀
+                </div>
+              </div>
+
+              {/* 2. 안드로이드 스마트폰 (모든 모바일 브라우저) */}
+              <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 space-y-3 flex flex-col justify-between">
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-2 text-sm font-bold text-cyan-400">
+                    <Smartphone className="w-4 h-4" />
+                    <span>2. 안드로이드 스마트폰</span>
+                  </div>
+                  <span className="text-[11px] text-slate-400 block">Chrome, 삼성 인터넷, 웨일 등</span>
+                  
+                  <div className="space-y-2 text-xs text-slate-300 leading-relaxed">
+                    <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                      <strong>1단계.</strong><br />
+                      스마트폰 브라우저 우측 상단 또는 하단의 <b>메뉴(⋮ 또는 삼선)</b>를 누릅니다.
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                      <strong>2단계.</strong><br />
+                      메뉴 목록에서 <b>[홈 화면에 추가]</b> 또는 <b>[앱 설치]</b>를 선택합니다.
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                      <strong>3단계.</strong><br />
+                      바탕화면에 Any Life AI 전용 앱 아이콘이 생성되어, 원클릭 전체화면으로 즉시 실행됩니다!
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-cyan-950/40 border border-cyan-500/30 text-[11px] text-cyan-200 leading-relaxed mt-2">
+                  📱 <b>알림:</b> 웹 화면 하단에 뜨는 <b>[지금 바로 앱 설치하기]</b> 배너를 누르시면 원클릭으로 바로 설치 창이 뜹니다.
+                </div>
+              </div>
+
+              {/* 3. 아이폰 / 아이패드 (iOS Safari) */}
+              <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 space-y-3 flex flex-col justify-between">
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-2 text-sm font-bold text-purple-400">
+                    <Smartphone className="w-4 h-4" />
+                    <span>3. 아이폰 / 아이패드</span>
+                  </div>
+                  <span className="text-[11px] text-slate-400 block">Safari (사파리 브라우저)</span>
+                  
+                  <div className="space-y-2 text-xs text-slate-300 leading-relaxed">
+                    <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                      <strong>1단계.</strong><br />
+                      Safari 브라우저 화면 맨 하단 중앙의 <b>[공유(Share)]</b> 아이콘(네모 상자 위 화살표)을 터치합니다.
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                      <strong>2단계.</strong><br />
+                      공유 메뉴를 아래로 내려 <b>[홈 화면에 추가]</b>를 선택합니다.
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                      <strong>3단계.</strong><br />
+                      우측 상단의 <b>[추가]</b>를 누르면 아이폰 홈 화면에 전용 앱이 완성됩니다! 💖
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-purple-950/40 border border-purple-500/30 text-[11px] text-purple-200 leading-relaxed mt-2">
+                  🍎 <b>주의:</b> 네이버앱, 카카오톡 인앱 브라우저는 홈 화면 추가를 지원하지 않으므로 꼭 <b>Safari</b>로 열어주세요!
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* 탭 4: 기능 개선 & 운영자 의견 수렴 창구 (Interactive Feedback Form) */}
         {activeTab === 'FEEDBACK' && (
           <div className="space-y-4 animate-in fade-in text-sm">
             {/* 상단 안내 배너 */}
@@ -567,7 +696,7 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
                 대표님 & 운영자님의 소중한 아이디어를 들려주세요! 💌
               </h4>
               <p className="text-slate-200 leading-relaxed text-xs sm:text-sm">
-                "이런 매매 지표를 추가하고 싶어요", "이 버튼의 위치를 바꾸고 싶어요", "새로운 전략 알고리즘을 넣고 싶어요" 등 어떤 의견이든 자유롭게 남겨주시면 누리오 트레이더 개발팀이 즉시 검토하여 시스템에 반영해 드립니다! ✨
+                "이런 매매 지표를 추가하고 싶어요", "이 버튼의 위치를 바꾸고 싶어요", "새로운 전략 알고리즘을 넣고 싶어요" 등 어떤 의견이든 자유롭게 남겨주시면 Any Life AI 개발팀이 즉시 검토하여 시스템에 반영해 드립니다! ✨
               </p>
             </div>
 
@@ -632,7 +761,7 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
                 <span className="text-xs sm:text-sm text-slate-400">
                   {isSubmitted && (
                     <span className="text-emerald-400 font-bold flex items-center gap-1.5 animate-bounce">
-                      <CheckCircle2 className="w-4 h-4" /> 소중한 의견이 누리오 AI 디자인실장에게 성공적으로 전달되었습니다! 💖
+                      <CheckCircle2 className="w-4 h-4" /> 소중한 의견이 AI 디자인실장 영자에게 성공적으로 전달되었습니다! 💖
                     </span>
                   )}
                 </span>
@@ -688,11 +817,11 @@ export default function ManualModal({ isOpen, onClose, user, onOpenSettings, onO
             <button
               onClick={() => {
                 onClose();
-                if (onOpenSettings) onOpenSettings();
+                if (onOpenTableEdit) onOpenTableEdit();
               }}
               className="text-indigo-400 hover:text-indigo-300 underline font-semibold cursor-pointer"
             >
-              [⚙️ 매매 조건 설정]
+              [📊 12개 슬롯 전략 수정]
             </button>
             <span>•</span>
             <button

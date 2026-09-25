@@ -29,27 +29,44 @@ import {
   Coins
 } from 'lucide-react';
 import ImportCoinModal from './ImportCoinModal';
+import SlotTableEditor from './SlotTableEditor';
 import { formatCoinWithKo, getCoinNameKo } from '../services/coinNames';
 
-const DEFAULT_SLOTS = [
-  // 1~8번: 초단타 스캘핑 (모드 A)
-  { id: 1, slotId: 1, slotName: '1번 주력 슬롯', strategyMode: 'SCALPING', isEnabled: true, targetMarket: 'KRW-BTC', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 2, slotId: 2, slotName: '2번 알트 슬롯', strategyMode: 'SCALPING', isEnabled: true, targetMarket: 'KRW-ETH', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 3, slotId: 3, slotName: '3번 급등 슬롯', strategyMode: 'SCALPING', isEnabled: true, targetMarket: 'KRW-SOL', tradeAmountKrw: 30000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 4, slotId: 4, slotName: '4번 리플 슬롯', strategyMode: 'SCALPING', isEnabled: true, targetMarket: 'KRW-XRP', tradeAmountKrw: 30000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 5, slotId: 5, slotName: '5번 보조 슬롯', strategyMode: 'SCALPING', isEnabled: true, targetMarket: 'KRW-DOGE', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 6, slotId: 6, slotName: '6번 보조 슬롯', strategyMode: 'SCALPING', isEnabled: true, targetMarket: 'KRW-ADA', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 7, slotId: 7, slotName: '7번 보조 슬롯', strategyMode: 'SCALPING', isEnabled: true, targetMarket: 'KRW-AVAX', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 8, slotId: 8, slotName: '8번 보조 슬롯', strategyMode: 'SCALPING', isEnabled: true, targetMarket: 'KRW-DOT', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-
-  // 9~10번: 당일 신고가 돌파 (모드 B)
-  { id: 9, slotId: 9, slotName: '9번 돌파 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutHighEnabled: true, breakoutCandleUnit: 1, breakoutMinVolumeKrwEok: 5, isEnabled: true, targetMarket: 'KRW-NEAR', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 10, slotId: 10, slotName: '10번 돌파 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutHighEnabled: true, breakoutCandleUnit: 1, breakoutMinVolumeKrwEok: 5, isEnabled: true, targetMarket: 'KRW-SUI', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, stopLossPct: 2.0, positionStatus: 'IDLE' },
-
-  // 11~12번: 정배열 추세 스윙 (모드 C)
-  { id: 11, slotId: 11, slotName: '11번 스윙 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'days', swingShortMa: 5, swingLongMa: 20, swingMinTradePrice24hEok: 100, isEnabled: true, targetMarket: 'KRW-BTC', tradeAmountKrw: 100000, strategyType: 'RECOMMENDED', useWideTrailing: true, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 12.0, trailingTier2CallbackPct: 3.5, stopLossPct: 3.0, positionStatus: 'IDLE' },
-  { id: 12, slotId: 12, slotName: '12번 스윙 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'minutes/240', swingShortMa: 5, swingLongMa: 20, swingMinTradePrice24hEok: 100, isEnabled: true, targetMarket: 'KRW-ETH', tradeAmountKrw: 100000, strategyType: 'RECOMMENDED', useWideTrailing: true, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 12.0, trailingTier2CallbackPct: 3.5, stopLossPct: 3.0, positionStatus: 'IDLE' },
-];
+// 1~12번 슬롯: 모든 슬롯 동일 기본값 (스캘핑 기본 세팅)
+const DEFAULT_SLOTS = Array.from({ length: 12 }, (_, i) => ({
+  id: i + 1,
+  slotId: i + 1,
+  slotName: `${i + 1}번 슬롯`,
+  strategyMode: 'SCALPING',
+  isEnabled: true,
+  targetMarket: '',
+  tradeAmountKrw: 50000,
+  strategyType: 'RECOMMENDED',
+  surgeWindowSeconds: 5,
+  surgeRatePct: 1.5,
+  surgeMinVolumeKrw: 10000000,
+  surgeVolumeMode: 'RATE',
+  surgeMinVolumeRatePct: 0.05,
+  useReverseAlignmentFilter: true,
+  useWhaleTickFilter: true,
+  whaleMinAmountKrw: 10000000,
+  useOrderbookFilter: true,
+  surgeBaseMode: 'VWAP',
+  breakoutHighEnabled: true,
+  breakoutCandleUnit: 1,
+  breakoutMinVolumeKrwEok: 5,
+  swingCandleUnit: 'days',
+  swingShortMa: 5,
+  swingLongMa: 20,
+  swingMinTradePrice24hEok: 100,
+  useWideTrailing: true,
+  trailingTier1TargetProfitPct: 3.0,
+  trailingTier1CallbackPct: 0.5,
+  trailingTier2HurdlePct: 10.0,
+  trailingTier2CallbackPct: 3.0,
+  stopLossPct: 2.0,
+  positionStatus: 'IDLE'
+}));
 
 const formatPrice = (p) => {
   if (!p || p <= 0) return '0원';
@@ -77,8 +94,42 @@ export default function SlotManager({
   onSelectSlot,
   krwBalance = 1000000,
   currentUser = null,
-  strategyViewMode = 'RECOMMENDED'
+  strategyViewMode = 'RECOMMENDED',
+  viewMode = 'MONITOR',
+  editingPeriod = 'MORNING',
+  onCloseTableEdit,
+  onSaveTableEdit,
+  onChangePeriod,
+  periodSlots = null,
+  periodSlotsMap = null,
+  currentPeriod = 'MORNING'
 }) {
+  // 🎯 [수정모드 (표 형태) 렌더링 분기]
+  if (viewMode === 'EDIT_TABLE') {
+    return (
+      <SlotTableEditor
+        targetPeriod={editingPeriod}
+        periodSlotsMap={periodSlotsMap}
+        initialSlots={periodSlotsMap?.[editingPeriod] || periodSlots || slots}
+        onSave={(period, updatedSlots, allSlotsMap) => {
+          if (onSaveTableEdit) {
+            onSaveTableEdit(period, updatedSlots, allSlotsMap);
+          }
+        }}
+        onCancel={() => {
+          if (onCloseTableEdit) {
+            onCloseTableEdit();
+          }
+        }}
+        onChangePeriod={(period) => {
+          if (onChangePeriod) {
+            onChangePeriod(period);
+          }
+        }}
+      />
+    );
+  }
+
   const displaySlots = (Array.isArray(slots) && slots.length > 0) ? slots : DEFAULT_SLOTS;
 
   const [editingSlotId, setEditingSlotId] = useState(null);
@@ -163,7 +214,7 @@ export default function SlotManager({
 
     const stopLoss = (slot.stopLossPct !== undefined && slot.stopLossPct !== null && slot.stopLossPct !== '') ? slot.stopLossPct : 2.0;
 
-    const inferredMode = slot.strategyMode || (slot.slotId >= 11 ? 'TREND_SWING' : (slot.slotId >= 9 ? 'BREAKOUT_DAY_HIGH' : 'SCALPING'));
+    const inferredMode = slot.strategyMode || 'SCALPING';
 
     setEditForm({
       tradeAmountKrw: slot.tradeAmountKrw !== undefined ? slot.tradeAmountKrw : 50000,
@@ -219,43 +270,50 @@ export default function SlotManager({
 
       const currentSlot = slots.find(s => (s.id === slotId || s.slotId === slotId));
       const swingEok = Number(editForm.swingMinTradePrice24hEok) > 0 ? Number(editForm.swingMinTradePrice24hEok) : 100;
+      const minTradePriceKrw = swingEok * 100000000;
 
       onUpdateSlot(slotId, {
-        isEnabled: currentSlot ? currentSlot.isEnabled : true,
-        tradeAmountKrw: editForm.tradeAmountKrw,
-        targetMarket: editForm.targetMarket !== undefined ? editForm.targetMarket : (currentSlot?.targetMarket || 'KRW-BTC'),
+        ...currentSlot,
+        tradeAmountKrw: Number(editForm.tradeAmountKrw),
+        targetMarket: editForm.targetMarket,
         strategyMode: editForm.strategyMode,
         strategyType: editForm.strategyType,
-        surgeWindowSeconds: editForm.surgeWindowSeconds,
-        surgeRatePct: editForm.surgeRatePct,
-        surgeMinVolumeKrw: editForm.surgeMinVolumeKrw,
-        surgeVolumeMode: editForm.surgeVolumeMode || 'RATE',
-        surgeMinVolumeRatePct: parseFloat(editForm.surgeMinVolumeRatePct) || 0.05,
+        surgeWindowSeconds: Number(editForm.surgeWindowSeconds),
+        surgeRatePct: Number(editForm.surgeRatePct),
+        surgeMinVolumeKrw: Number(editForm.surgeMinVolumeKrw),
+        surgeVolumeMode: editForm.surgeVolumeMode,
+        surgeMinVolumeRatePct: Number(editForm.surgeMinVolumeRatePct),
         useReverseAlignmentFilter: Boolean(editForm.useReverseAlignmentFilter),
         useWhaleTickFilter: Boolean(editForm.useWhaleTickFilter),
-        whaleMinAmountKrw: parseFloat(editForm.whaleMinAmountKrw) || 10000000,
+        whaleMinAmountKrw: Number(editForm.whaleMinAmountKrw),
         useOrderbookFilter: Boolean(editForm.useOrderbookFilter),
-        surgeBaseMode: editForm.surgeBaseMode || 'VWAP',
+        surgeBaseMode: editForm.surgeBaseMode,
         breakoutHighEnabled: Boolean(editForm.breakoutHighEnabled),
-        breakoutCandleUnit: Number(editForm.breakoutCandleUnit) || 1,
-        breakoutMinVolumeKrwEok: Number(editForm.breakoutMinVolumeKrwEok) || 5,
-        swingCandleUnit: editForm.swingCandleUnit || 'days',
-        swingShortMa: Number(editForm.swingShortMa) || 5,
-        swingLongMa: Number(editForm.swingLongMa) || 20,
+        breakoutCandleUnit: Number(editForm.breakoutCandleUnit),
+        breakoutMinVolumeKrwEok: Number(editForm.breakoutMinVolumeKrwEok),
+        swingCandleUnit: editForm.swingCandleUnit,
+        swingShortMa: Number(editForm.swingShortMa),
+        swingLongMa: Number(editForm.swingLongMa),
         swingMinTradePrice24hEok: swingEok,
-        min24hAccTradePriceKrw: swingEok * 100000000,
+        min24hAccTradePriceKrw: minTradePriceKrw,
         useWideTrailing: Boolean(editForm.useWideTrailing),
         trailingTier1TargetProfitPct: targetProfit,
-        trailingTier1CallbackPct: parseFloat(editForm.trailingTier1CallbackPct) || 0.5,
-        trailingTier2HurdlePct: parseFloat(editForm.trailingTier2HurdlePct) || 10.0,
-        trailingTier2CallbackPct: parseFloat(editForm.trailingTier2CallbackPct) || 3.0,
+        trailingTier1CallbackPct: (editForm.trailingTier1CallbackPct !== undefined && editForm.trailingTier1CallbackPct !== '') ? Number(editForm.trailingTier1CallbackPct) : 0.5,
+        trailingTier2HurdlePct: Number(editForm.trailingTier2HurdlePct),
+        trailingTier2CallbackPct: Number(editForm.trailingTier2CallbackPct),
         targetProfitPct: targetProfit,
         trailingTargetProfitPct: targetProfit,
-        trailingCallbackPct: parseFloat(editForm.trailingTier1CallbackPct) || 0.5,
+        trailingCallbackPct: (editForm.trailingCallbackPct !== undefined && editForm.trailingCallbackPct !== '') ? Number(editForm.trailingCallbackPct) : 0.5,
         stopLossPct: stopLoss,
-        useAtrStopLoss: Boolean(editForm.useAtrStopLoss)
+        useAtrStopLoss: Boolean(editForm.useAtrStopLoss),
+        isTemporaryOverride: true,
+        overridePeriod: currentPeriod
       });
     }
+    setEditingSlotId(null);
+  };
+
+  const handleCancelEdit = () => {
     setEditingSlotId(null);
   };
 
@@ -265,124 +323,16 @@ export default function SlotManager({
     setIsStatsModalOpen(true);
   };
 
-  const formatMarketName = (marketCode) => {
-    if (!marketCode) return '전종목 급등 포착 대기';
-    const coin = marketCode.replace('KRW-', '');
-    const names = {
-      'BTC': '비트코인 (BTC)',
-      'ETH': '이더리움 (ETH)',
-      'XRP': '리플 (XRP)',
-      'SOL': '솔라나 (SOL)',
-      'DOGE': '도지코인 (DOGE)',
-      'ADA': '에이다 (ADA)',
-      'AVAX': '아발란체 (AVAX)',
-      'DOT': '폴카닷 (DOT)',
-      'NEAR': '니어프로토콜 (NEAR)',
-      'LINK': '체인링크 (LINK)',
-      'STX': '스택스 (STX)',
-      'SUI': '수이 (SUI)',
-      'SHIB': '시바이누 (SHIB)',
-      'PEPE': '페페 (PEPE)'
-    };
-    return names[coin] || `${coin} (${coin})`;
+  const formatMarketName = (mkt) => {
+    if (!mkt) return '';
+    const sym = mkt.replace('KRW-', '');
+    const ko = getCoinNameKo(mkt);
+    return ko ? `${ko} (${sym})` : sym;
   };
 
   return (
-    <div className="space-y-4 max-w-full min-w-0">
-      {/* 1. 상단 슬롯 헤더 & 1~12번 슬롯 탭 네비게이션 통합 바 (1줄 콤팩트 디자인) */}
-      <div className={`flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-2xl bg-slate-900/90 border shadow-xl backdrop-blur-md max-w-full min-w-0 transition-all ${
-        strategyViewMode === 'RECOMMENDED' 
-          ? 'border-emerald-500/30 shadow-emerald-950/20' 
-          : 'border-indigo-500/35 shadow-indigo-950/30'
-      }`}>
-        <div className="flex items-center gap-2 shrink-0">
-          <div className={`p-1.5 sm:p-2 rounded-xl border ${
-            strategyViewMode === 'RECOMMENDED'
-              ? 'bg-gradient-to-tr from-emerald-500/20 via-teal-500/15 to-emerald-500/20 border-emerald-500/40 text-emerald-400'
-              : 'bg-gradient-to-tr from-indigo-500/20 via-purple-500/15 to-indigo-500/20 border-indigo-500/40 text-indigo-400'
-          }`}>
-            <Layers className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
-          </div>
-          <div className="flex items-center gap-2">
-            <h3 className="font-black text-slate-100 text-xs sm:text-sm tracking-tight whitespace-nowrap">
-              {strategyViewMode === 'RECOMMENDED' ? '🌿 누리오 AI 추천전략 멀티 슬롯' : '⚡ 멀티 슬롯 커스텀 전략'}
-            </h3>
-            <span className={`text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full font-bold border whitespace-nowrap ${
-              strategyViewMode === 'RECOMMENDED'
-                ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-                : 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
-            }`}>
-              {displaySlots.filter(s => s.isEnabled).length}/{displaySlots.length} 가동
-            </span>
-          </div>
-        </div>
-
-        {/* 2. 1~12번 슬롯 탭 버튼 바 (모바일: 슬롯번호만 2줄 그리드 표시, 가로 슬라이딩 제거 / 데스크탑: 1줄 상세 표시) */}
-        {displaySlots.length > 1 && (
-          <div className={`grid ${displaySlots.length <= 4 ? 'grid-cols-4' : (displaySlots.length <= 8 ? 'grid-cols-4' : 'grid-cols-6')} sm:flex sm:items-center sm:flex-wrap lg:flex-nowrap gap-1 sm:gap-1.5 w-full lg:w-auto`}>
-            {displaySlots.map((slot) => {
-              const isSelected = (selectedSlotId === slot.slotId);
-              const hasPosition = (slot.positionStatus === 'IN_POSITION' || slot.positionStatus === 'HOLDING' || slot.positionStatus === 'TRAILING_ACTIVE') || Boolean(slot.entryPrice && slot.entryPrice > 0);
-              const isBreakout = slot.strategyMode === 'BREAKOUT_DAY_HIGH';
-              const isSwing = slot.strategyMode === 'TREND_SWING';
-
-              const tabColorClass = isSelected
-                ? (strategyViewMode === 'RECOMMENDED'
-                    ? 'bg-emerald-500 text-black border-emerald-400 font-black shadow-md shadow-emerald-500/30 scale-105 ring-1 ring-emerald-300 relative z-10'
-                    : isSwing 
-                    ? 'bg-sky-400 text-black border-sky-300 font-black shadow-md shadow-sky-500/30 scale-105 ring-1 ring-sky-300 relative z-10' 
-                    : isBreakout 
-                    ? 'bg-amber-400 text-black border-amber-300 font-black shadow-md shadow-amber-500/30 scale-105 ring-1 ring-amber-300 relative z-10' 
-                    : 'bg-indigo-500 text-white border-indigo-400 font-black shadow-md shadow-indigo-500/30 scale-105 ring-1 ring-indigo-300 relative z-10')
-                : !slot.isEnabled
-                  ? 'bg-slate-950/60 text-slate-500 border-slate-800 hover:text-slate-400'
-                  : hasPosition
-                  ? 'bg-slate-800/90 text-rose-300 border-rose-500/40 hover:bg-slate-800 shadow-sm shadow-rose-950/50'
-                  : strategyViewMode === 'RECOMMENDED'
-                  ? 'bg-slate-950/90 text-emerald-400 border-emerald-500/30 hover:text-white hover:bg-emerald-950/50 hover:border-emerald-400'
-                  : isSwing
-                  ? 'bg-slate-950/90 text-sky-400 border-sky-500/30 hover:text-white hover:bg-sky-950/50 hover:border-sky-400'
-                  : isBreakout
-                  ? 'bg-slate-950/90 text-amber-400 border-amber-500/30 hover:text-white hover:bg-amber-950/50 hover:border-amber-400'
-                  : 'bg-slate-950/90 text-indigo-400 border-indigo-500/30 hover:text-white hover:bg-indigo-950/50 hover:border-indigo-400';
-
-              return (
-                <button
-                  key={slot.slotId}
-                  onClick={() => handleSlotNavClick(slot.slotId)}
-                  className={`flex items-center justify-center gap-1 px-1 sm:px-2.5 py-1.5 sm:py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold w-full sm:w-auto transition-all border cursor-pointer whitespace-nowrap active:scale-95 ${tabColorClass}`}
-                  title={`${slot.slotId}번 슬롯으로 화면 이동`}
-                >
-                  {/* 모바일: 슬롯번호만 표시 (예: 1번, 2번...) */}
-                  <span>{slot.slotId}번</span>
-
-                  {/* 데스크탑(sm 이상): 코인명/전략 모드 상세 텍스트 */}
-                  <span className="hidden sm:inline font-normal truncate max-w-[48px] sm:max-w-[60px]">
-                    {!slot.isEnabled ? '정지' : (hasPosition && slot.targetMarket ? slot.targetMarket.replace('KRW-', '') : (strategyViewMode === 'RECOMMENDED' ? '추천' : (isSwing ? '스윙' : (isBreakout ? '돌파' : '스캘핑'))))}
-                  </span>
-
-                  {/* 상태 아이콘: 모바일에서는 포지션 보유 시 펄스 점만 표시, 데스크탑에서는 풀 아이콘 표시 */}
-                  {!slot.isEnabled ? (
-                    <span className="hidden sm:inline text-[9px] text-slate-500 font-mono">⏸️</span>
-                  ) : hasPosition ? (
-                    <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse shrink-0"></span>
-                  ) : strategyViewMode === 'RECOMMENDED' ? (
-                    <span className="hidden sm:inline text-[9px] text-emerald-400" title="누리오 AI 추천">🌿</span>
-                  ) : isSwing ? (
-                    <span className="hidden sm:inline text-[9px] text-sky-400" title="정배열 추세 스윙">🌊</span>
-                  ) : isBreakout ? (
-                    <span className="hidden sm:inline text-[9px] text-amber-400" title="당일 신고가 돌파">🚀</span>
-                  ) : (
-                    <span className="hidden sm:inline text-[9px] text-indigo-400" title="초단타 스캘핑">⚡</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* 3. 슬롯 카드 그리드 (PC 와이드 4열 x 3행: 1,2,3,4 / 5,6,7,8 / 9,10,11,12 완벽 배치) */}
+    <div className="space-y-4 max-w-full overflow-hidden">
+      {/* 슬롯 카드 그리드 (PC 와이드 4열 x 3행: 1,2,3,4 / 5,6,7,8 / 9,10,11,12 완벽 배치) */}
       <div className={displaySlots.length === 1 ? "flex justify-center py-2" : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5"}>
         {displaySlots.map((slot) => {
           const isSelected = (selectedSlotId === slot.slotId);
@@ -437,10 +387,6 @@ export default function SlotManager({
                   ? (isSelected ? 'bg-slate-950 border-slate-700 ring-2 ring-slate-500 shadow-xl' : 'bg-slate-950/90 border-slate-800/80 opacity-60 grayscale-[25%]')
                   : isSurgeCounting
                   ? 'bg-amber-950/40 border-amber-400 ring-2 ring-amber-400 shadow-2xl shadow-amber-500/30 animate-pulse'
-                  : strategyViewMode === 'RECOMMENDED'
-                  ? (isSelected
-                      ? 'bg-gradient-to-b from-emerald-950/60 via-slate-900/95 to-slate-950 border-emerald-400 shadow-2xl shadow-emerald-500/30 ring-2 ring-emerald-400/80 scale-[1.01]'
-                      : 'bg-gradient-to-b from-emerald-950/25 via-slate-900/90 to-slate-950 border-emerald-500/40 hover:border-emerald-400 hover:shadow-lg hover:shadow-emerald-500/15')
                   : isSwing
                   ? (isSelected
                       ? 'bg-gradient-to-b from-sky-950/60 via-slate-900/95 to-slate-950 border-sky-400 ring-2 ring-sky-400/80 shadow-2xl shadow-sky-500/30 scale-[1.01]'
@@ -450,21 +396,19 @@ export default function SlotManager({
                       ? 'bg-gradient-to-b from-amber-950/60 via-slate-900/95 to-slate-950 border-amber-400 ring-2 ring-amber-400/80 shadow-2xl shadow-amber-500/30 scale-[1.01]'
                       : 'bg-gradient-to-b from-amber-950/30 via-slate-900/90 to-slate-950 border-amber-500/50 hover:border-amber-400 hover:shadow-lg hover:shadow-amber-500/20')
                   : (isSelected
-                      ? 'bg-gradient-to-b from-indigo-950/60 via-slate-900/95 to-slate-950 border-indigo-400 shadow-2xl shadow-indigo-500/30 ring-2 ring-indigo-400 scale-[1.01]'
-                      : 'bg-gradient-to-b from-indigo-950/30 via-slate-900/90 to-slate-950 border-indigo-500/60 hover:border-indigo-400 hover:shadow-lg hover:shadow-indigo-500/15')
+                      ? 'bg-gradient-to-b from-emerald-950/60 via-slate-900/95 to-slate-950 border-emerald-400 shadow-2xl shadow-emerald-500/30 ring-2 ring-emerald-400/80 scale-[1.01]'
+                      : 'bg-gradient-to-b from-emerald-950/30 via-slate-900/90 to-slate-950 border-emerald-500/50 hover:border-emerald-400 hover:shadow-lg hover:shadow-emerald-500/20')
               }`}
             >
               {/* 🌟 전략 모드별 상단 컬러 악센트 라인 (카드 상단 가로 줄) */}
               <div className={`absolute top-0 left-0 right-0 h-1.5 sm:h-2 shrink-0 ${
                 !slot.isEnabled
                   ? 'bg-slate-700'
-                  : strategyViewMode === 'RECOMMENDED'
-                  ? 'bg-gradient-to-r from-emerald-400 via-teal-400 to-green-500 shadow-md shadow-emerald-500/50'
                   : isSwing
                   ? 'bg-gradient-to-r from-sky-400 via-cyan-400 to-indigo-500 shadow-md shadow-sky-500/50'
                   : isBreakout
                   ? 'bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-500 shadow-md shadow-amber-500/50'
-                  : 'bg-gradient-to-r from-indigo-400 via-purple-400 to-violet-500 shadow-md shadow-indigo-500/50'
+                  : 'bg-gradient-to-r from-emerald-400 via-teal-400 to-green-500 shadow-md shadow-emerald-500/50'
               }`} />
 
               {/* 🔒 [무료방문자 승인 대기] 락 오버레이 */}
@@ -498,13 +442,11 @@ export default function SlotManager({
                   <div className={`px-3 py-1 rounded-xl text-sm sm:text-base font-black flex items-center justify-center border shadow-sm shrink-0 whitespace-nowrap ${
                     !slot.isEnabled
                       ? 'bg-slate-800 text-slate-400 border-slate-700'
-                      : strategyViewMode === 'RECOMMENDED'
-                      ? 'bg-emerald-500/25 text-emerald-300 border-emerald-400/60 shadow-emerald-500/20'
                       : isSwing
                       ? 'bg-sky-500/25 text-sky-300 border-sky-400/60 shadow-sky-500/20'
                       : isBreakout
                       ? 'bg-amber-500/25 text-amber-300 border-amber-400/60 shadow-amber-500/20'
-                      : 'bg-indigo-500/25 text-indigo-200 border-indigo-400/60 shadow-indigo-500/20'
+                      : 'bg-emerald-500/25 text-emerald-300 border-emerald-400/60 shadow-emerald-500/20'
                   }`}>
                     <span className="flex items-center gap-1.5">
                       {hasPosition && <span className="w-2 h-2 rounded-full bg-rose-400 animate-ping" />}
@@ -512,27 +454,33 @@ export default function SlotManager({
                     </span>
                   </div>
 
-                  {/* 전략 모드 뱃지 (스캘핑 / 신고가 돌파 / 추세 스윙 / 추천) */}
+                  {/* 전략 모드 뱃지 (스캘핑 / 당일 돌파 / 추세 스윙) */}
                   <span className={`text-xs px-2.5 py-1 rounded-lg font-black tracking-tight border shadow-sm shrink-0 whitespace-nowrap ${
                     !slot.isEnabled
                       ? 'bg-slate-900 text-slate-500 border-slate-800'
-                      : strategyViewMode === 'RECOMMENDED'
-                      ? 'bg-emerald-500/20 text-emerald-200 border-emerald-400/50 shadow-sm shadow-emerald-500/20'
                       : isSwing
                       ? 'bg-sky-500/20 text-sky-200 border-sky-400/50 shadow-sm shadow-sky-500/20'
                       : isBreakout
                       ? 'bg-amber-500/20 text-amber-200 border-amber-400/50 shadow-sm shadow-amber-500/20'
-                      : 'bg-indigo-500/20 text-indigo-200 border-indigo-400/50 shadow-sm shadow-indigo-500/20'
+                      : 'bg-emerald-500/20 text-emerald-200 border-emerald-400/50 shadow-sm shadow-emerald-500/20'
                   }`}>
-                    {strategyViewMode === 'RECOMMENDED'
-                      ? '🌿 AI 추천'
-                      : (isSwing ? '🌊 모드 C (스윙)' : (isBreakout ? '🚀 모드 B (돌파)' : '⚡ 모드 A (스캘핑)'))}
+                    {isSwing ? '🌊 추세 스윙' : (isBreakout ? '🚀 당일 돌파' : '⚡ 초단타 스캘핑')}
                   </span>
 
                   {/* 🚀 와이드 트레일링 2단계 대시세 진입 뱃지 */}
                   {hasPosition && slot.trailingStage === 2 && (
                     <span className="text-xs px-2.5 py-1 rounded-lg font-black tracking-tight bg-gradient-to-r from-purple-600 to-indigo-600 text-white border border-purple-400 shadow-md shadow-purple-500/30 animate-pulse whitespace-nowrap">
                       🚀 와이드 2단계
+                    </span>
+                  )}
+
+                  {/* ⏳ 현재 시간대 임시 개별 설정 뱃지 */}
+                  {slot.isTemporaryOverride && (
+                    <span 
+                      className="text-[10px] px-2 py-0.5 rounded-md font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm shrink-0 whitespace-nowrap" 
+                      title="현재 시간대에만 임시 적용된 개별 설정입니다. 다음 시간대로 전환되면 해당 시간대 마스터 설정으로 자동 원복됩니다."
+                    >
+                      임시 설정
                     </span>
                   )}
                 </div>
@@ -907,7 +855,7 @@ export default function SlotManager({
                           <span>AI 전자동 안전 관리 가동 중</span>
                         </div>
                         <p className="text-slate-400 text-[10px] leading-normal">
-                          복잡한 수급 분석, 분봉 거래대금 필터링, 다단 트레일링 스탑은 누리오 AI가 장세에 맞춰 24시간 가장 안전하게 자동 운용합니다.
+                          복잡한 수급 분석, 분봉 거래대금 필터링, 다단 트레일링 스탑은 Any Life AI가 장세에 맞춰 24시간 가장 안전하게 자동 운용합니다.
                         </p>
                       </div>
                     </div>
@@ -919,10 +867,10 @@ export default function SlotManager({
                         <div className="flex items-center justify-between text-xs font-bold px-1">
                           <span className="flex items-center gap-1.5 text-indigo-300">
                             <Sliders className="w-3.5 h-3.5 text-indigo-400" />
-                            <span>전략 모드 선택 (A / B / C)</span>
+                            <span>전략 모드 선택</span>
                           </span>
                           <span className="text-[10px] text-slate-400 font-mono font-normal">
-                            {editForm.strategyMode === 'SCALPING' ? '1~8번 권장' : (editForm.strategyMode === 'BREAKOUT_DAY_HIGH' ? '9~10번 권장' : '11~12번 권장')}
+                            {editForm.strategyMode === 'SCALPING' ? '스캘핑' : (editForm.strategyMode === 'BREAKOUT_DAY_HIGH' ? '당일 돌파' : '추세 스윙')}
                           </span>
                         </div>
                         <div className="grid grid-cols-3 gap-1.5">
@@ -935,8 +883,8 @@ export default function SlotManager({
                                 : 'bg-slate-900/90 text-slate-400 border-slate-800 hover:text-white hover:bg-slate-800'
                             }`}
                           >
-                            <span className="flex items-center gap-1">⚡ <span>모드 A</span></span>
-                            <span className="text-[10px] font-semibold opacity-90">초단타 스캘핑</span>
+                            <span className="flex items-center gap-1">⚡ <span>초단타 스캘핑</span></span>
+                            <span className="text-[10px] font-semibold opacity-90">급등 포착</span>
                           </button>
                           <button
                             type="button"
@@ -947,7 +895,7 @@ export default function SlotManager({
                                 : 'bg-slate-900/90 text-slate-400 border-slate-800 hover:text-white hover:bg-slate-800'
                             }`}
                           >
-                            <span className="flex items-center gap-1">🚀 <span>모드 B</span></span>
+                            <span className="flex items-center gap-1">🚀 <span>당일 돌파</span></span>
                             <span className="text-[10px] font-semibold opacity-90">신고가 돌파</span>
                           </button>
                           <button
@@ -959,8 +907,8 @@ export default function SlotManager({
                                 : 'bg-slate-900/90 text-slate-400 border-slate-800 hover:text-white hover:bg-slate-800'
                             }`}
                           >
-                            <span className="flex items-center gap-1">🌊 <span>모드 C</span></span>
-                            <span className="text-[10px] font-semibold opacity-90">추세 스윙</span>
+                            <span className="flex items-center gap-1">🌊 <span>추세 스윙</span></span>
+                            <span className="text-[10px] font-semibold opacity-90">이평 정배열</span>
                           </button>
                         </div>
                       </div>
@@ -1253,7 +1201,7 @@ export default function SlotManager({
                       <div className="text-xs text-sky-300 flex items-center justify-between font-bold">
                         <span className="flex items-center gap-1.5">
                           <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span>
-                          🌊 정배열 추세 스윙 로직 (11~12번 슬롯)
+                          🌊 정배열 추세 스윙 로직
                         </span>
                         <span className="text-[10px] px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-200 font-normal">
                           중기 추세 매매
@@ -1585,63 +1533,21 @@ export default function SlotManager({
                         </div>
                       ) : (
                         <span className={`text-[11px] sm:text-xs font-mono font-bold block mt-1 whitespace-nowrap ${
-                          strategyViewMode === 'RECOMMENDED'
-                            ? 'text-emerald-400/90'
-                            : (isBreakout ? 'text-amber-400/90' : (isSwing ? 'text-sky-400/90' : 'text-emerald-400/90'))
+                          isBreakout ? 'text-amber-400/90' : (isSwing ? 'text-sky-400/90' : 'text-emerald-400/90')
                         }`}>
-                          {strategyViewMode === 'RECOMMENDED'
-                            ? '🌿 AI 추천 상시 감시'
-                            : (isBreakout ? '🚀 모드 B (신고가) 상시 감시' : (isSwing ? '🌊 모드 C (스윙) 상시 감시' : '⚡ 모드 A (스캘핑) 상시 감시'))}
+                          {isBreakout ? '🚀 당일 돌파 상시 감시' : (isSwing ? '🌊 추세 스윙 상시 감시' : '⚡ 초단타 스캘핑 상시 감시')}
                         </span>
                       )}
                     </div>
                   </div>
 
-                  {/* 🌿 [추천전략 모드] 깔끔하고 직관적인 AI 추천 운용 요약 카드 */}
-                  {strategyViewMode === 'RECOMMENDED' ? (
-                    <div className="rounded-xl bg-slate-950/70 border border-emerald-500/30 p-2.5 space-y-2 text-xs font-mono shadow-inner shadow-emerald-950/20">
-                      <div className="flex items-center justify-between pb-1.5 border-b border-emerald-500/20 font-bold">
-                        <span className="flex items-center gap-1.5 text-emerald-300 font-sans">
-                          <span>🌿</span>
-                          <span>누리오 AI 스마트 운용 스펙</span>
-                        </span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-sans">
-                          24시간 전자동
-                        </span>
-                      </div>
+                  {/* 📊 전략 파라미터 미니 스펙 표 (스캘핑 / 돌파 / 스윙 모드별 분기) */}
+                  {(() => {
+                    const isBreakout = (slot.strategyMode === 'BREAKOUT_DAY_HIGH' || slot.strategyMode === 'BREAKOUT');
+                    const isSwing = (slot.strategyMode === 'TREND_SWING' || slot.strategyMode === 'SWING');
+                    const isSelf = true;
 
-                      <div className="grid grid-cols-2 gap-2 text-[11px]">
-                        <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800/80 flex flex-col justify-between">
-                          <span className="text-slate-400 font-sans text-[10px]">목표 익절</span>
-                          <span className="font-extrabold text-rose-400 text-xs sm:text-[13px] mt-0.5">
-                            +{slot.targetProfitPct || slot.trailingTier1TargetProfitPct || 3.0}%
-                            <span className="text-[9px] text-slate-400 font-normal ml-1">(트레일링)</span>
-                          </span>
-                        </div>
-                        <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800/80 flex flex-col justify-between">
-                          <span className="text-slate-400 font-sans text-[10px]">원금 손절</span>
-                          <span className="font-extrabold text-blue-400 text-xs sm:text-[13px] mt-0.5">
-                            -{slot.stopLossPct || 2.0}%
-                            <span className="text-[9px] text-slate-400 font-normal ml-1">(시장가)</span>
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800/80 flex items-center justify-between text-[11px]">
-                        <span className="text-slate-400 font-sans text-[10px]">매매 대상</span>
-                        <span className="font-bold text-slate-200 text-xs truncate max-w-[170px]">
-                          {slot.targetMarket ? formatMarketName(slot.targetMarket) : '⚡ 전종목 실시간 급등 포착'}
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
-                    /* 📊 [셀프전략 모드] 전략 파라미터 미니 스펙 표 (PRO 트레이더용) */
-                    (() => {
-                      const isBreakout = (slot.strategyMode === 'BREAKOUT_DAY_HIGH');
-                      const isSwing = (slot.strategyMode === 'TREND_SWING');
-                      const isSelf = true;
-
-                      if (isBreakout) {
+                    if (isBreakout) {
                       const candleUnit = slot.breakoutCandleUnit || 1;
                       const minVolEok = slot.breakoutMinVolumeKrwEok || 5;
                       const t1Target = slot.trailingTier1TargetProfitPct !== undefined ? slot.trailingTier1TargetProfitPct : 3.0;
@@ -1655,7 +1561,7 @@ export default function SlotManager({
                           {/* 표 헤더 */}
                           <div className="grid grid-cols-2 bg-slate-900/90 border-b border-amber-500/20 text-xs sm:text-[13px] font-extrabold">
                             <div className="px-2.5 py-1.5 flex items-center justify-between border-r border-slate-800/80 text-amber-300">
-                              <span className="flex items-center gap-1">🚀 모드 B (신고가 돌파)</span>
+                              <span className="flex items-center gap-1">🚀 당일 돌파</span>
                             </div>
                             <div className="px-2.5 py-1.5 flex items-center justify-between text-orange-300">
                               <span className="flex items-center gap-1">🎯 와이드 트레일링</span>
@@ -1716,7 +1622,7 @@ export default function SlotManager({
                           {/* 표 헤더 */}
                           <div className="grid grid-cols-2 bg-slate-900/90 border-b border-sky-500/20 text-xs sm:text-[13px] font-extrabold">
                             <div className="px-2.5 py-1.5 flex items-center justify-between border-r border-slate-800/80 text-sky-300">
-                              <span className="flex items-center gap-1">🌊 모드 C (추세 스윙)</span>
+                              <span className="flex items-center gap-1">🌊 추세 스윙</span>
                             </div>
                             <div className="px-2.5 py-1.5 flex items-center justify-between text-indigo-300">
                               <span className="flex items-center gap-1">🎯 스윙 익절 / 청산</span>
@@ -1765,7 +1671,7 @@ export default function SlotManager({
                       );
                     }
 
-                    // Default: Mode A (초단타 스캘핑)
+                    // Default: 초단타 스캘핑
                     const surgeWindow = isSelf ? (slot.surgeWindowSeconds || 5) : 5;
                     const surgeRate = isSelf ? (slot.surgeRatePct !== undefined ? slot.surgeRatePct : 1.5) : 1.5;
                     const minVolKrw = isSelf ? (slot.surgeMinVolumeKrw !== undefined ? slot.surgeMinVolumeKrw : 10000000) : 10000000;
@@ -1788,7 +1694,7 @@ export default function SlotManager({
                         {/* 표 헤더 */}
                         <div className="grid grid-cols-2 bg-slate-900/90 border-b border-emerald-500/20 text-xs sm:text-[13px] font-extrabold">
                           <div className="px-2.5 py-1.5 flex items-center justify-between border-r border-slate-800/80 text-emerald-400">
-                            <span className="flex items-center gap-1">⚡ 모드 A (초단타 스캘핑)</span>
+                            <span className="flex items-center gap-1">⚡ 초단타 스캘핑</span>
                           </div>
                           <div className="px-2.5 py-1.5 flex items-center justify-between text-teal-300">
                             <span className="flex items-center gap-1">🎯 다단 트레일링 익절</span>
@@ -1838,7 +1744,7 @@ export default function SlotManager({
                         </div>
                       </div>
                     );
-                  })())}
+                  })()}
 
                   {/* 잔고 초과 시 알림 뱃지 */}
                   {isOverBalance && (

@@ -1,7 +1,7 @@
 {
-  "name": "nurioh-autotrade",
-  "version": "4.0.0",
-  "description": "Upbit Automated Trading Bot with Telegram Approval & Modern React Dashboard",
+  "name": "anylife-ai-trader",
+  "version": "5.1.0",
+  "description": "Any Life AI - Automated Intelligence Upbit Trading Bot with Modern React Dashboard",
   "main": "server/index.js",
   "scripts": {
     "server": "node server/index.js",
