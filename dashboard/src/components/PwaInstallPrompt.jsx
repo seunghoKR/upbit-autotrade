@@ -86,15 +86,42 @@ export default function PwaInstallPrompt() {
     window.addEventListener('appinstalled', handleAppInstalled);
 
     // 6. 외부(헤더 등)에서 가이드 모달 또는 설치 프롬프트 직접 호출 이벤트 수신
+    const detectDeviceTab = () => {
+      const ua = navigator.userAgent || '';
+      if (/iPhone|iPad|iPod/i.test(ua)) {
+        setActiveTab('ios');
+      } else if (/Android/i.test(ua)) {
+        setActiveTab('android');
+      } else {
+        setActiveTab('pc');
+      }
+    };
+
     const handleOpenGuide = () => {
+      detectDeviceTab();
       setIsGuideOpen(true);
     };
-    const handleTriggerPrompt = () => {
-      if (window.deferredPwaPrompt) {
-        window.deferredPwaPrompt.prompt();
-      } else {
-        setIsGuideOpen(true);
+
+    const handleTriggerPrompt = async () => {
+      detectDeviceTab();
+      const promptEvent = window.deferredPwaPrompt || deferredPrompt;
+      if (promptEvent) {
+        try {
+          promptEvent.prompt();
+          const { outcome } = await promptEvent.userChoice;
+          if (outcome === 'accepted') {
+            setIsVisible(false);
+            setIsGuideOpen(false);
+          }
+          window.deferredPwaPrompt = null;
+          setDeferredPrompt(null);
+          return;
+        } catch (err) {
+          console.warn('Install prompt error:', err);
+        }
       }
+      // 직접 프롬프트가 안 뜰 때는 직관적인 간편 가이드 모달 즉시 표시
+      setIsGuideOpen(true);
     };
 
     window.addEventListener('open_pwa_install_guide', handleOpenGuide);
@@ -106,7 +133,7 @@ export default function PwaInstallPrompt() {
       window.removeEventListener('open_pwa_install_guide', handleOpenGuide);
       window.removeEventListener('trigger_pwa_install', handleTriggerPrompt);
     };
-  }, []);
+  }, [deferredPrompt]);
 
   const handleInstallClick = async () => {
     const promptEvent = deferredPrompt || window.deferredPwaPrompt;
@@ -122,15 +149,17 @@ export default function PwaInstallPrompt() {
         window.deferredPwaPrompt = null;
       } catch (err) {
         console.warn('Install prompt error:', err);
-        setIsGuideOpen(true);
+        alert('💡 브라우저 주소창 맨 오른쪽의 [🖥️ 앱 설치] 아이콘 또는\n우측 상단 메뉴(⋮) > [Any Life AI 설치]를 클릭해 주세요! ✨');
       }
     } else {
-      // 브라우저 직접 프롬프트가 지원되지 않는 경우(iOS 사파리, PC 등) 친절한 안내 모달 열기
       const ua = navigator.userAgent || '';
-      if (!/iPhone|iPad|iPod|Android/i.test(ua)) {
-        setActiveTab('pc');
+      if (/iPhone|iPad|iPod/i.test(ua)) {
+        alert('💡 Safari 브라우저 하단의 [공유(↑)] 버튼을 누른 후 [홈 화면에 추가]를 선택해 주세요! 📲');
+      } else if (/Android/i.test(ua)) {
+        alert('💡 Chrome 브라우저 우측 상단 메뉴(⋮)를 누른 후 [앱 설치] 또는 [홈 화면에 추가]를 선택해 주세요! 📲');
+      } else {
+        alert('💡 Chrome 브라우저 주소창(URL) 맨 오른쪽의 [🖥️ 앱 설치] 아이콘 또는\n우측 상단 메뉴(⋮) > [Any Life AI 설치]를 클릭해 주세요! 💻');
       }
-      setIsGuideOpen(true);
     }
   };
 
@@ -293,39 +322,33 @@ export default function PwaInstallPrompt() {
             {/* 탭 1: 안드로이드 설치 방법 */}
             {activeTab === 'android' && (
               <div className="space-y-4">
-                <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
-                  <div className="flex items-start gap-3">
-                    <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3.5">
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-800/40 border border-slate-700/50">
+                    <span className="w-7 h-7 rounded-xl bg-emerald-500/20 text-emerald-400 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
                       1
                     </span>
                     <div>
-                      <h4 className="text-sm font-bold text-white">원클릭 설치 버튼 누르기</h4>
+                      <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
+                        <span>크롬 우측 상단 메뉴</span>
+                        <code className="text-xs bg-slate-800 px-1.5 py-0.5 rounded text-emerald-300">⋮</code>
+                        <span>터치</span>
+                      </h4>
                       <p className="text-xs text-slate-400 mt-1">
-                        아래 [지금 바로 설치] 버튼을 누르면 브라우저 하단에 설치 확인 창이 뜹니다.
+                        Android 스마트폰 Chrome 브라우저 우측 상단의 점 세 개(⋮) 메뉴를 누릅니다.
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-3">
-                    <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/30">
+                    <span className="w-7 h-7 rounded-xl bg-emerald-500 text-black font-black text-xs flex items-center justify-center shrink-0 mt-0.5">
                       2
                     </span>
                     <div>
-                      <h4 className="text-sm font-bold text-white">버튼이 반응하지 않을 때 (수동 설치)</h4>
-                      <p className="text-xs text-slate-400 mt-1">
-                        Chrome 브라우저 우측 상단 <b>메뉴(⋮)</b> 클릭 ➔ <b>[앱 설치]</b> 또는 <b>[홈 화면에 추가]</b>를 선택해 주세요.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
-                      3
-                    </span>
-                    <div>
-                      <h4 className="text-sm font-bold text-white">바탕화면에서 즉시 실행</h4>
-                      <p className="text-xs text-slate-400 mt-1">
-                        스마트폰 바탕화면에 Any Life AI 앱 아이콘이 생성되며, 클릭 시 전체화면으로 열립니다!
+                      <h4 className="text-sm font-bold text-emerald-300">
+                        [앱 설치] 또는 [홈 화면에 추가] 터치!
+                      </h4>
+                      <p className="text-xs text-slate-300 mt-1">
+                        메뉴 목록에서 <b>[앱 설치]</b>를 누르시면 바탕화면에 전용 앱 아이콘이 즉시 생성됩니다. 🚀
                       </p>
                     </div>
                   </div>
@@ -333,10 +356,10 @@ export default function PwaInstallPrompt() {
 
                 <button
                   onClick={handleInstallClick}
-                  className="w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-500/30 cursor-pointer"
+                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-500/30 cursor-pointer active:scale-95"
                 >
                   <Download className="w-4 h-4" />
-                  <span>안드로이드 앱 설치 시도하기</span>
+                  <span>지금 바로 안드로이드 앱 설치하기</span>
                 </button>
               </div>
             )}
@@ -345,45 +368,34 @@ export default function PwaInstallPrompt() {
             {activeTab === 'ios' && (
               <div className="space-y-4">
                 <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3.5">
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-800/40 border border-slate-700/50">
                     <div className="w-7 h-7 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
                       <Share2 className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-white">1. 사파리(Safari) 하단 [공유] 버튼 클릭</h4>
+                      <h4 className="text-sm font-bold text-white">1. Safari 화면 맨 아래 [공유 ↑] 터치</h4>
                       <p className="text-xs text-slate-400 mt-1">
-                        Safari 브라우저 화면 맨 하단 중앙의 <b>[공유(Share)]</b> 아이콘(네모 상자 위 화살표)을 눌러주세요.
+                        Safari 브라우저 하단 중앙의 네모 상자 위 화살표 아이콘을 누릅니다.
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/30">
                     <div className="w-7 h-7 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
                       <PlusSquare className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-white">2. [홈 화면에 추가] 선택</h4>
-                      <p className="text-xs text-slate-400 mt-1">
-                        공유 메뉴 목록을 아래로 스크롤하여 <b>[홈 화면에 추가]</b> 메뉴를 터치합니다.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <div className="w-7 h-7 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0 mt-0.5">
-                      <CheckCircle2 className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-white">3. 우측 상단 [추가] 터치 완료!</h4>
-                      <p className="text-xs text-slate-400 mt-1">
-                        우측 상단의 <b>[추가]</b>를 누르면 아이폰 홈 화면에 Any Life AI 앱이 완성됩니다! 💖
+                      <h4 className="text-sm font-bold text-emerald-300">2. [홈 화면에 추가] ➔ [추가] 터치!</h4>
+                      <p className="text-xs text-slate-300 mt-1">
+                        공유 목록에서 <b>[홈 화면에 추가]</b>를 누르고 우측 상단 <b>[추가]</b>를 누르면 아이폰 앱이 완성됩니다! 💖
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-xs text-amber-300">
-                  ⚠️ <b>안내:</b> 네이버앱, 카카오톡 인앱 브라우저에서는 홈 화면 추가가 지원되지 않습니다. 반드시 <b>Safari(사파리)</b>로 열어주세요!
+                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-xs text-amber-300 flex items-center gap-2">
+                  <span>💡</span>
+                  <span>네이버앱, 카카오톡에서는 지원되지 않으니 반드시 <b>Safari(사파리)</b>로 열어주세요!</span>
                 </div>
               </div>
             )}
@@ -391,74 +403,48 @@ export default function PwaInstallPrompt() {
             {/* 탭 3: PC (Chrome / Edge) 설치 방법 */}
             {activeTab === 'pc' && (
               <div className="space-y-4">
-                <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-4">
+                <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3.5">
                   
-                  {/* 1단계: 메뉴 진입 */}
-                  <div className="flex items-start gap-3">
-                    <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
-                      1
-                    </span>
-                    <div>
-                      <h4 className="text-sm font-bold text-white">크롬 메뉴(⋮) ➔ [캐스팅, 저장, 공유]</h4>
-                      <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                        Chrome 브라우저 우측 상단 <b>메뉴(⋮)</b> 클릭 후 <b>[캐스팅, 저장, 공유]</b> 메뉴로 마우스를 올립니다.
-                      </p>
+                  {/* 방법 1: 주소창 초간단 원클릭 (가장 추천) */}
+                  <div className="p-3.5 rounded-2xl bg-emerald-950/40 border-2 border-emerald-500/50 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500 text-black">
+                        🌟 초간단 1초 컷 (가장 추천)
+                      </span>
+                      <span className="text-xs text-emerald-400 font-mono">주소창(URL) 우측 끝</span>
                     </div>
+                    <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                      <span>주소창 오른쪽 끝의</span>
+                      <span className="px-2 py-0.5 rounded-lg bg-slate-800 border border-emerald-500/60 text-emerald-300 font-mono text-xs flex items-center gap-1">
+                        🖥️ 앱 설치
+                      </span>
+                      <span>아이콘 클릭!</span>
+                    </h4>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      Chrome 브라우저 맨 위 주소창 끝에 있는 모니터 모양(🖥️) 또는 다운로드(⊕) 아이콘을 누르시면, <b>바탕화면 전용 데스크톱 앱</b>으로 즉시 설치됩니다!
+                    </p>
                   </div>
 
-                  {/* 2단계: 설치 또는 열기 */}
-                  <div className="flex items-start gap-3">
-                    <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
-                      2
-                    </span>
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-bold text-white">상태에 따라 메뉴 선택:</h4>
-                      
-                      {/* 이미 설치된 경우 (대표님 스크린샷 상황) */}
-                      <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-xs text-emerald-200 leading-relaxed">
-                        <div className="font-bold flex items-center gap-1.5 text-emerald-300 mb-1">
-                          <span>✅</span>
-                          <span>[Any Life AI에서 열기(O)] 가 보일 때:</span>
-                        </div>
-                        이미 대표님 PC에 앱이 설치된 상태입니다! 이 메뉴를 클릭하시면 주소창 없는 <b>독립 전용 데스크톱 앱</b>으로 즉시 열립니다! 🚀
-                      </div>
-
-                      {/* 설치 전인 경우 */}
-                      <div className="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700 text-xs text-slate-300 leading-relaxed">
-                        <div className="font-semibold text-slate-200 mb-0.5">
-                          📥 <b>[Any Life AI 설치...]</b> 가 보일 때:
-                        </div>
-                        클릭하시면 바탕화면 및 시작메뉴에 즉시 앱이 설치됩니다.
-                      </div>
-
-                      {/* 바로가기 만들기 */}
-                      <div className="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700 text-xs text-slate-300 leading-relaxed">
-                        <div className="font-semibold text-slate-200 mb-0.5">
-                          📌 <b>[바로가기 만들기...]</b> 를 누를 때:
-                        </div>
-                        팝업에서 <b>'창으로 열기'</b>를 체크하고 [만들기]를 누르시면 완벽한 독립 창 앱으로 등록됩니다.
-                      </div>
+                  {/* 방법 2: 크롬 메뉴 클릭 */}
+                  <div className="p-3 rounded-xl bg-slate-800/40 border border-slate-700/60 space-y-1.5">
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-300">
+                      <span>대안 방법:</span>
+                      <span className="text-white">크롬 우측 상단 메뉴(⋮) ➔ <b>[Any Life AI 설치...]</b></span>
                     </div>
-                  </div>
-
-                  {/* 3단계: 주소창 설치 아이콘 안내 */}
-                  <div className="p-3.5 bg-indigo-950/50 border border-indigo-500/30 rounded-2xl text-xs text-indigo-200 leading-relaxed">
-                    <div className="font-bold text-indigo-300 flex items-center gap-1.5 mb-1.5">
-                      <span>💡</span>
-                      <span>주소창 끝에 설치 아이콘이 안 보이는 이유!</span>
-                    </div>
-                    Chrome 브라우저는 <b>이미 컴퓨터에 앱이 설치되어 있으면 주소창 끝의 설치 아이콘을 자동으로 숨깁니다.</b><br />
-                    위 2번처럼 <b>[Any Life AI에서 열기]</b>가 보인다면 이미 정상 설치된 것이니 안심하고 바로 실행해 보세요~ 💖
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      메뉴에 <b>[Any Life AI에서 열기]</b>가 보인다면 이미 PC에 설치 완료된 상태입니다. 클릭하시면 주소창 없는 독립 창으로 즉시 열립니다! 🚀
+                    </p>
                   </div>
 
                 </div>
 
+                {/* 설치 시도 버튼 */}
                 <button
                   onClick={handleInstallClick}
-                  className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-500/30 cursor-pointer"
+                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 hover:from-emerald-400 hover:to-teal-300 text-black font-black text-sm flex items-center justify-center gap-2 transition shadow-xl shadow-emerald-500/30 cursor-pointer active:scale-95"
                 >
-                  <Download className="w-4 h-4" />
-                  <span>PC 앱 설치 또는 바로 실행하기</span>
+                  <Download className="w-4 h-4 stroke-[3]" />
+                  <span>🚀 지금 PC에 앱 설치하기 (원클릭)</span>
                 </button>
               </div>
             )}

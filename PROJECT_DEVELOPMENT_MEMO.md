@@ -1,8 +1,8 @@
-# 📝 누리오(NURIOH) AI 트레이더 종합 개발 메모 & 시스템 가이드
+# 📝 Any Life AI 스마트 트레이더 종합 개발 메모 & 시스템 가이드
 
-> **버전 (Version):** `v3.6.2 (Self Mode Morning/Afternoon/Night Strategy Custom Tuning Release)`  
-> **최종 갱신일시:** 2026-09-17 18:25 (KST)  
-> **작성자:** 누리오 AI 디자인실장 영자 & 마스터 개발자 이승호 대표님  
+> **버전 (Version):** `v5.2.0 (Any Life AI Luxury Landing Page & Accurate Trade Detail Sync Release)`  
+> **최종 갱신일시:** 2026-09-30 19:15 (KST)  
+> **작성자:** Any Life AI 디자인실장 영자 & 마스터 개발자 이승호 대표님  
 > **프로젝트 위치:** `c:\Users\leesh\Documents\SynologyDrive\00.withAI\자동매매프로그램` (또는 NAS 매핑 경로)  
 > **GitHub 저장소:** `https://github.com/seunghoKR/upbit-autotrade.git` (`main`: 상용 실서버, `dev`: 연구실 실험실)
 
@@ -18,8 +18,8 @@
 1. **파일 저장소는 시놀로지 NAS 공유 폴더로 100% 동일:**
    - 모든 소스 코드는 시놀로지 드라이브(`.../00.withAI/자동매매프로그램`)에 저장되어 실시간 동기화됩니다.
 2. **`lab_start.bat` 로컬 고속 실행 방식 이해:**
-   - `lab_start.bat`을 실행하면 시놀로지 드라이브 코드를 로컬 고속 디렉토리인 **`C:\nuriohtrader`**로 미러링(복사)한 뒤 C 드라이브에서 Vite(포트 3000)와 백엔드(포트 4000)를 구동합니다 (NAS 디스크 락 방지).
-   - 따라서 **작업 도중 코드를 수정했을 경우**, `C:\nuriohtrader`로도 파일이 동기화되어야 로컬 브라우저(`localhost:3000`)에 즉시 반영됩니다.
+   - `lab_start.bat`을 실행하면 시놀로지 드라이브 코드를 로컬 고속 디렉토리인 **`C:\anylife-trader`**로 미러링(복사)한 뒤 C 드라이브에서 Vite(포트 3000)와 백엔드(포트 4000)를 구동합니다 (NAS 디스크 락 방지).
+   - 따라서 **작업 도중 코드를 수정했을 경우**, `C:\anylife-trader`로도 파일이 동기화되어야 로컬 브라우저(`localhost:3000`)에 즉시 반영됩니다.
    - 브라우저 화면이 이전 내용으로 보인다면 **`Ctrl + F5` (강력 새로고침)**을 누르거나 헤더의 `[🔄 새로고침]` 버튼을 누르세요.
 3. **작업 브랜치 및 배포 원칙:**
    - 현재 작업은 오직 **연구실 (Local LAB, `http://localhost:3000`, `dev` branch)** 환경에서만 진행합니다.
@@ -57,7 +57,7 @@
   - **테이블 스키마:** `php/migrate.php` 참조 (`nurioh_users`, `nurioh_user_apikeys`, `nurioh_settings`, `nurioh_slots`)
 
 ### 2) 24시간 파이 노드 PC / 로컬 백엔드 서버 (Node.js 시세 엔진)
-- **로컬 경로:** `y:\SynologyDrive\00.withAI\자동매매프로그램` (또는 `C:\nuriohtrader`)
+- **로컬 경로:** `y:\SynologyDrive\00.withAI\자동매매프로그램` (또는 `C:\anylife-trader`)
 - **실행 프로세스:** Node.js (v18+) + Express + WebSocket (`server/index.js`)
 - **무중단 운영:** `pm2 start server/index.js --name nurioh-trader`
 - **외부 터널링:** Cloudflare Tunnel (`cloudflared.exe`)
@@ -225,8 +225,8 @@
      - `candleStrategyEngine.js`: 24시간 누적 거래대금(`acc_trade_price_24h`)이 설정치 미만인 종목은 스윙 매수 대상에서 원천 배제.
      - `slotManager.js`, `App.jsx`: `swingMinTradePrice24hEok` 및 `min24hAccTradePriceKrw` 상태 및 프리셋 동기화.
      - `php/api/index.php`: `swing_min_trade_price_24h_eok` 및 `min24h_acc_trade_price_krw` 자동 마이그레이션 및 CRUD 완비.
-  3. **⚡ C 드라이브(`C:\nuriohtrader`) 로컬 초고속 연구실 가동:**
-     - `lab_start.bat` 고도화: 시놀로지 드라이브 코드를 `C:\nuriohtrader`로 1초 내 고속 미러링 후 C 드라이브 로컬 SSD에서 Vite & Node 백엔드 구동 (Vite 준비 시간 15초 ➔ 1초로 단축, NAS 동기화 락 및 디스크 소음 원천 차단).
+   3. **⚡ C 드라이브(`C:\anylife-trader`) 로컬 초고속 연구실 가동:**
+      - `lab_start.bat` 고도화: 시놀로지 드라이브 코드를 `C:\anylife-trader`로 1초 내 고속 미러링 후 C 드라이브 로컬 SSD에서 Vite & Node 백엔드 구동 (Vite 준비 시간 15초 ➔ 1초로 단축, NAS 동기화 락 및 디스크 소음 원천 차단).
 
 ### 🚀 [릴리즈 22] 슬롯 내부 옵션 대개편 & 추천전략/셀프전략 완전 분리 (v3.6.1)
 - **작업 일시:** 2026-09-17 16:45 (KST)
@@ -253,7 +253,7 @@
   6. **PC 모드 90% 와이드 레이아웃 (4열 x 3행):**
      - `app-container-80` CSS를 브라우저 너비의 90%로 고정하고, 12개 슬롯이 4열 3행으로 완벽하게 균형 배치되도록 레이아웃 완성.
   7. **인프라 주의사항 (타 PC 및 사무실 컴퓨터 작업 시 필독!):**
-     - `lab_start.bat` 실행 시 시놀로지 드라이브 코드가 로컬 고속 실행 디렉토리(`C:\nuriohtrader`)로 미러링된 후 실행되므로, 파일 수정 시 `C:\nuriohtrader`와도 동기화가 유지되어야 함.
+     - `lab_start.bat` 실행 시 시놀로지 드라이브 코드가 로컬 고속 실행 디렉토리(`C:\anylife-trader`)로 미러링된 후 실행되므로, 파일 수정 시 `C:\anylife-trader`와도 동기화가 유지되어야 함.
      - 브라우저 확인 시 `Ctrl + F5` 강력 새로고침으로 캐시 무효화 확인 필수.
 
 ### 🚀 [릴리즈 23] 셀프모드 장세별(오전/오후/야간) 세부 전략 설정 기능 공식 탑재 (v3.6.2)

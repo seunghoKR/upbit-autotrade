@@ -1,14 +1,16 @@
 {
   "id": "anylife-trader-pwa",
-  "name": "Any Life AI (AI 자동매매 연구실)",
+  "name": "Any Life AI (AI 자동매매 트레이더)",
   "short_name": "Any Life AI",
-  "description": "🧪 Any Life AI 자동매매 시스템 - 안전 테스트 및 전략 검증 시스템",
+  "description": "Any Life AI 트레이더 - 24시간 실시간 스마트 암호화폐 자동매매",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
   "background_color": "#0B0E14",
-  "theme_color": "#7C3AED",
+  "theme_color": "#0B0E14",
+  "categories": ["finance", "business"],
   "icons": [
     {
       "src": "./icon-192.png",

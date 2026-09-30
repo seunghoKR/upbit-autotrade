@@ -883,6 +883,7 @@ export default function App() {
   const slotTrackersRef = useRef({});
   const isExecutingBuyRef = useRef({});
   const isExecutingSellRef = useRef({});
+  const stopLossConfirmRef = useRef({}); // 🛡️ { [slotId]: count } (순간 1회 튄 틱으로 인한 손절 오발동 방지)
   const stopLossCooldownsRef = useRef({}); // 🧊 { 'KRW-XRP': unblockTimestamp } (손절 종목 재진입 방지)
   const pendingSustainRef = useRef({}); // ⏱️ { 'KRW-XRP': { firstTriggerTime, baseBreakPrice, slotId, ... } } (1초 윗꼬리 설거지 방지)
   const lastSlotUpdatesRef = useRef({}); // 🛡️ { [slotId]: timestamp } (최근 슬롯 수정 후 5초 폴링 롤백 방어)
@@ -1052,9 +1053,26 @@ export default function App() {
         // 2) 고정 손절 매도 조건: 손절선(-stopLossPct) 이하로 하락 시
         const isStopLossHit = (currentProfitPct <= -stopLossPct);
 
-        if ((isTrailingProfitHit || isStopLossHit) && !isExecutingSellRef.current[slot.slotId]) {
+        // 🛡️ [순간 틱 튐 / 스프레드 공백에 의한 손절 오발동 방지 필터]
+        // 트레일링 익절은 즉시 집행, 손절은 2회 연속 감지 시 안전 집행!
+        let canTriggerSell = false;
+        if (isTrailingProfitHit) {
+          canTriggerSell = true;
+          delete stopLossConfirmRef.current[slot.slotId];
+        } else if (isStopLossHit) {
+          const confirms = (stopLossConfirmRef.current[slot.slotId] || 0) + 1;
+          stopLossConfirmRef.current[slot.slotId] = confirms;
+          if (confirms >= 2) {
+            canTriggerSell = true;
+          }
+        } else {
+          delete stopLossConfirmRef.current[slot.slotId];
+        }
+
+        if (canTriggerSell && !isExecutingSellRef.current[slot.slotId]) {
           isExecutingSellRef.current[slot.slotId] = true;
           delete slotTrackersRef.current[slot.slotId];
+          delete stopLossConfirmRef.current[slot.slotId];
 
           const reason = isTrailingProfitHit 
             ? `트레일링 익절 매도 (최고 +${highestProfitPct.toFixed(2)}% 달성 후 -${dropFromPeak.toFixed(2)}% 콜백 하락 감지)`

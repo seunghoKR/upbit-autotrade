@@ -2,6 +2,17 @@
 <html lang="ko" class="dark overflow-x-hidden">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // 🔒 [보안서버 HTTPS 자동 전환] 외부 도메인 접속 시 HTTP -> HTTPS 0초 즉시 전환
+      (function() {
+        var h = window.location.hostname;
+        var p = window.location.protocol;
+        var isLocal = h === 'localhost' || h === '127.0.0.1' || h.startsWith('192.168.') || h.startsWith('10.');
+        if (p === 'http:' && !isLocal) {
+          window.location.replace('https://' + window.location.host + window.location.pathname + window.location.search + window.location.hash);
+        }
+      })();
+    </script>
     <link rel="icon" type="image/png" href="./favicon.png" />
     <link rel="apple-touch-icon" href="./icon-192.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
@@ -14,7 +25,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <title>Any Life AI - Smart Trading for Any Lifestyle. (v5.0.0)</title>
+    <title>Any Life AI - Smart Trading for Any Lifestyle. (v5.2.0)</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">

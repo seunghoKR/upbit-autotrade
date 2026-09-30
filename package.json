@@ -1,6 +1,6 @@
 {
   "name": "anylife-ai-trader",
-  "version": "5.1.0",
+  "version": "5.2.0",
   "description": "Any Life AI - Automated Intelligence Upbit Trading Bot with Modern React Dashboard",
   "main": "server/index.js",
   "scripts": {

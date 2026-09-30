@@ -74,7 +74,7 @@ class TelegramBotManager {
 🏷 <b>매수가 / 매도가:</b> ${Number(signal.entryPrice || 0).toLocaleString()}원 ➔ ${Number(signal.price || 0).toLocaleString()}원
 ⏱ <b>청산 시각:</b> ${new Date().toLocaleString('ko-KR')}
 
-🚀 <i>누리오 트레이더(NURIOH TRADER) 실시간 정산 카드</i>
+🚀 <i>AI 트레이더(AI TRADER) 실시간 정산 카드</i>
 `;
 
     // 🎯 모든 거래 알림은 본인에게만 전송 (해당 유저의 telegramChatId 조회)
@@ -116,7 +116,7 @@ class TelegramBotManager {
 
       // 텔레그램은 순수 알림 수신 채널로 동작: 사용자가 말을 걸면 Chat ID 연동 안내만 깔끔하게 제공
       const welcomeMsg = `
-<b>🔔 누리오 트레이더 실시간 알림 채널</b>
+<b>🔔 AI 트레이더 실시간 알림 채널</b>
 
 안녕하세요, <b>${firstName}</b>님! 🚀
 이 봇은 회원님의 <b>[매도 익절/손절 정산 카드]</b>를 1:1로 실시간 전달해 드리는 알림 전용 채널입니다.
@@ -127,7 +127,7 @@ class TelegramBotManager {
 ━━━━━━━━━━━━━━━━━━━
 💡 <b>실시간 정산 알림 연동 방법:</b>
 1. 위 Chat ID 번호(<code>${chatId}</code>)를 복사합니다.
-2. 누리오 웹 대시보드 ➔ <b>[마이페이지] ➔ [텔레그램]</b> 탭에 붙여넣고 <b>[저장]</b>을 눌러주세요!
+2. AI 트레이더 웹 대시보드 ➔ <b>[마이페이지] ➔ [텔레그램]</b> 탭에 붙여넣고 <b>[저장]</b>을 눌러주세요!
 
 🎯 연동이 완료되면 회원님 계좌의 거래 정산 알림이 이곳으로 자동 발송됩니다.
 `;

@@ -344,7 +344,7 @@ function fetchUpbitAccounts(string $accessKey, string $secretKey, ?string &$erro
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         "Authorization: {$jwt}",
         "Accept: application/json",
-        "User-Agent: NURIOH-TRADER"
+        "User-Agent: AI-TRADER"
     ]);
     curl_setopt($ch, CURLOPT_TIMEOUT, 4);
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2);
@@ -393,7 +393,7 @@ function executeUpbitOrder(string $accessKey, string $secretKey, array $params, 
         "Authorization: {$jwt}",
         "Content-Type: application/json",
         "Accept: application/json",
-        "User-Agent: NURIOH-TRADER"
+        "User-Agent: AI-TRADER"
     ]);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($params));
 
@@ -437,7 +437,7 @@ function fetchUpbitOrderChance(string $accessKey, string $secretKey, string $mar
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         "Authorization: {$jwt}",
         "Accept: application/json",
-        "User-Agent: NURIOH-TRADER"
+        "User-Agent: AI-TRADER"
     ]);
 
     $response = curl_exec($ch);
@@ -464,6 +464,74 @@ function fetchUpbitOrderChance(string $accessKey, string $secretKey, string $mar
         $errorMsg = "업비트 서버 응답 없음 (HTTP {$httpCode})";
     }
 
+    return null;
+}
+
+function fetchUpbitOrderDetail(string $accessKey, string $secretKey, string $uuid, ?string &$errorMsg = null): ?array {
+    $queryString = http_build_query(['uuid' => $uuid]);
+    $jwt = generateUpbitJwt($accessKey, $secretKey, $queryString);
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, "https://api.upbit.com/v1/order?{$queryString}");
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 6);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        "Authorization: {$jwt}",
+        "Accept: application/json",
+        "User-Agent: AI-TRADER"
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr = curl_error($ch);
+    curl_close($ch);
+
+    if ($curlErr) {
+        $errorMsg = "cURL 주문 조회 오류: {$curlErr}";
+        return null;
+    }
+
+    if ($response) {
+        $data = json_decode($response, true);
+        if ($httpCode === 200 && is_array($data)) {
+            return $data;
+        }
+        if (isset($data['error']['message'])) {
+            $errorMsg = "업비트 주문 조회 오류 [{$data['error']['name']}]: {$data['error']['message']}";
+        } else {
+            $errorMsg = "업비트 HTTP {$httpCode} 응답: {$response}";
+        }
+    } else {
+        $errorMsg = "업비트 주문 서버 응답 없음 (HTTP {$httpCode})";
+    }
+
+    return null;
+}
+
+function fetchUpbitCurrentPrice(string $market): ?float {
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, "https://api.upbit.com/v1/ticker?markets=" . urlencode($market));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        "Accept: application/json",
+        "User-Agent: AI-TRADER"
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode === 200 && $response) {
+        $data = json_decode($response, true);
+        if (is_array($data) && !empty($data[0]['trade_price'])) {
+            return (float)$data[0]['trade_price'];
+        }
+    }
     return null;
 }
 
@@ -1198,8 +1266,8 @@ try {
                     $s['entry_price'] = $entryP;
                     $s['entry_amount_krw'] = $amount;
                     $claimedCurrencies[$currency] = $slotId; // 코인 점유 확정
-                    // DB에도 자동 갱신
-                    $pdo->prepare("UPDATE nurioh_slots SET position_status = 'IN_POSITION', entry_price = ?, entry_volume = ?, entry_amount_krw = ?, highest_price = COALESCE(highest_price, ?) WHERE id = ?")
+                    // DB에도 자동 갱신 (새 코인 진입 시 이전 코인의 highest_price 잔재 방지를 위해 진입가로 초기화)
+                    $pdo->prepare("UPDATE nurioh_slots SET position_status = 'IN_POSITION', entry_price = ?, entry_volume = ?, entry_amount_krw = ?, highest_price = ? WHERE id = ?")
                         ->execute([$entryP, $vol, $amount, $entryP, $s['id']]);
                 } else {
                     $claimedCurrencies[$currency] = $slotId;
@@ -1505,7 +1573,7 @@ try {
 
         $userName = $targetUser['name'] ?: $targetUser['nickname'];
         $timeStr = date('Y-m-d H:i:s');
-        $testMsg = "🔔 <b>[NURIOH 트레이더 텔레그램 알림 테스트]</b>\n\n" .
+        $testMsg = "🔔 <b>[AI 트레이더 텔레그램 알림 테스트]</b>\n\n" .
                    "안녕하세요, <b>{$userName}</b>님!\n" .
                    "운영자가 회원님의 텔레그램 알림 통신을 성공적으로 테스트하였습니다.\n" .
                    "현재 <b>실시간 매도(익절/손절) 체결 정산 신호</b>가 정상 발송 대기 중입니다! 🚀\n\n" .
@@ -2061,7 +2129,7 @@ try {
 
         if ($userChatId && $canNotifyBuy) {
             $orderDesc = $orderRes ? "업비트 시장가 체결 (주문: " . substr($orderRes['uuid'] ?? '', 0, 13) . "...)" : "모의 체결 완료";
-            $buyMsg = "⚡ <b>[NURIOH 트레이더 - 신규 매수 체결]</b>\n\n" .
+            $buyMsg = "⚡ <b>[AI 트레이더 - 신규 매수 체결]</b>\n\n" .
                       "👤 <b>계정:</b> <b>{$userName}</b> (ID: {$userId})\n" .
                       "🎰 <b>슬롯:</b> <b>{$slotId}번 슬롯</b>\n" .
                       "📌 <b>종목:</b> <code>{$market}</code>\n" .
@@ -2250,22 +2318,62 @@ try {
                     ], JSON_UNESCAPED_UNICODE);
                     exit;
                 }
+                // ⚡ 업비트 시장가 주문 실제 체결 상세 내역 실시간 조회 (체결 단가 및 체결 금액 100% 동기화)
+                $orderUuid = $orderRes['uuid'] ?? '';
+                $executedExitPrice = null;
+                $executedExitAmountKrw = null;
+                $upbitOrderInfo = $orderUuid ? "업비트 체결 완료 (주문번호: {$orderUuid})" : "업비트 접수 완료";
+
+                if (!empty($orderUuid)) {
+                    usleep(300000); // 시장가 체결 0.3초 대기
+                    $orderDetail = fetchUpbitOrderDetail($accessKey, $secretKey, $orderUuid);
+                    if ($orderDetail && !empty($orderDetail['trades'])) {
+                        $totFunds = 0;
+                        $totVol = 0;
+                        foreach ($orderDetail['trades'] as $tr) {
+                            $totFunds += (float)($tr['funds'] ?? 0);
+                            $totVol += (float)($tr['volume'] ?? 0);
+                        }
+                        if ($totVol > 0 && $totFunds > 0) {
+                            $executedExitPrice = $totFunds / $totVol;
+                            $executedExitAmountKrw = $totFunds;
+                            $upbitOrderInfo = "업비트 체결 완료 (" . number_format($executedExitPrice, ($executedExitPrice < 100 ? 2 : 0)) . "원, 주문: {$orderUuid})";
+                        }
+                    }
+                }
             } else {
                 $orderErr = "업비트 계좌에 [{$coinCurrency}] 보유 잔고가 0이어서 거래소 주문은 생략되었습니다. ({$accErr})";
+                $upbitOrderInfo = "거래소 주문 생략 (보유 잔고 0)";
             }
         } else if (!$unlinkOnly && (!$keyInfo || !$keyInfo['access_key_enc'])) {
             $orderErr = "등록된 업비트 API 키가 없거나 비활성화 상태입니다.";
+            $upbitOrderInfo = "API 키 미등록";
         }
 
         $entryPrice = (float)($slot['entry_price'] ?? 0);
         $amountKrw = (float)($slot['entry_amount_krw'] ?? ($slot['trade_amount_krw'] ?? 5000));
-        $exitPrice = $currentPrice > 0 ? $currentPrice : (float)($slot['highest_price'] ?? $entryPrice);
+        
+        // 🎯 [청산가 3단계 안전 확정]
+        // 1순위: 거래소 실제 체결 단가 ($executedExitPrice)
+        // 2순위: 프론트엔드 전달 현재가 ($currentPrice, 진입가의 30% ~ 300% 정상 범위 내일 때만 허용)
+        // 3순위: 거래소 실시간 REST 티커 조회가 (과거 다른 코인의 오염된 highest_price 절대 사용 금지!)
+        if ($executedExitPrice && $executedExitPrice > 0) {
+            $exitPrice = $executedExitPrice;
+        } else if ($currentPrice > 0 && ($entryPrice <= 0 || ($currentPrice >= $entryPrice * 0.3 && $currentPrice <= $entryPrice * 3.0))) {
+            $exitPrice = $currentPrice;
+        } else {
+            $tickerPrice = fetchUpbitCurrentPrice($mkt);
+            $exitPrice = ($tickerPrice && $tickerPrice > 0) ? $tickerPrice : ($entryPrice > 0 ? $entryPrice : 0);
+        }
         
         $profitPct = 0;
         $profitKrw = 0;
-        if ($entryPrice > 0 && $exitPrice > 0) {
+        if ($executedExitAmountKrw && $executedExitAmountKrw > 0 && $amountKrw > 0) {
+            // 업비트 실체결 금액이 있는 경우 1원 단위까지 100% 정확하게 실현손익 계산!
+            $profitKrw = $executedExitAmountKrw - $amountKrw;
+            $profitPct = ($profitKrw / $amountKrw) * 100;
+        } else if ($entryPrice > 0 && $exitPrice > 0) {
             $rawPct = (($exitPrice - $entryPrice) / $entryPrice) * 100;
-            // 코인 단가 불일치 등으로 인한 비정상적 수치 방지 (-99% ~ +500% 제한)
             if ($rawPct >= -99.0 && $rawPct <= 500.0) {
                 $profitPct = $rawPct;
                 $profitKrw = $amountKrw * ($profitPct / 100);
@@ -2299,7 +2407,7 @@ try {
         // 📢 텔레그램 실현 손익 정산 알림 발송
         $slotName = $slot['slot_name'] ?? "{$slotId}번 슬롯";
         $stratName = ($slot['strategy_type'] ?? 'RECOMMENDED') === 'SELF' ? '셀프전략' : '추천전략';
-        $emoji = $isProfit ? '🎉 <b>[NURIOH 트레이더 - 익절 매도 완료]</b>' : '🛡️ <b>[NURIOH 트레이더 - 손절 방어 매도]</b>';
+        $emoji = $isProfit ? '🎉 <b>[AI 트레이더 - 익절 매도 완료]</b>' : '🛡️ <b>[AI 트레이더 - 손절 방어 매도]</b>';
         $profitSign = $isProfit ? '+' : '';
         $pctStr = "{$profitSign}" . number_format($profitPct, 2) . "%";
         $krwStr = "{$profitSign}" . number_format((int)$profitKrw) . " KRW";
@@ -2527,7 +2635,7 @@ try {
         }
 
         if ($chatId) {
-            sendTelegramDirectMessage("🎉 <b>[NURIOH 트레이더 텔레그램 연동 완료]</b>\n\n회원님의 계정과 텔레그램 알림이 성공적으로 연결되었습니다!\n선택하신 맞춤 알림(익절/손절/매수/긴급) 신호가 회원님에게 1:1로 발송됩니다. 🚀", $chatId);
+            sendTelegramDirectMessage("🎉 <b>[AI 트레이더 텔레그램 연동 완료]</b>\n\n회원님의 계정과 텔레그램 알림이 성공적으로 연결되었습니다!\n선택하신 맞춤 알림(익절/손절/매수/긴급) 신호가 회원님에게 1:1로 발송됩니다. 🚀", $chatId);
         }
 
         echo json_encode([
