@@ -512,6 +512,17 @@ export default function App() {
     buyTimeBlocksRef.current = buyTimeBlocks;
   }, [buyTimeBlocks]);
 
+  // 🚀 현재 장세 스케줄러 & 시간대별 슬롯 마스터 설정 실시간 Ref (비동기 매수 루프용)
+  const periodSlotsMapRef = useRef(periodSlotsMap);
+  useEffect(() => {
+    periodSlotsMapRef.current = periodSlotsMap;
+  }, [periodSlotsMap]);
+
+  const schedulerDataRef = useRef(schedulerData);
+  useEffect(() => {
+    schedulerDataRef.current = schedulerData;
+  }, [schedulerData]);
+
   // 실시간 활성 매수 제한 상태 (헤더 배지 연동용)
   const [activeBuyRestriction, setActiveBuyRestriction] = useState(() => checkBuyRestricted(buyTimeBlocks));
 
@@ -712,6 +723,16 @@ export default function App() {
               ? Boolean(currentLocalSlot.isEnabled) 
               : Boolean(s.isEnabled);
 
+            // 🚀 현재 활성 시간대(오전/오후/야간)의 마스터 매수 금액 확인
+            const activePeriodKey = (schedulerDataRef.current?.currentPeriod || 'MORNING').toUpperCase();
+            const curPeriodSlots = periodSlotsMapRef.current?.[activePeriodKey] || schedulerDataRef.current?.userPresets?.[activePeriodKey]?.slots || DEFAULT_PERIOD_SLOTS[activePeriodKey] || [];
+            const masterPeriodSlot = curPeriodSlots.find(ps => ps.slotId === s.slotId);
+            const masterTradeAmount = (masterPeriodSlot && Number(masterPeriodSlot.tradeAmountKrw) >= 5000) ? Number(masterPeriodSlot.tradeAmountKrw) : null;
+
+            const resolvedTradeAmount = (isRecentlyUpdated && currentLocalSlot?.tradeAmountKrw)
+              ? currentLocalSlot.tradeAmountKrw
+              : (masterTradeAmount || s.tradeAmountKrw || s.trade_amount_krw || 50000);
+
             return {
               ...s,
               id: s.id || s.slotId,
@@ -721,9 +742,7 @@ export default function App() {
               strategyType: (isRecentlyUpdated && currentLocalSlot?.strategyType)
                 ? currentLocalSlot.strategyType
                 : (s.strategyType || s.strategy_type || 'RECOMMENDED'),
-              tradeAmountKrw: (isRecentlyUpdated && currentLocalSlot?.tradeAmountKrw)
-                ? currentLocalSlot.tradeAmountKrw
-                : (s.tradeAmountKrw || s.trade_amount_krw || 50000),
+              tradeAmountKrw: resolvedTradeAmount,
               useAtrStopLoss: (isRecentlyUpdated && currentLocalSlot?.useAtrStopLoss !== undefined)
                 ? Boolean(currentLocalSlot.useAtrStopLoss)
                 : Boolean(s.useAtrStopLoss || s.use_atr_stop_loss),
@@ -1398,7 +1417,15 @@ export default function App() {
 
         // 🎯 3. 현재 가동 중(isEnabled)이고 비어있는(IDLE) 슬롯 중 현재 매수 중이 아닌 슬롯 탐색!
         for (const slot of currentSlots) {
-          if (!slot.isEnabled || slot.positionStatus === 'IN_POSITION' || slot.positionStatus === 'HOLDING' || (slot.tradeAmountKrw || 0) < 5000) {
+          // 🚀 [현재 시간대 마스터 매수 금액 1순위 조회]
+          const curPeriodKey = (schedulerDataRef.current?.currentPeriod || 'MORNING').toUpperCase();
+          const periodSlots = periodSlotsMapRef.current?.[curPeriodKey] || schedulerDataRef.current?.userPresets?.[curPeriodKey]?.slots || DEFAULT_PERIOD_SLOTS[curPeriodKey] || [];
+          const masterSlotCfg = periodSlots.find(s => s.slotId === slot.slotId);
+          const activeTradeAmount = (masterSlotCfg && Number(masterSlotCfg.tradeAmountKrw) >= 5000)
+            ? Number(masterSlotCfg.tradeAmountKrw)
+            : (slot.tradeAmountKrw || 50000);
+
+          if (!slot.isEnabled || slot.positionStatus === 'IN_POSITION' || slot.positionStatus === 'HOLDING' || activeTradeAmount < 5000) {
             continue;
           }
 
@@ -1408,7 +1435,7 @@ export default function App() {
           }
 
           // 🛡️ 잔고 확인: 잔고 부족 시 아예 슬롯에 진입하지 않고 패스!
-          if (hasLiveRealAccounts && availableKrw < (slot.tradeAmountKrw || 5000)) {
+          if (hasLiveRealAccounts && availableKrw < activeTradeAmount) {
             continue;
           }
 
@@ -1460,11 +1487,20 @@ export default function App() {
             activeSurgeCoinsRef.current.add(targetMarketCode);
             isExecutingBuyRef.current[assignedSlotId] = true;
 
+            const targetSlot = (slotsRef.current || []).find(s => s.slotId === assignedSlotId) || slot;
+
+            // 🚀 [최우선 시간대 매수금액 100% 동기화] 현재 시간대의 마스터 설정 금액을 재확인하여 사용!
+            const curPeriodKey = (schedulerDataRef.current?.currentPeriod || 'MORNING').toUpperCase();
+            const periodSlots = periodSlotsMapRef.current?.[curPeriodKey] || schedulerDataRef.current?.userPresets?.[curPeriodKey]?.slots || DEFAULT_PERIOD_SLOTS[curPeriodKey] || [];
+            const masterSlotCfg = periodSlots.find(s => s.slotId === assignedSlotId);
+            const finalTradeAmount = (masterSlotCfg && Number(masterSlotCfg.tradeAmountKrw) >= 5000)
+              ? Number(masterSlotCfg.tradeAmountKrw)
+              : ((tradeAmount && tradeAmount >= 5000) ? tradeAmount : (targetSlot?.tradeAmountKrw || 50000));
+
             try {
-              console.log(`🚨 [Client Surge Verified Trigger] ${assignedSlotId}번 슬롯 안전 매수: ${targetMarketCode} +${diffRate.toFixed(2)}% (${winSecs}초 내 ${Math.round(totVolKrw).toLocaleString()}원)`);
+              console.log(`🚨 [Client Surge Verified Trigger] ${assignedSlotId}번 슬롯 안전 매수(${finalTradeAmount.toLocaleString()}원): ${targetMarketCode} +${diffRate.toFixed(2)}% (${winSecs}초 내 ${Math.round(totVolKrw).toLocaleString()}원)`);
 
               // 🛡️ [운영자 퀀트 필터 2] 3분봉 역배열(데드캣 바운스) 진입 차단
-              const targetSlot = (slotsRef.current || []).find(s => s.slotId === assignedSlotId) || slot;
               if (targetSlot?.useReverseAlignmentFilter) {
                 try {
                   const controller = new AbortController();
@@ -1520,7 +1556,7 @@ export default function App() {
               const buyRes = await buySlotPosition(assignedSlotId, {
                 userId: activeUser?.id || 1,
                 market: targetMarketCode,
-                amountKrw: tradeAmount,
+                amountKrw: finalTradeAmount,
                 currentPrice: targetPrice
               });
 
@@ -1540,8 +1576,8 @@ export default function App() {
                         positionStatus: 'IN_POSITION',
                         targetMarket: targetMarketCode,
                         entryPrice: targetPrice,
-                        entryVolume: tradeAmount / targetPrice,
-                        entryAmountKrw: tradeAmount,
+                        entryVolume: finalTradeAmount / targetPrice,
+                        entryAmountKrw: finalTradeAmount,
                         highestPrice: targetPrice,
                         highestProfitPct: 0
                       };
@@ -1555,7 +1591,7 @@ export default function App() {
                 // 3. 브라우저 푸시 알림
                 if ('Notification' in window && Notification.permission === 'granted') {
                   new Notification('⚡ [안전 검증 급등 코인 매수 체결]', {
-                    body: `${assignedSlotId}번 슬롯: ${targetMarketCode} (+${diffRate.toFixed(2)}%) ${Math.round(tradeAmount).toLocaleString()}원 체결! (트레일링 익절 가동)`,
+                    body: `${assignedSlotId}번 슬롯: ${targetMarketCode} (+${diffRate.toFixed(2)}%) ${Math.round(finalTradeAmount).toLocaleString()}원 체결! (트레일링 익절 가동)`,
                     icon: '/favicon.png'
                   });
                 }
@@ -1611,7 +1647,7 @@ export default function App() {
           if (!pendingSustainRef.current[marketCode]) {
             if (isSurgeConditionMet) {
               const assignedSlotId = slot.slotId;
-              const tradeAmount = slot.tradeAmountKrw || 50000;
+              const tradeAmount = activeTradeAmount;
 
               if (sustainSeconds > 0) {
                 console.log(`⏱️ [Sustain Wait] ${marketCode} 급등 포착 (+${priceDiffRate.toFixed(2)}%) -> ${sustainSeconds}초간 윗꼬리 방어 지지 검증 타이머 시작...`);

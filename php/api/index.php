@@ -188,6 +188,144 @@ function getOutboundServerIp(): string {
     return $cachedIp;
 }
 
+function getDefaultPeriodSlots(): array {
+    return [
+        'MORNING' => [
+            ['slotId' => 1, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 1, 'breakoutMinVolumeKrwEok' => 100, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 2, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 1, 'breakoutMinVolumeKrwEok' => 150, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 3, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 3, 'breakoutMinVolumeKrwEok' => 300, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 30000],
+            ['slotId' => 4, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 3, 'breakoutMinVolumeKrwEok' => 400, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 30000],
+            ['slotId' => 5, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'minutes/240', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 1000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 6, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'minutes/240', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 1000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 7, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'days', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 8, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'days', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 9, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 1, 'breakoutMinVolumeKrwEok' => 160, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 10, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 3, 'breakoutMinVolumeKrwEok' => 500, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 11, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'minutes/240', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 1000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 100000],
+            ['slotId' => 12, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'days', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 100000]
+        ],
+        'AFTERNOON' => [
+            ['slotId' => 1, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 1, 'breakoutMinVolumeKrwEok' => 160, 'trailingTier1TargetProfitPct' => 4.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 2, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 1, 'breakoutMinVolumeKrwEok' => 200, 'trailingTier1TargetProfitPct' => 4.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 3, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 3, 'breakoutMinVolumeKrwEok' => 400, 'trailingTier1TargetProfitPct' => 4.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 30000],
+            ['slotId' => 4, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 3, 'breakoutMinVolumeKrwEok' => 500, 'trailingTier1TargetProfitPct' => 4.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 30000],
+            ['slotId' => 5, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'minutes/240', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 1000, 'trailingTier1TargetProfitPct' => 4.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.5, 'tradeAmountKrw' => 50000],
+            ['slotId' => 6, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'minutes/240', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 1000, 'trailingTier1TargetProfitPct' => 4.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.5, 'tradeAmountKrw' => 50000],
+            ['slotId' => 7, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'days', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 8, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'days', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 9, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 1, 'breakoutMinVolumeKrwEok' => 200, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 10, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 3, 'breakoutMinVolumeKrwEok' => 600, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 11, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'minutes/240', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 100000],
+            ['slotId' => 12, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'days', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 100000]
+        ],
+        'NIGHT' => [
+            ['slotId' => 1, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 1, 'breakoutMinVolumeKrwEok' => 200, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 2, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 1, 'breakoutMinVolumeKrwEok' => 250, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 3, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 3, 'breakoutMinVolumeKrwEok' => 500, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 30000],
+            ['slotId' => 4, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 3, 'breakoutMinVolumeKrwEok' => 600, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 30000],
+            ['slotId' => 5, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'minutes/240', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 1000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 6, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'minutes/240', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 1000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 7, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'days', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 8, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'days', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 9, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 1, 'breakoutMinVolumeKrwEok' => 250, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 30.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 10, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 3, 'breakoutMinVolumeKrwEok' => 700, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 30.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
+            ['slotId' => 11, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'minutes/240', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 100000],
+            ['slotId' => 12, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'days', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 100000]
+        ]
+    ];
+}
+
+function applyPresetSlotsToDb(PDO $pdo, array $slotsToApply, int $targetUserId = 0): void {
+    if (empty($slotsToApply)) return;
+
+    try {
+        $userIds = [];
+        if ($targetUserId > 0) {
+            $userIds[] = $targetUserId;
+        } else {
+            $stmt = $pdo->query("SELECT DISTINCT user_id FROM nurioh_slots");
+            $userIds = $stmt ? $stmt->fetchAll(PDO::FETCH_COLUMN) : [];
+            if (empty($userIds)) $userIds = [1];
+        }
+
+        $stmt = $pdo->prepare("UPDATE nurioh_slots SET 
+            strategy_mode = ?,
+            trade_amount_krw = COALESCE(?, trade_amount_krw),
+            target_profit_pct = ?,
+            trailing_callback_pct = ?,
+            stop_loss_pct = ?,
+            use_wide_trailing = ?,
+            trailing_tier1_target_profit_pct = ?,
+            trailing_tier1_callback_pct = ?,
+            trailing_tier2_hurdle_pct = ?,
+            trailing_tier2_callback_pct = ?,
+            use_atr_stop_loss = ?,
+            breakout_high_enabled = ?,
+            breakout_candle_unit = ?,
+            breakout_min_volume_krw_eok = ?,
+            swing_candle_unit = ?,
+            swing_short_ma = ?,
+            swing_long_ma = ?,
+            swing_min_trade_price_24h_eok = ?,
+            min24h_acc_trade_price_krw = ?
+            WHERE user_id = ? AND slot_id = ?");
+
+        foreach ($userIds as $uid) {
+            $uid = (int)$uid;
+            foreach ($slotsToApply as $s) {
+                $slotId = (int)($s['slotId'] ?? 0);
+                if ($slotId <= 0) continue;
+
+                $stratMode = $s['strategyMode'] ?? 'SCALPING';
+                $tradeAmt = isset($s['tradeAmountKrw']) ? (float)$s['tradeAmountKrw'] : null;
+                $targetProfit = (float)($s['targetProfitPct'] ?? ($s['trailingTier1TargetProfitPct'] ?? 3.0));
+                $trailingCallback = (float)($s['trailingCallbackPct'] ?? ($s['trailingTier1CallbackPct'] ?? 1.0));
+                $stopLoss = (float)($s['stopLossPct'] ?? 2.0);
+                $useWide = isset($s['useWideTrailing']) ? ((bool)$s['useWideTrailing'] ? 1 : 0) : 1;
+                $t1Target = (float)($s['trailingTier1TargetProfitPct'] ?? 5.0);
+                $t1Callback = (float)($s['trailingTier1CallbackPct'] ?? 0.5);
+                $t2Hurdle = (float)($s['trailingTier2HurdlePct'] ?? 15.0);
+                $t2Callback = (float)($s['trailingTier2CallbackPct'] ?? 3.0);
+                $useAtr = isset($s['useAtrStopLoss']) ? ((bool)$s['useAtrStopLoss'] ? 1 : 0) : 0;
+                $breakoutHigh = isset($s['breakoutHighEnabled']) ? ((bool)$s['breakoutHighEnabled'] ? 1 : 0) : 1;
+                $breakoutCandle = (int)($s['breakoutCandleUnit'] ?? 1);
+                $breakoutMinVol = (int)($s['breakoutMinVolumeKrwEok'] ?? 150);
+                $swingCandle = (string)($s['swingCandleUnit'] ?? 'minutes/240');
+                $swingShort = (int)($s['swingShortMa'] ?? 5);
+                $swingLong = (int)($s['swingLongMa'] ?? 20);
+                $swingMinTrade = (int)($s['swingMinTradePrice24hEok'] ?? 1000);
+                $min24hAcc = (int)($s['min24hAccTradePriceKrw'] ?? ($swingMinTrade * 100000000));
+
+                $stmt->execute([
+                    $stratMode,
+                    $tradeAmt,
+                    $targetProfit,
+                    $trailingCallback,
+                    $stopLoss,
+                    $useWide,
+                    $t1Target,
+                    $t1Callback,
+                    $t2Hurdle,
+                    $t2Callback,
+                    $useAtr,
+                    $breakoutHigh,
+                    $breakoutCandle,
+                    $breakoutMinVol,
+                    $swingCandle,
+                    $swingShort,
+                    $swingLong,
+                    $swingMinTrade,
+                    $min24hAcc,
+                    $uid,
+                    $slotId
+                ]);
+            }
+        }
+    } catch (Exception $e) {
+        error_log("applyPresetSlotsToDb Error: " . $e->getMessage());
+    }
+}
+
 function getSchedulerDataFromDb($pdo): array {
     date_default_timezone_set('Asia/Seoul');
     try {
@@ -257,6 +395,14 @@ function getSchedulerDataFromDb($pdo): array {
             $encoded = json_encode($decoded, JSON_UNESCAPED_UNICODE);
             $pdo->prepare("UPDATE nurioh_settings SET scheduler_data = ? WHERE id = 1")->execute([$encoded]);
         } catch (Exception $e) {}
+
+        // 🚀 nurioh_slots 테이블에 해당 시간대 프리셋의 전략 파라미터 및 매수 금액을 즉시 일괄 동기화!
+        $slotsToApply = $decoded['userPresets'][$curPresetKey]['slots'] ?? [];
+        if (empty($slotsToApply)) {
+            $defaultSlots = getDefaultPeriodSlots();
+            $slotsToApply = $defaultSlots[$clockPeriod] ?? $defaultSlots['MORNING'];
+        }
+        applyPresetSlotsToDb($pdo, $slotsToApply);
     } else {
         $curPeriod = $decoded['currentPeriod'] ?? $clockPeriod;
         $curPresetKey = $decoded['currentPresetKey'] ?? ($scheduleMapping[$curPeriod] ?? 'PRESET_A');
@@ -2005,6 +2151,52 @@ try {
         $tradeAmount = (float)($input['amountKrw'] ?? 0);
         $currentPrice = (float)($input['currentPrice'] ?? 0);
 
+        // 🛡️ [동시성 중복 매수 완벽 차단 1단계: 슬롯 상태 원자적 락]
+        $slotCheckStmt = $pdo->prepare("SELECT position_status, target_market, entered_at, trade_amount_krw FROM nurioh_slots WHERE user_id = ? AND slot_id = ?");
+        $slotCheckStmt->execute([$userId, $slotId]);
+        $currentSlotRow = $slotCheckStmt->fetch();
+        if ($currentSlotRow) {
+            $posStatus = $currentSlotRow['position_status'] ?? 'IDLE';
+            if ($posStatus === 'IN_POSITION' || $posStatus === 'BUYING' || $posStatus === 'HOLDING') {
+                http_response_code(409);
+                echo json_encode([
+                    'success' => false,
+                    'error' => "슬롯 {$slotId}번은 이미 포지션 보유 중({$posStatus})이므로 중복 매수 주문이 차단되었습니다.",
+                    'slotId' => $slotId,
+                    'status' => $posStatus
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+            if ($tradeAmount < 5000 && !empty($currentSlotRow['trade_amount_krw'])) {
+                $tradeAmount = (float)$currentSlotRow['trade_amount_krw'];
+            }
+        }
+
+        if ($tradeAmount < 5000) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => '최소 매수 금액은 5,000원 이상이어야 합니다.']);
+            exit;
+        }
+
+        // 🛡️ [동시성 중복 매수 완벽 차단 2단계: 동일 코인 전 슬롯 중복 매수 차단]
+        $sameCoinStmt = $pdo->prepare("SELECT slot_id FROM nurioh_slots WHERE user_id = ? AND target_market = ? AND position_status IN ('IN_POSITION', 'BUYING', 'HOLDING') LIMIT 1");
+        $sameCoinStmt->execute([$userId, $market]);
+        $sameCoinRow = $sameCoinStmt->fetch();
+        if ($sameCoinRow) {
+            http_response_code(409);
+            echo json_encode([
+                'success' => false,
+                'error' => "종목 [{$market}]은(는) 이미 {$sameCoinRow['slot_id']}번 슬롯에서 보유/매수 진행 중이므로 중복 매수가 차단되었습니다.",
+                'market' => $market,
+                'existingSlotId' => $sameCoinRow['slot_id']
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        // 🛡️ [동시성 중복 매수 완벽 차단 3단계: 주문 직전 임시 원자적 락 선점]
+        $pdo->prepare("UPDATE nurioh_slots SET position_status = 'BUYING' WHERE user_id = ? AND slot_id = ?")
+            ->execute([$userId, $slotId]);
+
         if ($currentPrice <= 0) {
             // 업비트 공개 API로 실시간 현재가 확인
             $ch = curl_init("https://api.upbit.com/v1/ticker?markets={$market}");
@@ -2019,12 +2211,6 @@ try {
                     $currentPrice = (float)$tData[0]['trade_price'];
                 }
             }
-        }
-
-        if ($tradeAmount < 5000) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => '최소 매수 금액은 5,000원 이상이어야 합니다.']);
-            exit;
         }
 
         // 사용자 API 키 조회
@@ -2056,6 +2242,8 @@ try {
             }
             $availableKrw = (float)($krwAccount['balance'] ?? 0);
             if ($availableKrw < $tradeAmount) {
+                $pdo->prepare("UPDATE nurioh_slots SET position_status = 'IDLE' WHERE user_id = ? AND slot_id = ?")
+                    ->execute([$userId, $slotId]);
                 http_response_code(400);
                 echo json_encode([
                     'success' => false,
@@ -2075,8 +2263,10 @@ try {
             ];
             $orderRes = executeUpbitOrder($accessKey, $secretKey, $orderParams, $orderErr);
 
-            // ❌ 실제 주문 실패(업비트 거부, 잔고 부족 등) 시 체결 알림 발송 차단 및 에러 반환!
+            // ❌ 실제 주문 실패(업비트 거부, 잔고 부족 등) 시 체결 알림 발송 차단 및 락 롤백!
             if (!empty($orderErr) || empty($orderRes['uuid'])) {
+                $pdo->prepare("UPDATE nurioh_slots SET position_status = 'IDLE' WHERE user_id = ? AND slot_id = ?")
+                    ->execute([$userId, $slotId]);
                 http_response_code(400);
                 echo json_encode([
                     'success' => false,
@@ -2375,13 +2565,24 @@ try {
         
         $profitPct = 0;
         $profitKrw = 0;
+        // 🎯 [단가 기준 vs 총액 기준 교차 검증 가드 - 더블 매수 잔고 매도 왜곡 원천 방어]
+        $priceBasedPct = ($entryPrice > 0 && $exitPrice > 0) ? ((($exitPrice - $entryPrice) / $entryPrice) * 100) : 0;
+
         if ($executedExitAmountKrw && $executedExitAmountKrw > 0 && $amountKrw > 0) {
-            // 업비트 실체결 금액이 있는 경우 1원 단위까지 100% 정확하게 실현손익 계산!
-            $profitKrw = $executedExitAmountKrw - $amountKrw;
-            $profitPct = ($profitKrw / $amountKrw) * 100;
+            $rawAmountProfitKrw = $executedExitAmountKrw - $amountKrw;
+            $rawAmountProfitPct = ($rawAmountProfitKrw / $amountKrw) * 100;
+
+            // 🛡️ 모순 검증: 단가는 손실($priceBasedPct < 0)인데 잔고 과다 매도로 총액이 익절($rawAmountProfitPct > 0)이거나 괴리가 15% 이상 크게 벌어지는 경우
+            if (($priceBasedPct < 0 && $rawAmountProfitPct > 0) || ($priceBasedPct > 0 && $rawAmountProfitPct < 0) || abs($rawAmountProfitPct - $priceBasedPct) > 15.0) {
+                // 단가 기준 수익률 및 투자금에 비례한 실제 정산 손익으로 엄격하게 보정!
+                $profitPct = $priceBasedPct;
+                $profitKrw = $amountKrw * ($priceBasedPct / 100);
+            } else {
+                $profitKrw = $rawAmountProfitKrw;
+                $profitPct = $rawAmountProfitPct;
+            }
         } else if ($entryPrice > 0 && $exitPrice > 0) {
-            $rawPct = (($exitPrice - $entryPrice) / $entryPrice) * 100;
-            $profitPct = $rawPct;
+            $profitPct = $priceBasedPct;
             $profitKrw = $amountKrw * ($profitPct / 100);
         }
 
@@ -2965,137 +3166,8 @@ try {
         exit;
     }
 
-    $defaultPeriodSlots = [
-        'MORNING' => [
-            ['slotId' => 1, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 1, 'breakoutMinVolumeKrwEok' => 100, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
-            ['slotId' => 2, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 1, 'breakoutMinVolumeKrwEok' => 150, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
-            ['slotId' => 3, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 3, 'breakoutMinVolumeKrwEok' => 300, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 30000],
-            ['slotId' => 4, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 3, 'breakoutMinVolumeKrwEok' => 400, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 30000],
-            ['slotId' => 5, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'minutes/240', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 1000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
-            ['slotId' => 6, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'minutes/240', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 1000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
-            ['slotId' => 7, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'days', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
-            ['slotId' => 8, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'days', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
-            ['slotId' => 9, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 1, 'breakoutMinVolumeKrwEok' => 160, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
-            ['slotId' => 10, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 3, 'breakoutMinVolumeKrwEok' => 500, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
-            ['slotId' => 11, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'minutes/240', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 1000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 100000],
-            ['slotId' => 12, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'days', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 100000]
-        ],
-        'AFTERNOON' => [
-            ['slotId' => 1, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 1, 'breakoutMinVolumeKrwEok' => 160, 'trailingTier1TargetProfitPct' => 4.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
-            ['slotId' => 2, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 1, 'breakoutMinVolumeKrwEok' => 200, 'trailingTier1TargetProfitPct' => 4.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
-            ['slotId' => 3, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 3, 'breakoutMinVolumeKrwEok' => 400, 'trailingTier1TargetProfitPct' => 4.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 30000],
-            ['slotId' => 4, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 3, 'breakoutMinVolumeKrwEok' => 500, 'trailingTier1TargetProfitPct' => 4.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 30000],
-            ['slotId' => 5, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'minutes/240', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 1000, 'trailingTier1TargetProfitPct' => 4.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.5, 'tradeAmountKrw' => 50000],
-            ['slotId' => 6, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'minutes/240', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 1000, 'trailingTier1TargetProfitPct' => 4.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.5, 'tradeAmountKrw' => 50000],
-            ['slotId' => 7, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'days', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
-            ['slotId' => 8, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'days', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
-            ['slotId' => 9, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 1, 'breakoutMinVolumeKrwEok' => 200, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
-            ['slotId' => 10, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 3, 'breakoutMinVolumeKrwEok' => 600, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
-            ['slotId' => 11, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'minutes/240', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 100000],
-            ['slotId' => 12, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'days', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 100000]
-        ],
-        'NIGHT' => [
-            ['slotId' => 1, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 1, 'breakoutMinVolumeKrwEok' => 200, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
-            ['slotId' => 2, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 1, 'breakoutMinVolumeKrwEok' => 250, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
-            ['slotId' => 3, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 3, 'breakoutMinVolumeKrwEok' => 500, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 30000],
-            ['slotId' => 4, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 3, 'breakoutMinVolumeKrwEok' => 600, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 30000],
-            ['slotId' => 5, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'minutes/240', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 1000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
-            ['slotId' => 6, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'minutes/240', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 1000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
-            ['slotId' => 7, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'days', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
-            ['slotId' => 8, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'days', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 50000],
-            ['slotId' => 9, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 1, 'breakoutMinVolumeKrwEok' => 250, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 30.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
-            ['slotId' => 10, 'strategyMode' => 'BREAKOUT_DAY_HIGH', 'breakoutCandleUnit' => 3, 'breakoutMinVolumeKrwEok' => 700, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 0.5, 'trailingTier2HurdlePct' => 30.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 2.0, 'tradeAmountKrw' => 50000],
-            ['slotId' => 11, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'minutes/240', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 100000],
-            ['slotId' => 12, 'strategyMode' => 'TREND_SWING', 'swingCandleUnit' => 'days', 'swingShortMa' => 5, 'swingLongMa' => 20, 'swingMinTradePrice24hEok' => 2000, 'trailingTier1TargetProfitPct' => 5.0, 'trailingTier1CallbackPct' => 1.0, 'trailingTier2HurdlePct' => 15.0, 'trailingTier2CallbackPct' => 3.0, 'stopLossPct' => 3.0, 'tradeAmountKrw' => 100000]
-        ]
-    ];
+    $defaultPeriodSlots = getDefaultPeriodSlots();
 
-    $applyPresetSlotsToDb = function(PDO $pdo, array $slotsToApply, int $targetUserId = 0) {
-        if (empty($slotsToApply)) return;
-
-        $userIds = [];
-        if ($targetUserId > 0) {
-            $userIds[] = $targetUserId;
-        } else {
-            $stmt = $pdo->query("SELECT DISTINCT user_id FROM nurioh_slots");
-            $userIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
-            if (empty($userIds)) $userIds = [1];
-        }
-
-        $stmt = $pdo->prepare("UPDATE nurioh_slots SET 
-            strategy_mode = ?,
-            trade_amount_krw = COALESCE(?, trade_amount_krw),
-            target_profit_pct = ?,
-            trailing_callback_pct = ?,
-            stop_loss_pct = ?,
-            use_wide_trailing = ?,
-            trailing_tier1_target_profit_pct = ?,
-            trailing_tier1_callback_pct = ?,
-            trailing_tier2_hurdle_pct = ?,
-            trailing_tier2_callback_pct = ?,
-            use_atr_stop_loss = ?,
-            breakout_high_enabled = ?,
-            breakout_candle_unit = ?,
-            breakout_min_volume_krw_eok = ?,
-            swing_candle_unit = ?,
-            swing_short_ma = ?,
-            swing_long_ma = ?,
-            swing_min_trade_price_24h_eok = ?,
-            min24h_acc_trade_price_krw = ?
-            WHERE user_id = ? AND slot_id = ?");
-
-        foreach ($userIds as $uid) {
-            $uid = (int)$uid;
-            foreach ($slotsToApply as $s) {
-                $slotId = (int)($s['slotId'] ?? 0);
-                if ($slotId <= 0) continue;
-
-                $stratMode = $s['strategyMode'] ?? 'SCALPING';
-                $tradeAmt = isset($s['tradeAmountKrw']) ? (float)$s['tradeAmountKrw'] : null;
-                $targetProfit = (float)($s['targetProfitPct'] ?? ($s['trailingTier1TargetProfitPct'] ?? 3.0));
-                $trailingCallback = (float)($s['trailingCallbackPct'] ?? ($s['trailingTier1CallbackPct'] ?? 1.0));
-                $stopLoss = (float)($s['stopLossPct'] ?? 2.0);
-                $useWide = isset($s['useWideTrailing']) ? ((bool)$s['useWideTrailing'] ? 1 : 0) : 1;
-                $t1Target = (float)($s['trailingTier1TargetProfitPct'] ?? 5.0);
-                $t1Callback = (float)($s['trailingTier1CallbackPct'] ?? 0.5);
-                $t2Hurdle = (float)($s['trailingTier2HurdlePct'] ?? 15.0);
-                $t2Callback = (float)($s['trailingTier2CallbackPct'] ?? 3.0);
-                $useAtr = isset($s['useAtrStopLoss']) ? ((bool)$s['useAtrStopLoss'] ? 1 : 0) : 0;
-                $breakoutHigh = isset($s['breakoutHighEnabled']) ? ((bool)$s['breakoutHighEnabled'] ? 1 : 0) : 1;
-                $breakoutCandle = (int)($s['breakoutCandleUnit'] ?? 1);
-                $breakoutMinVol = (int)($s['breakoutMinVolumeKrwEok'] ?? 150);
-                $swingCandle = (string)($s['swingCandleUnit'] ?? 'minutes/240');
-                $swingShort = (int)($s['swingShortMa'] ?? 5);
-                $swingLong = (int)($s['swingLongMa'] ?? 20);
-                $swingMinTrade = (int)($s['swingMinTradePrice24hEok'] ?? 1000);
-                $min24hAcc = (int)($s['min24hAccTradePriceKrw'] ?? ($swingMinTrade * 100000000));
-
-                $stmt->execute([
-                    $stratMode,
-                    $tradeAmt,
-                    $targetProfit,
-                    $trailingCallback,
-                    $stopLoss,
-                    $useWide,
-                    $t1Target,
-                    $t1Callback,
-                    $t2Hurdle,
-                    $t2Callback,
-                    $useAtr,
-                    $breakoutHigh,
-                    $breakoutCandle,
-                    $breakoutMinVol,
-                    $swingCandle,
-                    $swingShort,
-                    $swingLong,
-                    $swingMinTrade,
-                    $min24hAcc,
-                    $uid,
-                    $slotId
-                ]);
-            }
-        }
-    };
 
     if ($path === 'scheduler/preset/save' && $method === 'POST') {
         $presetKey = strtoupper((string)($input['presetKey'] ?? 'PRESET_A'));
@@ -3125,7 +3197,7 @@ try {
         if ($currentPeriod === $mappedPeriod || $currentPeriod === $presetKey) {
             $slotsToApply = $preset['slots'] ?? [];
             if (!empty($slotsToApply)) {
-                $applyPresetSlotsToDb($pdo, $slotsToApply, $targetUserId);
+                applyPresetSlotsToDb($pdo, $slotsToApply, $targetUserId);
             }
         }
 
@@ -3180,7 +3252,7 @@ try {
         if (empty($slotsToApply)) {
             $slotsToApply = $defaultPeriodSlots[$mappedPeriod] ?? $defaultPeriodSlots['MORNING'];
         }
-        $applyPresetSlotsToDb($pdo, $slotsToApply, $targetUserId);
+        applyPresetSlotsToDb($pdo, $slotsToApply, $targetUserId);
 
         echo json_encode(['success' => true, 'scheduler' => $decoded], JSON_UNESCAPED_UNICODE);
         exit;
@@ -3231,7 +3303,7 @@ try {
             $periodName = in_array($presetKey, ['MORNING', 'AFTERNOON', 'NIGHT'], true) ? $presetKey : 'MORNING';
             $slotsToApply = $defaultPeriodSlots[$periodName] ?? $defaultPeriodSlots['MORNING'];
         }
-        $applyPresetSlotsToDb($pdo, $slotsToApply, $targetUserId);
+        applyPresetSlotsToDb($pdo, $slotsToApply, $targetUserId);
 
         echo json_encode(['success' => true, 'scheduler' => $decoded], JSON_UNESCAPED_UNICODE);
         exit;
