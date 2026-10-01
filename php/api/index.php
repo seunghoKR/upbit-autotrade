@@ -1132,10 +1132,9 @@ try {
         static $quantColumnsEnsured = false;
         if (!$quantColumnsEnsured) {
             $quantColumnsEnsured = true;
+            // 1~12번 슬롯 컬럼 및 기본 구조 보장 (전략 모드는 사용자가 설정한 값을 영구 보존)
             try { $pdo->exec("UPDATE nurioh_users SET max_slots = 12 WHERE role IN ('ADMIN', 'DEVELOPER', 'OPERATOR') OR tier = 'VIP' OR email IN ('leeshkr@kakao.com', 'ceo@nurioh.com')"); } catch (Exception $e) {}
             try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `strategy_mode` VARCHAR(30) DEFAULT 'SCALPING'"); } catch (Exception $e) {}
-            try { $pdo->exec("UPDATE nurioh_slots SET strategy_mode = 'BREAKOUT_DAY_HIGH' WHERE slot_id IN (9, 10) AND (strategy_mode IS NULL OR strategy_mode = 'SCALPING')"); } catch (Exception $e) {}
-            try { $pdo->exec("UPDATE nurioh_slots SET strategy_mode = 'TREND_SWING' WHERE slot_id IN (11, 12) AND (strategy_mode IS NULL OR strategy_mode = 'SCALPING')"); } catch (Exception $e) {}
             try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `surge_volume_mode` VARCHAR(10) DEFAULT 'RATE'"); } catch (Exception $e) {}
             try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `surge_min_volume_rate_pct` DECIMAL(6,4) DEFAULT 0.0500"); } catch (Exception $e) {}
             try { $pdo->exec("ALTER TABLE `nurioh_slots` ADD COLUMN `use_reverse_alignment_filter` TINYINT(1) DEFAULT 1"); } catch (Exception $e) {}
@@ -1171,11 +1170,15 @@ try {
                 $m = $defaultMarkets[$s] ?? 'KRW-BTC';
                 // 🛡️ 안전 제1원칙: 자가 치유로 자동 보충되는 신규 슬롯은 기본 OFF (0) 상태로 생성!
                 $isEnabled = 0;
-                $stratMode = ($s <= 8) ? 'SCALPING' : (($s <= 10) ? 'BREAKOUT_DAY_HIGH' : 'TREND_SWING');
+                $isBreakout = ($s <= 4 || $s === 9 || $s === 10);
+                $stratMode = $isBreakout ? 'BREAKOUT_DAY_HIGH' : 'TREND_SWING';
+                $tradeAmt = ($s === 11 || $s === 12) ? 100000 : (($s === 3 || $s === 4) ? 30000 : 50000);
+                $stopLoss = $isBreakout ? 2.0 : 3.0;
+                $tier1Callback = $isBreakout ? 0.5 : 1.0;
                 $slotInsert = $pdo->prepare("INSERT INTO nurioh_slots 
                     (user_id, slot_id, slot_name, is_enabled, target_market, trade_amount_krw, strategy_type, strategy_mode, target_profit_pct, trailing_callback_pct, stop_loss_pct, position_status) 
-                    VALUES (?, ?, ?, ?, ?, 10000, 'RECOMMENDED', ?, 3.0, 1.0, 2.0, 'IDLE')");
-                $slotInsert->execute([$userId, $s, "{$s}번 슬롯", $isEnabled, $m, $stratMode]);
+                    VALUES (?, ?, ?, ?, ?, ?, 'RECOMMENDED', ?, 5.0, ?, ?, 'IDLE')");
+                $slotInsert->execute([$userId, $s, "{$s}번 슬롯", $isEnabled, $m, $tradeAmt, $stratMode, $tier1Callback, $stopLoss]);
                 $needsReload = true;
             }
         }
@@ -1202,7 +1205,6 @@ try {
         $formattedSlots = [];
         foreach ($slots as $s) {
             $slotId = (int)$s['slot_id'];
-            $defMkt = $defaultMarkets[$slotId] ?? 'KRW-BTC';
             $isEnabled = !empty($s['is_enabled']);
 
             $realizedProfit = (float)($s['total_realized_profit_krw'] ?? 0);
@@ -1244,18 +1246,17 @@ try {
                 // 🛡️ [업비트 최소 잔여 자투리(Dust) 코인 가드]
                 // 1,000원 미만의 잔여 자투리 코인만 정화 대상 (5,000원 매수 후 수수료 차감으로 4,990원대가 된 정상 코인 보존!)
                 if ($accEvalKrw < 1000 && !$isRecentEntry) {
-                    // 이미 슬롯에 먼지 코인으로 비정상 등록되어 있는 경우 IDLE로 자동 정화
+                    // 이미 슬롯에 먼지 코인으로 비정상 등록되어 있는 경우 IDLE로 자동 정화 (target_market 설정 보존)
                     if ($s['position_status'] === 'IN_POSITION' || $s['position_status'] === 'HOLDING' || $s['position_status'] === 'TRAILING_ACTIVE') {
                         $s['position_status'] = 'IDLE';
                         $s['entry_volume'] = null;
                         $s['entry_price'] = null;
                         $s['entry_amount_krw'] = null;
-                        $s['target_market'] = $defMkt;
                         $vol = 0;
                         $entryP = 0;
                         $amount = 0;
-                        $pdo->prepare("UPDATE nurioh_slots SET position_status = 'IDLE', target_market = ?, entry_price = NULL, entry_volume = NULL, entry_amount_krw = NULL, highest_price = NULL WHERE id = ?")
-                            ->execute([$defMkt, $s['id']]);
+                        $pdo->prepare("UPDATE nurioh_slots SET position_status = 'IDLE', entry_price = NULL, entry_volume = NULL, entry_amount_krw = NULL, highest_price = NULL WHERE id = ?")
+                            ->execute([$s['id']]);
                     }
                 } else if ($vol <= 0 || $entryP <= 0 || $s['position_status'] === 'IDLE') {
                     $vol = $accVol;
@@ -1285,12 +1286,11 @@ try {
                     $s['entry_volume'] = null;
                     $s['entry_price'] = null;
                     $s['entry_amount_krw'] = null;
-                    $s['target_market'] = $defMkt;
                     $vol = 0;
                     $entryP = 0;
                     $amount = 0;
-                    $pdo->prepare("UPDATE nurioh_slots SET position_status = 'IDLE', target_market = ?, entry_price = NULL, entry_volume = NULL, entry_amount_krw = NULL, highest_price = NULL WHERE id = ?")
-                        ->execute([$defMkt, $s['id']]);
+                    $pdo->prepare("UPDATE nurioh_slots SET position_status = 'IDLE', entry_price = NULL, entry_volume = NULL, entry_amount_krw = NULL, highest_price = NULL WHERE id = ?")
+                        ->execute([$s['id']]);
                 }
             }
 
@@ -1305,7 +1305,7 @@ try {
                 'targetMarket' => $s['target_market'],
                 'tradeAmountKrw' => (float)$s['trade_amount_krw'],
                 'strategyType' => $s['strategy_type'] ?: 'RECOMMENDED',
-                'strategyMode' => $s['strategy_mode'] ?? (($slotId <= 8) ? 'SCALPING' : (($slotId <= 10) ? 'BREAKOUT_DAY_HIGH' : 'TREND_SWING')),
+                'strategyMode' => $s['strategy_mode'] ?? 'SCALPING',
                 'surgeWindowSeconds' => (int)($s['surge_window_seconds'] ?? 5),
                 'surgeRatePct' => (float)($s['surge_rate_pct'] ?? 1.5),
                 'surgeMinVolumeKrw' => (float)($s['surge_min_volume_krw'] ?? 10000000),
@@ -1819,17 +1819,11 @@ try {
             $checkStmt->execute([$userId, $slotId]);
             $existingSlot = $checkStmt->fetch();
 
-            $defaultMarkets = [
-                1 => 'KRW-BTC', 2 => 'KRW-ETH', 3 => 'KRW-SOL',
-                4 => 'KRW-XRP', 5 => 'KRW-DOGE', 6 => 'KRW-ADA',
-                7 => 'KRW-AVAX', 8 => 'KRW-DOT', 9 => 'KRW-NEAR',
-                10 => 'KRW-LINK', 11 => 'KRW-STX', 12 => 'KRW-SUI'
-            ];
-            $defaultMkt = $defaultMarkets[$slotId] ?? 'KRW-BTC';
-
-            $targetMarket = $input['targetMarket'] ?? $existingSlot['target_market'] ?? $defaultMkt;
+            $targetMarket = array_key_exists('targetMarket', $input) 
+                ? trim((string)$input['targetMarket']) 
+                : ($existingSlot['target_market'] ?? '');
             // 🛡️ 만약 현재 슬롯이 IN_POSITION 상태라면, target_market을 임의로 변경하지 않고 기존 보유 코인 마켓을 철저히 보존!
-            if ($existingSlot && $existingSlot['position_status'] === 'IN_POSITION' && !empty($existingSlot['target_market'])) {
+            if ($existingSlot && ($existingSlot['position_status'] === 'IN_POSITION' || $existingSlot['position_status'] === 'HOLDING') && !empty($existingSlot['target_market'])) {
                 $targetMarket = $existingSlot['target_market'];
             }
 
@@ -1843,7 +1837,7 @@ try {
             }
 
             $strategyType = $input['strategyType'] ?? $existingSlot['strategy_type'] ?? 'RECOMMENDED';
-            $strategyMode = $input['strategyMode'] ?? $existingSlot['strategy_mode'] ?? (($slotId <= 8) ? 'SCALPING' : (($slotId <= 10) ? 'BREAKOUT_DAY_HIGH' : 'TREND_SWING'));
+            $strategyMode = $input['strategyMode'] ?? $existingSlot['strategy_mode'] ?? 'SCALPING';
             $surgeWindowSeconds = isset($input['surgeWindowSeconds']) ? max(1, abs((int)$input['surgeWindowSeconds'])) : (int)($existingSlot['surge_window_seconds'] ?? 5);
             $surgeRatePct = isset($input['surgeRatePct']) ? abs((float)$input['surgeRatePct']) : (float)($existingSlot['surge_rate_pct'] ?? 1.5);
             $surgeMinVolumeKrw = isset($input['surgeMinVolumeKrw']) ? abs((float)$input['surgeMinVolumeKrw']) : (float)($existingSlot['surge_min_volume_krw'] ?? 10000000);
@@ -2251,28 +2245,19 @@ try {
 
         // 🛡️ [거래소 주문 없이 슬롯 연동만 해제(비우기)]
         if ($unlinkOnly) {
-            $defaultMarkets = [
-                1 => 'KRW-BTC', 2 => 'KRW-ETH', 3 => 'KRW-SOL',
-                4 => 'KRW-XRP', 5 => 'KRW-DOGE', 6 => 'KRW-ADA',
-                7 => 'KRW-AVAX', 8 => 'KRW-DOT', 9 => 'KRW-NEAR',
-                10 => 'KRW-LINK', 11 => 'KRW-STX', 12 => 'KRW-SUI'
-            ];
-            $defMkt = $defaultMarkets[$slotId] ?? 'KRW-BTC';
-
             $pdo->prepare("UPDATE nurioh_slots SET 
                 position_status = 'IDLE', 
-                target_market = ?,
                 entry_price = NULL, 
                 entry_volume = NULL, 
                 entry_amount_krw = NULL,
                 highest_price = NULL, 
                 highest_profit_pct = 0
                 WHERE user_id = ? AND slot_id = ?")
-                ->execute([$defMkt, $userId, $slotId]);
+                ->execute([$userId, $slotId]);
 
             echo json_encode([
                 'success' => true,
-                'message' => "슬롯 {$slotId}번 ({$mkt}) 연동이 해제되고 비워졌습니다. (기본 코인 {$defMkt} 재배정)",
+                'message' => "슬롯 {$slotId}번 ({$mkt}) 연동이 해제되고 비워졌습니다.",
                 'profitPct' => 0,
                 'profitKrw' => 0,
                 'isProfit' => false,
@@ -2381,18 +2366,9 @@ try {
         }
         $isProfit = $profitPct >= 0;
 
-        // 슬롯 초기화 및 실현 손익 통계 누적
-        $defaultMarkets = [
-            1 => 'KRW-BTC', 2 => 'KRW-ETH', 3 => 'KRW-SOL', 
-            4 => 'KRW-XRP', 5 => 'KRW-DOGE', 6 => 'KRW-ADA', 
-            7 => 'KRW-AVAX', 8 => 'KRW-DOT', 9 => 'KRW-NEAR',
-            10 => 'KRW-LINK', 11 => 'KRW-STX', 12 => 'KRW-SUI'
-        ];
-        $defMkt = $defaultMarkets[$slotId] ?? 'KRW-BTC';
-
+        // 슬롯 초기화 및 실현 손익 통계 누적 (target_market은 사용자 설정값 그대로 보존)
         $pdo->prepare("UPDATE nurioh_slots SET 
             position_status = 'IDLE', 
-            target_market = ?,
             entry_price = NULL, 
             entry_volume = NULL, 
             entry_amount_krw = NULL,
@@ -2402,7 +2378,7 @@ try {
             win_trades = win_trades + ?,
             total_realized_profit_krw = total_realized_profit_krw + ?
             WHERE user_id = ? AND slot_id = ?")
-            ->execute([$defMkt, $isProfit ? 1 : 0, $profitKrw, $userId, $slotId]);
+            ->execute([$isProfit ? 1 : 0, $profitKrw, $userId, $slotId]);
 
         // 📢 텔레그램 실현 손익 정산 알림 발송
         $slotName = $slot['slot_name'] ?? "{$slotId}번 슬롯";

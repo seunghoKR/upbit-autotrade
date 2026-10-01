@@ -5,25 +5,40 @@
 
 class SlotManager {
   constructor() {
-    this.slots = [
-      // 1~8번 슬롯: 초단타 스캘핑 모드 (SCALPING) - 기본 가동 중지(OFF) 상태 유지
-      { slotId: 1, name: '1번 주력 슬롯', strategyMode: 'SCALPING', isEnabled: false, targetMarket: null, tradeAmountKrw: 50000, positionStatus: 'IDLE', position: null, useAtrStopLoss: false, stopLossPct: 2.0, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
-      { slotId: 2, name: '2번 알트 슬롯', strategyMode: 'SCALPING', isEnabled: false, targetMarket: null, tradeAmountKrw: 50000, positionStatus: 'IDLE', position: null, useAtrStopLoss: false, stopLossPct: 2.0, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
-      { slotId: 3, name: '3번 급등 슬롯', strategyMode: 'SCALPING', isEnabled: false, targetMarket: null, tradeAmountKrw: 30000, positionStatus: 'IDLE', position: null, useAtrStopLoss: false, stopLossPct: 2.0, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
-      { slotId: 4, name: '4번 리플 슬롯', strategyMode: 'SCALPING', isEnabled: false, targetMarket: null, tradeAmountKrw: 30000, positionStatus: 'IDLE', position: null, useAtrStopLoss: false, stopLossPct: 2.0, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
-      { slotId: 5, name: '5번 보조 슬롯', strategyMode: 'SCALPING', isEnabled: false, targetMarket: null, tradeAmountKrw: 20000, positionStatus: 'IDLE', position: null, useAtrStopLoss: false, stopLossPct: 2.0, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
-      { slotId: 6, name: '6번 보조 슬롯', strategyMode: 'SCALPING', isEnabled: false, targetMarket: null, tradeAmountKrw: 20000, positionStatus: 'IDLE', position: null, useAtrStopLoss: false, stopLossPct: 2.0, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
-      { slotId: 7, name: '7번 보조 슬롯', strategyMode: 'SCALPING', isEnabled: false, targetMarket: null, tradeAmountKrw: 20000, positionStatus: 'IDLE', position: null, useAtrStopLoss: false, stopLossPct: 2.0, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
-      { slotId: 8, name: '8번 보조 슬롯', strategyMode: 'SCALPING', isEnabled: false, targetMarket: null, tradeAmountKrw: 20000, positionStatus: 'IDLE', position: null, useAtrStopLoss: false, stopLossPct: 2.0, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
+    this.slots = Array.from({ length: 12 }, (_, i) => {
+      const slotId = i + 1;
+      const isBreakout = (slotId >= 1 && slotId <= 4) || slotId === 9 || slotId === 10;
+      const isHeavy = slotId === 11 || slotId === 12;
+      return {
+        slotId,
+        name: `${slotId}번 슬롯`,
+        strategyMode: isBreakout ? 'BREAKOUT_DAY_HIGH' : 'TREND_SWING',
+        isEnabled: false,
+        targetMarket: null,
+        tradeAmountKrw: isHeavy ? 100000 : (slotId === 3 || slotId === 4 ? 30000 : 50000),
+        positionStatus: 'IDLE',
+        position: null,
+        useAtrStopLoss: false,
+        stopLossPct: isBreakout ? 2.0 : 3.0,
+        useWideTrailing: true,
+        trailingTier1TargetProfitPct: 5.0,
+        trailingTier1CallbackPct: isBreakout ? 0.5 : 1.0,
+        trailingTier2HurdlePct: 15.0,
+        trailingTier2CallbackPct: 3.0,
+        breakoutHighEnabled: true,
+        breakoutCandleUnit: (slotId === 3 || slotId === 4 || slotId === 10) ? 3 : 1,
+        breakoutMinVolumeKrwEok: slotId === 1 ? 100 : (slotId === 2 ? 150 : (slotId === 3 ? 300 : (slotId === 4 ? 400 : (slotId === 9 ? 160 : 500)))),
+        swingCandleUnit: (slotId === 7 || slotId === 8 || slotId === 12) ? 'days' : 'minutes/240',
+        swingShortMa: 5,
+        swingLongMa: 20,
+        swingMinTradePrice24hEok: (slotId === 7 || slotId === 8 || slotId === 11 || slotId === 12) ? 2000 : 1000,
+        min24hAccTradePriceKrw: (slotId === 7 || slotId === 8 || slotId === 11 || slotId === 12) ? 200000000000 : 100000000000,
+        totalTrades: 0,
+        winTrades: 0,
+        totalRealizedProfitKrw: 0
+      };
+    });
 
-      // 9~10번 슬롯: 당일 신고가 돌파 모드 (BREAKOUT_DAY_HIGH) - 기본 가동 중지(OFF) 상태 유지
-      { slotId: 9, name: '9번 돌파 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutHighEnabled: true, breakoutCandleUnit: 1, breakoutMinVolumeKrwEok: 5, isEnabled: false, targetMarket: null, tradeAmountKrw: 50000, positionStatus: 'IDLE', position: null, useAtrStopLoss: false, stopLossPct: 2.0, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
-      { slotId: 10, name: '10번 돌파 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutHighEnabled: true, breakoutCandleUnit: 1, breakoutMinVolumeKrwEok: 5, isEnabled: false, targetMarket: null, tradeAmountKrw: 50000, positionStatus: 'IDLE', position: null, useAtrStopLoss: false, stopLossPct: 2.0, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
-
-      // 11~12번 슬롯: 정배열 추세 스윙 모드 (TREND_SWING) - 기본 가동 중지(OFF) 상태 유지
-      { slotId: 11, name: '11번 스윙 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'days', swingShortMa: 5, swingLongMa: 20, swingMinTradePrice24hEok: 100, min24hAccTradePriceKrw: 10000000000, isEnabled: false, targetMarket: null, tradeAmountKrw: 100000, positionStatus: 'IDLE', position: null, useAtrStopLoss: false, stopLossPct: 3.0, useWideTrailing: true, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 12.0, trailingTier2CallbackPct: 3.5, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 },
-      { slotId: 12, name: '12번 스윙 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'minutes/240', swingShortMa: 5, swingLongMa: 20, swingMinTradePrice24hEok: 100, min24hAccTradePriceKrw: 10000000000, isEnabled: false, targetMarket: null, tradeAmountKrw: 100000, positionStatus: 'IDLE', position: null, useAtrStopLoss: false, stopLossPct: 3.0, useWideTrailing: true, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 12.0, trailingTier2CallbackPct: 3.5, totalTrades: 0, winTrades: 0, totalRealizedProfitKrw: 0 }
-    ];
 
     this.listeners = new Set();
   }
@@ -72,7 +87,7 @@ class SlotManager {
         ...slot,
         id: slot.slotId,
         slotName: slot.name || `${slot.slotId}번 슬롯`,
-        strategyMode: slot.strategyMode || 'SCALPING',
+        strategyMode: slot.strategyMode || ((slot.slotId <= 4 || slot.slotId === 9 || slot.slotId === 10) ? 'BREAKOUT_DAY_HIGH' : 'TREND_SWING'),
         positionStatus: isReserved ? 'RESERVED_BUY' : (hasPos ? (slot.positionStatus || 'IN_POSITION') : 'IDLE'),
         entryPrice: hasPos ? slot.position.entryPrice : null,
         entryVolume: hasPos ? slot.position.entryVolume : null,
@@ -164,16 +179,21 @@ class SlotManager {
   }
 
   getAvailableSlot(market, strategyMode = null) {
-    // strategyMode가 주어진 경우 해당 전략 모드의 슬롯만 필터링
-    const candidateSlots = strategyMode
+    // strategyMode가 주어진 경우 해당 전략 모드의 슬롯만 필터링 (항상 slotId 오름차순 보장)
+    const candidateSlots = (strategyMode
       ? this.slots.filter(s => s.strategyMode === strategyMode)
-      : this.slots;
+      : this.slots
+    ).slice().sort((a, b) => a.slotId - b.slotId);
 
     // 1순위: 해당 마켓이 명시적으로 지정되어 있고 활성화된 IDLE 슬롯
     let slot = candidateSlots.find(s => s.isEnabled && s.targetMarket === market && s.positionStatus === 'IDLE');
     if (slot) return slot;
 
-    // 2순위: 비어있는(targetMarket이 없거나 IDLE 상태인) 첫 번째 활성 슬롯 (RESERVED_BUY나 HOLDING 제외)
+    // 2순위: 특정 코인이 지정되지 않은(전종목 AI 자동포착) 빈 IDLE 슬롯 (1번부터 순차 배정)
+    slot = candidateSlots.find(s => s.isEnabled && (!s.targetMarket || s.targetMarket === '') && s.positionStatus === 'IDLE');
+    if (slot) return slot;
+
+    // 3순위: 기타 활성화된 빈 IDLE 슬롯
     slot = candidateSlots.find(s => s.isEnabled && s.positionStatus === 'IDLE');
     return slot || null;
   }

@@ -11,13 +11,10 @@ import {
   User, 
   LogOut, 
   Sliders,
-  Volume2,
-  VolumeX,
   Menu,
   X,
   Smartphone
 } from 'lucide-react';
-import { soundService } from '../services/soundService';
 import { APP_VERSION } from '../version';
 
 export default function Header({ 
@@ -47,8 +44,6 @@ export default function Header({
   const isAdmin = (role === 'ADMIN' || role === 'DEVELOPER');
   const isPending = user?.approvalStatus === 'PENDING' && !isAdmin;
 
-  // 🔊 사운드 알림 활성화 상태 관리
-  const [soundEnabled, setSoundEnabled] = useState(soundService.isEnabled());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -58,8 +53,10 @@ export default function Header({
     return Boolean(
       window.matchMedia('(display-mode: standalone)').matches ||
       window.matchMedia('(display-mode: window-controls-overlay)').matches ||
+      window.matchMedia('(display-mode: fullscreen)').matches ||
       window.navigator.standalone === true ||
-      document.referrer.includes('android-app://')
+      document.referrer.includes('android-app://') ||
+      window.location.search.includes('mode=pwa')
     );
   });
 
@@ -68,8 +65,10 @@ export default function Header({
       const standalone = Boolean(
         window.matchMedia('(display-mode: standalone)').matches ||
         window.matchMedia('(display-mode: window-controls-overlay)').matches ||
+        window.matchMedia('(display-mode: fullscreen)').matches ||
         window.navigator.standalone === true ||
-        document.referrer.includes('android-app://')
+        document.referrer.includes('android-app://') ||
+        window.location.search.includes('mode=pwa')
       );
       setIsStandalone(standalone);
     };
@@ -109,29 +108,12 @@ export default function Header({
     }
   }, [isLocalLab]);
 
-  useEffect(() => {
-    const handleSoundToggle = (e) => {
-      setSoundEnabled(e.detail.enabled);
-    };
-    window.addEventListener('nurioh_sound_toggle', handleSoundToggle);
-    return () => window.removeEventListener('nurioh_sound_toggle', handleSoundToggle);
-  }, []);
-
   const handleRefreshClick = () => {
     setIsRefreshing(true);
     if (onRefresh) {
       onRefresh();
     } else {
       window.location.reload();
-    }
-  };
-
-  const toggleSound = () => {
-    const nextState = !soundEnabled;
-    soundService.setEnabled(nextState);
-    setSoundEnabled(nextState);
-    if (nextState) {
-      soundService.playTone(880, 'sine', 0.1, 0, 0.1); // 켬 확인음
     }
   };
 
@@ -170,17 +152,19 @@ export default function Header({
                 v{APP_VERSION}
               </span>
 
-              {/* 🏛️ 2단계 시각적 직관 배지: 🧪 연구실 | 🟢 실서버 */}
-              {isLocalLab ? (
-                <span className="hidden md:flex text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-purple-950/80 text-purple-300 font-black border border-purple-500/60 shadow-md shadow-purple-900/40 items-center gap-1 animate-pulse shrink-0" title="🧪 대표님 로컬 연구실(LAB) 개발 환경입니다.">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-purple-400"></span>
-                  🧪 연구실 (로컬)
-                </span>
-              ) : (
-                <span className="hidden md:flex text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 font-black border border-emerald-500/50 items-center gap-1 shrink-0" title="🟢 Any Life AI 실서버(anylifeai.kr)입니다.">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                  🟢 실서버 (anylifeai.kr)
-                </span>
+              {/* 🏛️ 2단계 시각적 직관 배지: 🧪 연구실 | 🟢 실서버 (운영자 / 개발자에게만 비교용으로 표시) */}
+              {isOperator && (
+                isLocalLab ? (
+                  <span className="hidden md:flex text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-purple-950/80 text-purple-300 font-black border border-purple-500/60 shadow-md shadow-purple-900/40 items-center gap-1 animate-pulse shrink-0" title="🧪 대표님 로컬 연구실(LAB) 개발 환경입니다.">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+                    🧪 연구실 (로컬)
+                  </span>
+                ) : (
+                  <span className="hidden md:flex text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 font-black border border-emerald-500/50 items-center gap-1 shrink-0" title="🟢 Any Life AI 실서버(anylifeai.kr)입니다.">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                    🟢 실서버 (anylifeai.kr)
+                  </span>
+                )
               )}
 
               {/* 🛡️ [알고리즘 2번] BTC 하락 감지 매수 보호 가동 상태 배지 */}
@@ -353,8 +337,8 @@ export default function Header({
               <span className="sm:hidden text-[11px]">마이</span>
             </button>
 
-            {/* 2. 👑 회원관리 (운영자 / 개발자 / 관리자 전용) */}
-            {isPrivileged && (
+            {/* 2. 👑 회원관리 (운영자 / 개발자 전용) */}
+            {isOperator && (
               <button
                 onClick={onOpenAdmin}
                 className="px-2 py-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-amber-950/60 hover:bg-amber-900/70 border border-amber-500/40 text-amber-200 text-xs font-bold transition cursor-pointer flex items-center gap-1 shrink-0 active:scale-95"
@@ -374,7 +358,7 @@ export default function Header({
                 title="운영자 전용 시스템 추천전략 파라미터 및 제외코인 관리"
               >
                 <BarChart3 className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="hidden sm:inline">시스템 추천전략 관리</span>
+                <span className="hidden sm:inline">추천전략관리</span>
                 <span className="sm:hidden text-[11px]">추천전략</span>
               </button>
             )}
@@ -411,29 +395,6 @@ export default function Header({
             >
               <BookOpen className="w-3.5 h-3.5 text-slate-400" />
               <span className="hidden md:inline">매뉴얼</span>
-            </button>
-
-            {/* 🔊 사운드 알림 토글 버튼 */}
-            <button
-              onClick={toggleSound}
-              className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border text-xs font-bold transition cursor-pointer flex items-center gap-1 shrink-0 active:scale-95 ${
-                soundEnabled
-                  ? 'bg-amber-950/40 hover:bg-amber-900/60 border-amber-500/40 text-amber-300'
-                  : 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-500 hover:text-slate-300'
-              }`}
-              title={soundEnabled ? '실시간 소리 알림 켜짐 (클릭하여 끄기)' : '실시간 소리 알림 꺼짐 (클릭하여 켜기)'}
-            >
-              {soundEnabled ? (
-                <>
-                  <Volume2 className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="hidden lg:inline text-[11px]">소리 ON</span>
-                </>
-              ) : (
-                <>
-                  <VolumeX className="w-3.5 h-3.5 text-slate-500" />
-                  <span className="hidden lg:inline text-[11px]">무음</span>
-                </>
-              )}
             </button>
 
             {/* 새로고침 */}
@@ -522,8 +483,8 @@ export default function Header({
               <span>마이페이지</span>
             </button>
 
-            {/* 2. 회원관리 */}
-            {isPrivileged && (
+            {/* 2. 회원관리 (운영자 / 개발자 전용) */}
+            {isOperator && (
               <button
                 onClick={() => { setIsMobileMenuOpen(false); onOpenAdmin(); }}
                 className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-950/50 border border-amber-500/30 text-amber-200 text-xs font-semibold hover:bg-amber-900/60 transition text-left"
@@ -540,7 +501,7 @@ export default function Header({
                 className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-950/50 border border-emerald-500/30 text-emerald-200 text-xs font-semibold hover:bg-emerald-900/60 transition text-left"
               >
                 <BarChart3 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>시스템 추천전략 관리</span>
+                <span>추천전략관리</span>
               </button>
             )}
 
@@ -572,28 +533,6 @@ export default function Header({
             >
               <BookOpen className="w-4 h-4 text-slate-400 shrink-0" />
               <span>매뉴얼 안내</span>
-            </button>
-
-            {/* 6. 소리 알림 */}
-            <button
-              onClick={toggleSound}
-              className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-semibold transition text-left ${
-                soundEnabled
-                  ? 'bg-amber-950/40 border-amber-500/40 text-amber-300'
-                  : 'bg-slate-900/80 border-slate-800 text-slate-400'
-              }`}
-            >
-              {soundEnabled ? (
-                <>
-                  <Volume2 className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span>소리 알림 ON</span>
-                </>
-              ) : (
-                <>
-                  <VolumeX className="w-4 h-4 text-slate-500 shrink-0" />
-                  <span>소리 알림 OFF</span>
-                </>
-              )}
             </button>
           </div>
 

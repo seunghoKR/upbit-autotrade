@@ -1,7 +1,7 @@
 # 📝 Any Life AI 스마트 트레이더 종합 개발 메모 & 시스템 가이드
 
-> **버전 (Version):** `v5.2.0 (Any Life AI Luxury Landing Page & Accurate Trade Detail Sync Release)`  
-> **최종 갱신일시:** 2026-09-30 19:15 (KST)  
+> **버전 (Version):** `v5.4.0 (추천전략 관리센터 개편, 운영자 셀프전략 1:1 동기화, 1~12번 슬롯 고수익 엔진 상향 평준화)`  
+> **최종 갱신일시:** 2026-10-01 22:35 (KST)  
 > **작성자:** Any Life AI 디자인실장 영자 & 마스터 개발자 이승호 대표님  
 > **프로젝트 위치:** `c:\Users\leesh\Documents\SynologyDrive\00.withAI\자동매매프로그램` (또는 NAS 매핑 경로)  
 > **GitHub 저장소:** `https://github.com/seunghoKR/upbit-autotrade.git` (`main`: 상용 실서버, `dev`: 연구실 실험실)
@@ -318,6 +318,38 @@
      - 실험실 (Staging Lab `http://nuriohtrade.iwinv.net/lab`, `staging` 브랜치)
      - 실서버 (Production Live `http://nuriohtrade.iwinv.net/`, `main` 브랜치)
 
+### 🚀 [릴리즈 26] v5.2.5 연구실 릴리즈 (1~12번 슬롯 공평 배정 및 비트코인 족쇄/좀비 전략 모드 원천 제거 개편)
+- **작업 일시:** 2026-10-01 13:15 (KST)
+- **배경:** 
+  - 운영자 및 테스터 보고: 10~12번 슬롯이 1~9번 슬롯에 비해 비정상적으로 활발하게 매수되고, 1번 슬롯과 10번 슬롯의 전략을 동일하게 설정해도 1번이 비어있음에도 10번 슬롯만 계속 매수되는 증상 발생.
+  - 슬롯 9개 시절의 레거시 코드와 10~12번 추가 시점의 강제 하드코딩 분기가 잔존하여 슬롯 간 불공평한 매수 쏠림 현상 야기.
+  - **정책 확정:** 1~12번 모든 슬롯이 번호에 관계없이 사용자가 설정한 전략과 타겟 마켓에 맞춰 100% 동일하고 공평하게, 정상적으로 작동하도록 원천 개편.
+- **주요 원인 분석 (Root Causes):**
+  1. **매도 청산 시 비트코인 족쇄 복원 버그:** 매도 또는 슬롯 비우기(`unlinkOnly` / `sell_position`) 시 `target_market`이 강제로 `defaultMarkets[slotId]`(1번은 `KRW-BTC`, 10번은 `KRW-LINK/SUI`)로 덮어써져 1번 슬롯이 비트코인 족쇄에 묶임.
+  2. **PHP 백엔드 좀비 쿼리(Zombie Overwrite):** API 조회마다 `UPDATE nurioh_slots SET strategy_mode = 'BREAKOUT_DAY_HIGH' WHERE slot_id IN (9, 10)...` 쿼리가 무조건 실행되어 사용자가 스캘핑으로 통일해도 9~12번이 강제로 돌파/스윙으로 원복됨.
+  3. **마켓 스케줄러 슬롯 번호 강제 오버라이드:** `marketScheduler.js`의 `extractParamsForSlot`에서 슬롯 번호(`slotId <= 8`, `9..10`, `11..12`)로 강제 분기하여 매 틱마다 1~8번을 스캘핑으로 덮어씀.
+  4. **슬롯 매칭 우선순위 미비:** `slotManager.js`의 `getAvailableSlot`에서 `targetMarket` 빈 값(전종목 자동포착)에 대한 오름차순(1번부터) 우선순위가 명확하지 않아 슬롯 간 배정이 왜곡됨.
+- **핵심 개선 내역:**
+  1. **슬롯 초기화 & 매도 시 사용자 설정 코인 100% 보존:**
+     - `php/api/index.php` 및 `dashboard/src/App.jsx`에서 매도 청산 및 자산 동기화 시 `target_market = ?` 덮어쓰기 로직 전면 제거.
+     - 사용자가 전종목 AI 자동포착(`""`)으로 두면 영구히 빈 값 유지, 특정 코인을 지정했으면 그 코인 유지.
+  2. **좀비 강제 업데이트 쿼리 영구 제거:**
+     - `php/api/index.php`의 `slot_id IN (9, 10)` 돌파, `slot_id IN (11, 12)` 스윙 강제 UPDATE 쿼리 영구 삭제.
+     - 슬롯 생성 및 fallback 기본값을 모든 슬롯 균일하게 `'SCALPING'`으로 통일.
+  3. **마켓 스케줄러 전략 모드 존중 개편:**
+     - `server/strategy/marketScheduler.js`의 `extractParamsForSlot`이 `slotId` 대신 사용자가 지정한 `strategyMode`를 기준으로 프리셋 파라미터를 적용하도록 완전 리팩토링.
+  4. **슬롯 할당 공평 배정(Fair Slot Allocation) 알고리즘 적용:**
+     - `server/strategy/slotManager.js`의 `getAvailableSlot`:
+       - 1순위: 해당 코인을 수동 감시 중인 활성 슬롯
+       - 2순위: 특정 코인이 지정되지 않은(전종목 AI 자동포착) 빈 IDLE 슬롯 (항상 `slotId` 1번부터 오름차순 순차 배정)
+       - 3순위: 기타 비어있는 활성 슬롯
+  5. **프론트엔드/백엔드 템플릿 1~12번 완전 대칭 통일:**
+     - `DEFAULT_SLOTS`, `PresetStrategyModal.jsx`, `slotManager.js` 생성자 모두 1~12번 균일 구조화.
+  6. **버전 업데이트:**
+     - `version.js`, `package.json`, `dashboard/package.json` 모두 `v5.2.5`로 판올림 완료.
+     - `npm run build` 검증 0개 오류 통과.
+
+
 ---
 
 ## 📂 4. 프로젝트 핵심 파일 구조
@@ -394,6 +426,24 @@ node server/index.js
 # 로컬 Vite 프론트엔드 개발 서버 실행 (포트 3000)
 npm run dev --prefix dashboard
 ```
+
+---
+
+## 🚀 5-1. 최신 릴리즈 내역 (v5.4.0)
+
+### [v5.4.0] 2026-10-01 업데이트 요약
+1. **운영자 추천전략 관리센터 개편**:
+   - `OperatorStrategyStudio.jsx` 인터페이스 신설: 상단 대시보드 복귀 버튼 하이라이트 및 단일 뷰 UX 최적화.
+   - [내 셀프전략 원클릭 가져오기] 모달 탑재: 운영자가 연구실/대시보드에서 검증한 본인 슬롯 세팅을 추천전략 프리셋으로 1초 만에 복제.
+   - 킬스위치 토글 디자인 통일 (`GlobalControlPanel`과 동일한 부드러운 슬라이더 적용).
+   - 슬롯 테이블 헤더의 불필요한 뒤로가기 버튼 제거 및 중복 아이콘 정리.
+2. **슬롯 엔진 상향 평준화 (과거 10~12번 슬롯 수준으로 1~12번 일원화)**:
+   - 1~4번 / 9~10번: 당일 신고가 돌파 (`BREAKOUT_DAY_HIGH`, 100~500억 주도주, 10초 Sustain Check 가짜 윗꼬리 방어).
+   - 5~8번 / 11~12번: 정배열 추세 스윙 (`TREND_SWING`, 1,000~2,000억 메이저 대형주, 봉 마감 기준 데드크로스 청산).
+   - 11~12번: 1회 매수금 10만원 묵직한 투입 & 1단 5%, 2단 15% 와이드 트레일링 스탑 기본화.
+3. **용어 이해 2중 지원 시스템**:
+   - 전략 테이블 헤더 및 인라인 용어 툴팁 (가독성을 위한 컬러 별표 첨자 적용).
+   - 상단 [📖 전략 용어 가이드] 팝업 모달 제공.
 
 ---
 

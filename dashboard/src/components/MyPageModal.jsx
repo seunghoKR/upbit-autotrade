@@ -122,8 +122,15 @@ export default function MyPageModal({
 
   // PWA 설치 이벤트 리스너 감지
   useEffect(() => {
-    const checkStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-    setIsStandalone(Boolean(checkStandalone));
+    const checkStandalone = Boolean(
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.matchMedia('(display-mode: window-controls-overlay)').matches ||
+      window.matchMedia('(display-mode: fullscreen)').matches ||
+      window.navigator.standalone === true ||
+      document.referrer.includes('android-app://') ||
+      window.location.search.includes('mode=pwa')
+    );
+    setIsStandalone(checkStandalone);
 
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
@@ -487,17 +494,17 @@ export default function MyPageModal({
               <span>슬롯 성과표</span>
             </button>
 
-            {/* 4) 📲 앱 & 소리 */}
+            {/* 4) 🔊 소리 & 앱 */}
             <button
               onClick={() => setActiveTab('APP_SOUND')}
               className={`py-2 px-1 sm:px-2 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap text-xs font-bold ${
                 activeTab === 'APP_SOUND'
-                  ? 'bg-emerald-500 text-slate-950 font-black shadow-md shadow-emerald-500/30'
-                  : 'bg-slate-950 text-emerald-400 hover:text-white hover:bg-slate-800 border border-slate-800'
+                  ? 'bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/30'
+                  : 'bg-slate-950 text-amber-300 hover:text-white hover:bg-slate-800 border border-slate-800'
               }`}
             >
-              <Download className="w-3.5 h-3.5 shrink-0" />
-              <span>앱 &amp; 소리</span>
+              <Volume2 className="w-3.5 h-3.5 shrink-0" />
+              <span>소리 &amp; 앱</span>
             </button>
 
             {/* 5) ✈️ 텔레그램 */}
@@ -973,7 +980,7 @@ export default function MyPageModal({
             const processedSlotsData = Array.from({ length: maxSlotsCount }, (_, idx) => {
               const sId = idx + 1;
               const liveSlot = (slots || []).find(s => s.slotId === sId);
-              const inferredMode = liveSlot?.strategyMode || (sId >= 11 ? 'TREND_SWING' : (sId >= 9 ? 'BREAKOUT_DAY_HIGH' : 'SCALPING'));
+              const inferredMode = liveSlot?.strategyMode || ((sId <= 4 || sId === 9 || sId === 10) ? 'BREAKOUT_DAY_HIGH' : 'TREND_SWING');
               
               if (liveSlot) {
                 const trades = (liveSlot.totalTrades !== undefined && liveSlot.totalTrades !== null) ? Number(liveSlot.totalTrades) : 0;
@@ -1284,72 +1291,16 @@ export default function MyPageModal({
           {/* ========================================================= */}
           {activeTab === 'APP_SOUND' && isApproved && (
             <div className="space-y-3.5 animate-in fade-in text-sm text-slate-200">
-              {/* 1. 📱 PC & 모바일 전용 앱(PWA) 원클릭 설치 안내 카드 */}
-              <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-950/70 border border-emerald-500/40 space-y-2.5 shadow-md shadow-emerald-500/10">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-sm border border-emerald-500/30">
-                      📲
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-white text-xs sm:text-sm">PC &amp; 모바일 전용 앱(PWA) 설치 안내</h4>
-                      <p className="text-[10px] text-slate-400">앱스토어 다운로드 없이 바탕화면 &amp; 홈 화면에 바로 설치</p>
-                    </div>
-                  </div>
-                  {isStandalone ? (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40 flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> 앱 실행 중
-                    </span>
-                  ) : (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 font-bold border border-yellow-500/40">
-                      브라우저 모드
-                    </span>
-                  )}
-                </div>
-
-                {/* 혜택 3종 그리드 */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 py-0.5">
-                  <div className="p-2 rounded-xl bg-slate-900/80 border border-slate-800/80 text-xs space-y-0.5">
-                    <div className="font-bold text-emerald-300 flex items-center gap-1 text-[11px]">
-                      <Smartphone className="w-3.5 h-3.5" /> 원클릭 바로가기
-                    </div>
-                    <p className="text-[10px] text-slate-400">바탕화면/홈에 NURIOH 생성</p>
-                  </div>
-                  <div className="p-2 rounded-xl bg-slate-900/80 border border-slate-800/80 text-xs space-y-0.5">
-                    <div className="font-bold text-emerald-300 flex items-center gap-1 text-[11px]">
-                      <Monitor className="w-3.5 h-3.5" /> 풀스크린 대시보드
-                    </div>
-                    <p className="text-[10px] text-slate-400">주소창 없는 단독 앱 창</p>
-                  </div>
-                  <div className="p-2 rounded-xl bg-slate-900/80 border border-slate-800/80 text-xs space-y-0.5">
-                    <div className="font-bold text-emerald-300 flex items-center gap-1 text-[11px]">
-                      <Volume2 className="w-3.5 h-3.5" /> 백그라운드 알림
-                    </div>
-                    <p className="text-[10px] text-slate-400">창을 내려도 사운드 수신</p>
-                  </div>
-                </div>
-
-                {/* 원클릭 설치 버튼 */}
-                <button
-                  type="button"
-                  onClick={handleInstallApp}
-                  className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-500/25 active:scale-98"
-                >
-                  <Download className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span>{isStandalone ? '전용 앱 재설치 / 바로가기 확인' : '📲 지금 바로 PC / 모바일에 전용 앱 설치하기'}</span>
-                </button>
-              </div>
-
-              {/* 2. 🔊 실시간 트레이딩 사운드(소리) 효과음 알림 카드 */}
-              <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-950/70 border border-indigo-500/40 space-y-2.5 shadow-md shadow-indigo-500/10">
+              {/* 1. 🔊 실시간 트레이딩 사운드(소리) 효과음 알림 카드 */}
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-950/70 border border-amber-500/40 space-y-2.5 shadow-md shadow-amber-500/10">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                   <div className="flex items-center gap-2">
                     <div className="w-7 h-7 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center text-sm border border-amber-500/30">
                       🔊
                     </div>
                     <div>
-                      <h4 className="font-bold text-white text-xs sm:text-sm">실시간 사운드(소리) 효과음 알림</h4>
-                      <p className="text-[10px] text-slate-400">급등 포착, 매수 체결, 익절/손절 시 0.001초 즉각 사운드</p>
+                      <h4 className="font-bold text-white text-xs sm:text-sm">실시간 사운드(소리) 효과음 설정</h4>
+                      <p className="text-[10px] text-slate-400">급등 포착, 매수 체결, 익절/손절 시 실시간 사운드 알림</p>
                     </div>
                   </div>
 
@@ -1357,21 +1308,21 @@ export default function MyPageModal({
                   <button
                     type="button"
                     onClick={handleToggleSound}
-                    className={`px-2.5 py-1 rounded-xl border text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                    className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-md active:scale-95 ${
                       soundEnabled
-                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm'
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-amber-500/10'
                         : 'bg-slate-900 text-slate-500 border-slate-800'
                     }`}
                     title={soundEnabled ? '클릭하여 무음으로 전환' : '클릭하여 소리 알림 켜기'}
                   >
                     {soundEnabled ? (
                       <>
-                        <Volume2 className="w-3.5 h-3.5 text-amber-400" />
+                        <Volume2 className="w-4 h-4 text-amber-400" />
                         <span>소리 켜짐 (ON)</span>
                       </>
                     ) : (
                       <>
-                        <VolumeX className="w-3.5 h-3.5 text-slate-500" />
+                        <VolumeX className="w-4 h-4 text-slate-500" />
                         <span>무음 (OFF)</span>
                       </>
                     )}
@@ -1447,6 +1398,62 @@ export default function MyPageModal({
                     </button>
                   </div>
                 </div>
+              </div>
+
+              {/* 2. 📱 PC & 모바일 전용 앱(PWA) 원클릭 설치 안내 카드 */}
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-950/70 border border-emerald-500/40 space-y-2.5 shadow-md shadow-emerald-500/10">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-sm border border-emerald-500/30">
+                      📲
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-white text-xs sm:text-sm">PC &amp; 모바일 전용 앱(PWA) 안내</h4>
+                      <p className="text-[10px] text-slate-400">앱스토어 다운로드 없이 바탕화면 &amp; 홈 화면에 바로 설치</p>
+                    </div>
+                  </div>
+                  {isStandalone ? (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40 flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> 앱 실행 중
+                    </span>
+                  ) : (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 font-bold border border-yellow-500/40">
+                      브라우저 모드
+                    </span>
+                  )}
+                </div>
+
+                {/* 혜택 3종 그리드 */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 py-0.5">
+                  <div className="p-2 rounded-xl bg-slate-900/80 border border-slate-800/80 text-xs space-y-0.5">
+                    <div className="font-bold text-emerald-300 flex items-center gap-1 text-[11px]">
+                      <Smartphone className="w-3.5 h-3.5" /> 원클릭 바로가기
+                    </div>
+                    <p className="text-[10px] text-slate-400">바탕화면/홈에 Any Life AI 생성</p>
+                  </div>
+                  <div className="p-2 rounded-xl bg-slate-900/80 border border-slate-800/80 text-xs space-y-0.5">
+                    <div className="font-bold text-emerald-300 flex items-center gap-1 text-[11px]">
+                      <Monitor className="w-3.5 h-3.5" /> 풀스크린 대시보드
+                    </div>
+                    <p className="text-[10px] text-slate-400">주소창 없는 단독 앱 창</p>
+                  </div>
+                  <div className="p-2 rounded-xl bg-slate-900/80 border border-slate-800/80 text-xs space-y-0.5">
+                    <div className="font-bold text-emerald-300 flex items-center gap-1 text-[11px]">
+                      <Volume2 className="w-3.5 h-3.5" /> 백그라운드 알림
+                    </div>
+                    <p className="text-[10px] text-slate-400">창을 내려도 사운드 수신</p>
+                  </div>
+                </div>
+
+                {/* 원클릭 설치 버튼 */}
+                <button
+                  type="button"
+                  onClick={handleInstallApp}
+                  className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-500/25 active:scale-98"
+                >
+                  <Download className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>{isStandalone ? '전용 앱 재설치 / 바로가기 확인' : '📲 지금 바로 PC / 모바일에 전용 앱 설치하기'}</span>
+                </button>
               </div>
             </div>
           )}

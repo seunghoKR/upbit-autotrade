@@ -75,9 +75,7 @@ export const DEFAULT_MODE_PRESETS = {
 export const generateDefaultSlotsForPreset = (commonConfig) => {
   const result = [];
   for (let id = 1; id <= 12; id++) {
-    let mode = 'SCALPING';
-    if (id >= 9 && id <= 10) mode = 'BREAKOUT';
-    else if (id >= 11 && id <= 12) mode = 'SWING';
+    let mode = commonConfig.strategyMode || 'SCALPING';
 
     result.push({
       slotId: id,
@@ -177,7 +175,7 @@ export default function PresetStrategyModal({
           useAtrStopLoss: s.useAtrStopLoss !== undefined ? s.useAtrStopLoss : mergedCommon.useAtrStopLoss,
           surgeRatePct: s.surgeRatePct || mergedCommon.surgeRatePct,
           surgeMinVolumeKrw: s.surgeMinVolumeKrw || mergedCommon.surgeMinVolumeKrw,
-          breakoutHighEnabled: s.breakoutHighEnabled !== undefined ? s.breakoutHighEnabled : (s.slotId >= 9 && s.slotId <= 10),
+          breakoutHighEnabled: s.breakoutHighEnabled !== undefined ? s.breakoutHighEnabled : (s.strategyMode === 'BREAKOUT' || s.strategyMode === 'BREAKOUT_DAY_HIGH'),
           breakoutCandleUnit: s.breakoutCandleUnit || mergedCommon.breakoutCandleUnit,
           breakoutMinVolumeKrwEok: s.breakoutMinVolumeKrwEok || mergedCommon.breakoutMinVolumeKrwEok,
           swingCandleUnit: s.swingCandleUnit || 'days',

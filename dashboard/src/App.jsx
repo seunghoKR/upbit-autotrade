@@ -18,9 +18,10 @@ import ApiRegistrationModal from './components/ApiRegistrationModal';
 import PricingModal from './components/PricingModal';
 import AdminUserManagement from './components/AdminUserManagement';
 
-// 🛠️ 개발자 모드 스위처 & 📊 사이트 운영자 대시보드 & 🛠️ 개발자 시스템 대시보드
+// 🛠️ 개발자 모드 스위처 & 📊 사이트 운영자 대시보드 & 🛠️ 개발자 시스템 대시보드 & 🎯 추천전략 스튜디오
 import DevModeSwitcher from './components/DevModeSwitcher';
 import OperatorDashboardModal from './components/OperatorDashboardModal';
+import OperatorStrategyStudio from './components/OperatorStrategyStudio';
 import DeveloperDashboardModal from './components/DeveloperDashboardModal';
 import MyPageModal from './components/MyPageModal';
 import ManualModal from './components/ManualModal';
@@ -64,26 +65,38 @@ import { upbitClientEngine } from './services/upbitWsService';
 
 import LandingPage from './components/LandingPage';
 
-// 🛠️ 기본 1~9번 분산 트레이딩 슬롯 템플릿 (어떤 상황에서도 슬롯이 비어있지 않도록 보장)
-const DEFAULT_SLOTS = [
-  // 1~8번: 초단타 스캘핑 (모드 A) - 안전을 위해 기본 OFF 상태 유지
-  { id: 1, slotId: 1, slotName: '1번 주력 슬롯', strategyMode: 'SCALPING', isEnabled: false, targetMarket: 'KRW-BTC', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, targetProfitPct: 3.0, trailingCallbackPct: 0.5, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 2, slotId: 2, slotName: '2번 알트 슬롯', strategyMode: 'SCALPING', isEnabled: false, targetMarket: 'KRW-ETH', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, targetProfitPct: 3.0, trailingCallbackPct: 0.5, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 3, slotId: 3, slotName: '3번 급등 슬롯', strategyMode: 'SCALPING', isEnabled: false, targetMarket: 'KRW-SOL', tradeAmountKrw: 30000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, targetProfitPct: 3.0, trailingCallbackPct: 0.5, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 4, slotId: 4, slotName: '4번 리플 슬롯', strategyMode: 'SCALPING', isEnabled: false, targetMarket: 'KRW-XRP', tradeAmountKrw: 30000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, targetProfitPct: 3.0, trailingCallbackPct: 0.5, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 5, slotId: 5, slotName: '5번 보조 슬롯', strategyMode: 'SCALPING', isEnabled: false, targetMarket: 'KRW-DOGE', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, targetProfitPct: 3.0, trailingCallbackPct: 0.5, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 6, slotId: 6, slotName: '6번 보조 슬롯', strategyMode: 'SCALPING', isEnabled: false, targetMarket: 'KRW-ADA', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, targetProfitPct: 3.0, trailingCallbackPct: 0.5, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 7, slotId: 7, slotName: '7번 보조 슬롯', strategyMode: 'SCALPING', isEnabled: false, targetMarket: 'KRW-AVAX', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, targetProfitPct: 3.0, trailingCallbackPct: 0.5, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 8, slotId: 8, slotName: '8번 보조 슬롯', strategyMode: 'SCALPING', isEnabled: false, targetMarket: 'KRW-DOT', tradeAmountKrw: 20000, strategyType: 'RECOMMENDED', surgeWindowSeconds: 5, surgeRatePct: 1.5, surgeMinVolumeKrw: 10000000, useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, targetProfitPct: 3.0, trailingCallbackPct: 0.5, stopLossPct: 2.0, positionStatus: 'IDLE' },
-
-  // 9~10번: 당일 신고가 돌파 (모드 B) - 안전을 위해 기본 OFF 상태 유지
-  { id: 9, slotId: 9, slotName: '9번 돌파 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutHighEnabled: true, breakoutCandleUnit: 1, breakoutMinVolumeKrwEok: 5, isEnabled: false, targetMarket: 'KRW-NEAR', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, targetProfitPct: 3.0, trailingCallbackPct: 0.5, stopLossPct: 2.0, positionStatus: 'IDLE' },
-  { id: 10, slotId: 10, slotName: '10번 돌파 슬롯', strategyMode: 'BREAKOUT_DAY_HIGH', breakoutHighEnabled: true, breakoutCandleUnit: 1, breakoutMinVolumeKrwEok: 5, isEnabled: false, targetMarket: 'KRW-SUI', tradeAmountKrw: 50000, strategyType: 'RECOMMENDED', useWideTrailing: true, trailingTier1TargetProfitPct: 3.0, trailingTier1CallbackPct: 0.5, trailingTier2HurdlePct: 10.0, trailingTier2CallbackPct: 3.0, targetProfitPct: 3.0, trailingCallbackPct: 0.5, stopLossPct: 2.0, positionStatus: 'IDLE' },
-
-  // 11~12번: 정배열 추세 스윙 (모드 C) - 안전을 위해 기본 OFF 상태 유지
-  { id: 11, slotId: 11, slotName: '11번 스윙 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'days', swingShortMa: 5, swingLongMa: 20, isEnabled: false, targetMarket: 'KRW-BTC', tradeAmountKrw: 100000, strategyType: 'RECOMMENDED', useWideTrailing: true, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 12.0, trailingTier2CallbackPct: 3.5, targetProfitPct: 5.0, trailingCallbackPct: 1.0, stopLossPct: 3.0, positionStatus: 'IDLE' },
-  { id: 12, slotId: 12, slotName: '12번 스윙 슬롯', strategyMode: 'TREND_SWING', swingCandleUnit: 'minutes/240', swingShortMa: 5, swingLongMa: 20, isEnabled: false, targetMarket: 'KRW-ETH', tradeAmountKrw: 100000, strategyType: 'RECOMMENDED', useWideTrailing: true, trailingTier1TargetProfitPct: 5.0, trailingTier1CallbackPct: 1.0, trailingTier2HurdlePct: 12.0, trailingTier2CallbackPct: 3.5, targetProfitPct: 5.0, trailingCallbackPct: 1.0, stopLossPct: 3.0, positionStatus: 'IDLE' },
-];
+// 🛠️ 기본 1~12번 분산 트레이딩 슬롯 템플릿 (어떤 상황에서도 슬롯이 비어있지 않도록 보장)
+const DEFAULT_SLOTS = Array.from({ length: 12 }, (_, i) => {
+  const slotId = i + 1;
+  return {
+    id: slotId,
+    slotId: slotId,
+    slotName: `${slotId}번 슬롯`,
+    strategyMode: 'SCALPING',
+    isEnabled: false,
+    targetMarket: '',
+    tradeAmountKrw: 50000,
+    strategyType: 'RECOMMENDED',
+    surgeWindowSeconds: 5,
+    surgeRatePct: 1.5,
+    surgeMinVolumeKrw: 10000000,
+    useWideTrailing: true,
+    trailingTier1TargetProfitPct: 3.0,
+    trailingTier1CallbackPct: 0.5,
+    trailingTier2HurdlePct: 10.0,
+    trailingTier2CallbackPct: 3.0,
+    targetProfitPct: 3.0,
+    trailingCallbackPct: 0.5,
+    stopLossPct: 2.0,
+    positionStatus: 'IDLE',
+    breakoutHighEnabled: true,
+    breakoutCandleUnit: 1,
+    breakoutMinVolumeKrwEok: 5,
+    swingCandleUnit: 'days',
+    swingShortMa: 5,
+    swingLongMa: 20
+  };
+});
 
 // 🧪 연구실(LAB) 기본 최고 개발자 마스터 계정 템플릿 (이승호 대표님 실계정 연동)
 const LAB_DEV_USER = {
@@ -129,6 +142,7 @@ export default function App() {
   const [isPricingOpen, setIsPricingOpen] = useState(false);
   const [isAdminUsersOpen, setIsAdminUsersOpen] = useState(false);
   const [isOperatorDashboardOpen, setIsOperatorDashboardOpen] = useState(false);
+  const [isOperatorStudioOpen, setIsOperatorStudioOpen] = useState(false);
   const [isDevDashboardOpen, setIsDevDashboardOpen] = useState(false);
   const [is2FAModalOpen, setIs2FAModalOpen] = useState(false);
   const [is2FAActive, setIs2FAActive] = useState(false);
@@ -223,6 +237,16 @@ export default function App() {
     } catch (e) {}
     return DEFAULT_PERIOD_SLOTS;
   });
+
+  // 🛡️ 미저장 변경사항 보호 가드 함수 (헤더 메뉴 이동, 팝업 오픈, 모드 전환 시 경고)
+  const guardUnsaved = (actionCallback) => {
+    if (typeof window !== 'undefined' && window.__HAS_UNSAVED_CHANGES__) {
+      const confirmed = window.confirm("⚠️ 수정 중인 설정 내용이 아직 저장되지 않았습니다!\n\n저장하지 않고 다른 메뉴나 화면으로 이동하시겠습니까?");
+      if (!confirmed) return;
+      window.__HAS_UNSAVED_CHANGES__ = false;
+    }
+    if (actionCallback) actionCallback();
+  };
 
   const handleOpenTableEdit = (periodKey) => {
     setEditingPeriod(periodKey || 'MORNING');
@@ -709,10 +733,10 @@ export default function App() {
               entryAmountKrw: hasPosition ? (rawAmount > 0 ? rawAmount : (entryPrice && rawEntryVolume ? entryPrice * rawEntryVolume : null)) : null,
               highestPrice: highestPrice,
               highestProfitPct: highestProfitPct,
-              targetMarket: (isRecentlyUpdated && currentLocalSlot?.targetMarket) ? currentLocalSlot.targetMarket : (s.targetMarket || 'KRW-BTC'),
+              targetMarket: (isRecentlyUpdated && currentLocalSlot?.targetMarket !== undefined) ? currentLocalSlot.targetMarket : (s.targetMarket ?? s.target_market ?? ''),
               strategyMode: (isRecentlyUpdated && currentLocalSlot?.strategyMode)
                 ? currentLocalSlot.strategyMode
-                : (s.strategyMode || s.strategy_mode || (s.slotId <= 8 ? 'SCALPING' : (s.slotId <= 10 ? 'BREAKOUT_DAY_HIGH' : 'TREND_SWING'))),
+                : (s.strategyMode || s.strategy_mode || 'SCALPING'),
               surgeBaseMode: (isRecentlyUpdated && currentLocalSlot?.surgeBaseMode)
                 ? currentLocalSlot.surgeBaseMode
                 : (s.surgeBaseMode || s.surge_base_mode || 'VWAP'),
@@ -1842,13 +1866,11 @@ export default function App() {
       try {
         const res = await sellSlotPosition(slotId, { userId, currentPrice, unlinkOnly: true });
 
-        // ⚡ 슬롯 0초 즉각 비우기 및 기본 코인 재설정 (Optimistic Instant Clear)
-        const defaultMarkets = { 1: 'KRW-BTC', 2: 'KRW-ETH', 3: 'KRW-SOL', 4: 'KRW-XRP', 5: 'KRW-DOGE', 6: 'KRW-ADA', 7: 'KRW-AVAX', 8: 'KRW-DOT', 9: 'KRW-NEAR' };
+        // ⚡ 슬롯 0초 즉각 비우기 (Optimistic Instant Clear - 코인/전략 설정 유지)
         setSlots(prev => {
           const updated = prev.map(s => s.slotId === slotId ? {
             ...s,
             positionStatus: 'IDLE',
-            targetMarket: defaultMarkets[slotId] || 'KRW-BTC',
             entryPrice: null,
             entryVolume: null,
             entryAmountKrw: null,
@@ -2192,7 +2214,7 @@ export default function App() {
         trailingTier2HurdlePct: s.trailingTier2HurdlePct !== undefined ? s.trailingTier2HurdlePct : 10.0,
         trailingTier2CallbackPct: s.trailingTier2CallbackPct !== undefined ? s.trailingTier2CallbackPct : 3.0,
         useAtrStopLoss: s.useAtrStopLoss || false,
-        breakoutHighEnabled: s.breakoutHighEnabled !== undefined ? s.breakoutHighEnabled : (s.slotId >= 9 && s.slotId <= 10),
+        breakoutHighEnabled: s.breakoutHighEnabled !== undefined ? s.breakoutHighEnabled : (s.strategyMode === 'BREAKOUT' || s.strategyMode === 'BREAKOUT_DAY_HIGH'),
         breakoutCandleUnit: s.breakoutCandleUnit || 1,
         breakoutMinVolumeKrwEok: s.breakoutMinVolumeKrwEok || 5,
         swingCandleUnit: s.swingCandleUnit || 'days',
@@ -2495,18 +2517,18 @@ export default function App() {
           onToggleBot={handleToggleBot}
           onOpen2FA={() => setIs2FAModalOpen(true)}
           is2FAActive={is2FAActive}
-          onOpenOperatorDashboard={() => setIsOperatorDashboardOpen(true)}
-          onOpenAdmin={() => setIsAdminUsersOpen(true)}
-          onOpenMyPage={() => setIsMyPageOpen(true)}
-          onOpenManual={() => setIsManualOpen(true)}
-          onOpenNotice={() => setIsNoticeModalOpen(true)}
-          onLogout={handleLogout}
-          onRefresh={handleHardRefresh}
+          onOpenOperatorDashboard={() => guardUnsaved(() => setIsOperatorStudioOpen(true))}
+          onOpenAdmin={() => guardUnsaved(() => setIsAdminUsersOpen(true))}
+          onOpenMyPage={() => guardUnsaved(() => setIsMyPageOpen(true))}
+          onOpenManual={() => guardUnsaved(() => setIsManualOpen(true))}
+          onOpenNotice={() => guardUnsaved(() => setIsNoticeModalOpen(true))}
+          onLogout={() => guardUnsaved(handleLogout)}
+          onRefresh={() => guardUnsaved(handleHardRefresh)}
           marketCount={marketCount}
           btcProtection={btcProtection}
           activeBuyRestriction={activeBuyRestriction}
           strategyViewMode={strategyViewMode}
-          onToggleStrategyMode={handleToggleStrategyMode}
+          onToggleStrategyMode={() => guardUnsaved(handleToggleStrategyMode)}
         />
 
         {/* 🌅 장세 모드 실시간 앰비언트 글로우 라인 (오전: 앰버 골드 | 오후: 스카이 블루 | 야간: 인디고 바이올렛) */}
@@ -2599,70 +2621,82 @@ export default function App() {
 
       {/* 메인 콘텐츠 영역 (PC 모드: 화면 너비의 90% 고정 레이아웃) */}
       <main className="flex-1 app-container-80 px-3 sm:px-4 py-4 sm:py-6 space-y-6 max-w-full min-w-0 relative z-10">
-        {/* 1. 💰 업비트 자산 동기화 섹션 (계좌 잔고 요약 카드) */}
-        <BalanceCard 
-          accounts={accounts} 
-          slots={visibleSlots}
-          livePriceMap={livePriceMap} 
-          serverIp={serverIp} 
-          accountError={accountError}
-          onOpenApiModal={() => setIsApiModalOpen(true)}
-          marketCount={marketCount}
-          strategyViewMode={strategyViewMode}
-        />
-
-        {/* 2. ⚡ 글로벌 통합 제어 타워 (오전 / 오후 / 야간 모드 섹션 & 스케줄러 & 킬 스위치) */}
-        <GlobalControlPanel
-          schedulerData={schedulerData}
-          killSwitchData={killSwitchData}
-          slots={effectiveSlots}
-          onSwitchPreset={handleSwitchPreset}
-          onUpdateTimetable={handleUpdateTimetable}
-          onSwitchMode={handleSwitchStrategyMode}
-          onSaveCurrentSlotsToPreset={handleSaveCurrentSlotsToPreset}
-          onSaveCustomPreset={handleSaveCustomPreset}
-          onLoadPresetToSlots={handleLoadPresetToSlots}
-          onUpdateKillSwitch={handleUpdateKillSwitch}
-          strategyViewMode={strategyViewMode}
-          onToggleStrategyMode={handleToggleStrategyMode}
-          isDevMode={currentUser?.role === 'DEVELOPER' || currentUser?.role === 'ADMIN'}
-          onOpenTableEdit={handleOpenTableEdit}
-          activePeriodOverride={activePeriod}
-        />
-
-        {/* 🎛️ 1~12번 독립 멀티 슬롯 분산 트레이딩 매니저 (1~12번 슬롯 카드 그리드 복원) */}
-        <div id="slot-manager-container">
-          <SlotManager
-            slots={visibleSlots}
-            onUpdateSlot={handleUpdateSlot}
-            onSellSlot={handleSellSlot}
-            onResetSlotStats={handleResetSlotStats}
-            onImportCoin={handleImportCoin}
-            accounts={accounts}
-            livePriceMap={livePriceMap}
-            botRunning={botRunning}
-            onToggleBot={handleToggleBot}
-            onTriggerMockSurge={handleTriggerMockSurge}
-            pendingSurgeCountdowns={pendingSurgeCountdowns}
-            selectedSlotId={selectedSlotId}
-            onSelectSlot={setSelectedSlotId}
-            krwBalance={parseFloat(accounts.find(a => a.currency === 'KRW')?.balance || '0')}
-            currentUser={currentUser}
-            strategyViewMode={strategyViewMode}
-            viewMode={slotViewMode}
-            editingPeriod={editingPeriod}
-            onCloseTableEdit={() => setSlotViewMode('MONITOR')}
-            onSaveTableEdit={handleSaveTableEdit}
-            onChangePeriod={(period) => setEditingPeriod(period)}
-            periodSlots={periodSlotsMap[editingPeriod]}
-            periodSlotsMap={periodSlotsMap}
-            currentPeriod={(schedulerData?.currentPeriod || 'MORNING').toUpperCase()}
+        {isOperatorStudioOpen ? (
+          <OperatorStrategyStudio
+            onClose={() => setIsOperatorStudioOpen(false)}
+            currentSettings={settings}
+            onSaveSettings={handleSaveSettings}
+            excludedMarkets={settings?.EXCLUDED_MARKETS || []}
+            userSelfSlotsMap={periodSlotsMap}
           />
-        </div>
+        ) : (
+          <>
+          {/* 1. 💰 업비트 자산 동기화 섹션 (계좌 잔고 요약 카드) */}
+          <BalanceCard 
+            accounts={accounts} 
+            slots={visibleSlots}
+            livePriceMap={livePriceMap} 
+            serverIp={serverIp} 
+            accountError={accountError}
+            onOpenApiModal={() => setIsApiModalOpen(true)}
+            marketCount={marketCount}
+            strategyViewMode={strategyViewMode}
+          />
 
-        {/* 🌟 Any Life AI 브랜드 소개 및 핵심 기능 자랑 쇼케이스 배너 */}
-        <BrandShowcaseBanner marketCount={marketCount} />
-      </main>
+          {/* 2. ⚡ 글로벌 통합 제어 타워 (오전 / 오후 / 야간 모드 섹션 & 스케줄러 & 킬 스위치) */}
+          <GlobalControlPanel
+            schedulerData={schedulerData}
+            killSwitchData={killSwitchData}
+            slots={effectiveSlots}
+            onSwitchPreset={handleSwitchPreset}
+            onUpdateTimetable={handleUpdateTimetable}
+            onSwitchMode={handleSwitchStrategyMode}
+            onSaveCurrentSlotsToPreset={handleSaveCurrentSlotsToPreset}
+            onSaveCustomPreset={handleSaveCustomPreset}
+            onLoadPresetToSlots={handleLoadPresetToSlots}
+            onUpdateKillSwitch={handleUpdateKillSwitch}
+            strategyViewMode={strategyViewMode}
+            onToggleStrategyMode={handleToggleStrategyMode}
+            isDevMode={currentUser?.role === 'DEVELOPER' || currentUser?.role === 'ADMIN'}
+            onOpenTableEdit={handleOpenTableEdit}
+            activePeriodOverride={activePeriod}
+          />
+
+          {/* 🎛️ 1~12번 독립 멀티 슬롯 분산 트레이딩 매니저 (1~12번 슬롯 카드 그리드 복원) */}
+          <div id="slot-manager-container">
+            <SlotManager
+              slots={visibleSlots}
+              onUpdateSlot={handleUpdateSlot}
+              onSellSlot={handleSellSlot}
+              onResetSlotStats={handleResetSlotStats}
+              onImportCoin={handleImportCoin}
+              accounts={accounts}
+              livePriceMap={livePriceMap}
+              botRunning={botRunning}
+              onToggleBot={handleToggleBot}
+              onTriggerMockSurge={handleTriggerMockSurge}
+              pendingSurgeCountdowns={pendingSurgeCountdowns}
+              selectedSlotId={selectedSlotId}
+              onSelectSlot={setSelectedSlotId}
+              krwBalance={parseFloat(accounts.find(a => a.currency === 'KRW')?.balance || '0')}
+              currentUser={currentUser}
+              strategyViewMode={strategyViewMode}
+              viewMode={slotViewMode}
+              editingPeriod={editingPeriod}
+              onCloseTableEdit={() => setSlotViewMode('MONITOR')}
+              onSaveTableEdit={handleSaveTableEdit}
+              onChangePeriod={(period) => setEditingPeriod(period)}
+              periodSlots={periodSlotsMap[editingPeriod]}
+              periodSlotsMap={periodSlotsMap}
+              currentPeriod={(schedulerData?.currentPeriod || 'MORNING').toUpperCase()}
+            />
+          </div>
+
+          {/* 🌟 Any Life AI 브랜드 소개 및 핵심 기능 자랑 쇼케이스 배너 */}
+          <BrandShowcaseBanner marketCount={marketCount} />
+        </>
+      )}
+    </main>
 
       {/* 🛠️ 개발자용 등급별 원클릭 모드 전환 스위처 & 개발자 대시보드 진입점 */}
       <DevModeSwitcher

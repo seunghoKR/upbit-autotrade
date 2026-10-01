@@ -539,13 +539,15 @@ class MarketScheduler {
   }
 
   /**
-   * 슬롯 타입 및 ID에 맞춘 파라미터 추출 (A모드 / B모드 분기 반영)
+   * 슬롯 타입 및 전략 모드에 맞춘 파라미터 추출
+   * (슬롯 번호 강제 할당 제거: 사용자가 설정한 strategyMode를 절대 존중)
    */
   extractParamsForSlot(slotId, strategyMode, preset) {
+    const mode = (strategyMode || 'SCALPING').toUpperCase();
+
     // B모드(방망이 분할 모드)일 경우
     if (this.globalStrategyMode === 'MODE_B') {
-      if (slotId <= 8) {
-        // 1~8번: 돌파 단기 타겟 (1단 5% 익절 후 즉시 청산, 2단 진입 방지 트릭)
+      if (mode === 'BREAKOUT' || mode === 'BREAKOUT_DAY_HIGH') {
         return {
           strategyMode: 'BREAKOUT_DAY_HIGH',
           breakoutHighEnabled: true,
@@ -559,10 +561,9 @@ class MarketScheduler {
           trailingTier2CallbackPct: 99.0,
           stopLossPct: 2.0
         };
-      } else {
-        // 9~12번: 10~20% 장기 타겟 와이드 트레일링
+      } else if (mode === 'SWING' || mode === 'TREND_SWING') {
         return {
-          strategyMode: slotId <= 10 ? 'BREAKOUT_DAY_HIGH' : 'TREND_SWING',
+          strategyMode: 'TREND_SWING',
           breakoutHighEnabled: true,
           breakoutCandleUnit: 3,
           breakoutMinVolumeKrwEok: 8,
@@ -577,24 +578,35 @@ class MarketScheduler {
           trailingTier2CallbackPct: 5.0,
           stopLossPct: 3.5
         };
+      } else {
+        return {
+          strategyMode: 'SCALPING',
+          useWideTrailing: false,
+          targetProfitPct: 3.0,
+          trailingTier1TargetProfitPct: 3.0,
+          trailingTier1CallbackPct: 0.5,
+          trailingTier2HurdlePct: 999.0,
+          trailingTier2CallbackPct: 99.0,
+          stopLossPct: 2.0
+        };
       }
     }
 
-    // A모드 (하이브리드: 1~8 스캘핑, 9~10 돌파, 11~12 스윙)
-    if (slotId <= 8) {
-      return {
-        strategyMode: 'SCALPING',
-        ...preset.scalping
-      };
-    } else if (slotId <= 10) {
+    // 일반 모드 (사용자의 strategyMode에 맞는 프리셋 적용)
+    if (mode === 'BREAKOUT' || mode === 'BREAKOUT_DAY_HIGH') {
       return {
         strategyMode: 'BREAKOUT_DAY_HIGH',
-        ...preset.breakout
+        ...(preset?.breakout || {})
+      };
+    } else if (mode === 'SWING' || mode === 'TREND_SWING') {
+      return {
+        strategyMode: 'TREND_SWING',
+        ...(preset?.swing || {})
       };
     } else {
       return {
-        strategyMode: 'TREND_SWING',
-        ...preset.swing
+        strategyMode: 'SCALPING',
+        ...(preset?.scalping || {})
       };
     }
   }
