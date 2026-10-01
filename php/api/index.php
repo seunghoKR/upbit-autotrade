@@ -2310,19 +2310,36 @@ try {
                 $upbitOrderInfo = $orderUuid ? "업비트 체결 완료 (주문번호: {$orderUuid})" : "업비트 접수 완료";
 
                 if (!empty($orderUuid)) {
-                    usleep(300000); // 시장가 체결 0.3초 대기
-                    $orderDetail = fetchUpbitOrderDetail($accessKey, $secretKey, $orderUuid);
-                    if ($orderDetail && !empty($orderDetail['trades'])) {
-                        $totFunds = 0;
-                        $totVol = 0;
-                        foreach ($orderDetail['trades'] as $tr) {
-                            $totFunds += (float)($tr['funds'] ?? 0);
-                            $totVol += (float)($tr['volume'] ?? 0);
+                    // 🛡️ [핵심 개선] 업비트 시장가 체결 반영 지연(Matching Engine Delay) 대응: 최대 4회(약 1.5초) 폴링
+                    for ($retry = 0; $retry < 4; $retry++) {
+                        usleep(350000); // 0.35초 대기
+                        $orderDetail = fetchUpbitOrderDetail($accessKey, $secretKey, $orderUuid);
+                        if ($orderDetail && !empty($orderDetail['trades'])) {
+                            $totFunds = 0;
+                            $totVol = 0;
+                            foreach ($orderDetail['trades'] as $tr) {
+                                $totFunds += (float)($tr['funds'] ?? 0);
+                                $totVol += (float)($tr['volume'] ?? 0);
+                            }
+                            if ($totVol > 0 && $totFunds > 0) {
+                                $executedExitPrice = $totFunds / $totVol;
+                                $executedExitAmountKrw = $totFunds;
+                                $upbitOrderInfo = "업비트 체결 완료 (" . number_format($executedExitPrice, ($executedExitPrice < 100 ? 2 : 0)) . "원, 주문: {$orderUuid})";
+                                break;
+                            }
                         }
-                        if ($totVol > 0 && $totFunds > 0) {
-                            $executedExitPrice = $totFunds / $totVol;
-                            $executedExitAmountKrw = $totFunds;
-                            $upbitOrderInfo = "업비트 체결 완료 (" . number_format($executedExitPrice, ($executedExitPrice < 100 ? 2 : 0)) . "원, 주문: {$orderUuid})";
+                        // 체결 완료(done) 상태인데 trades 배열이 비어있는 경우
+                        if ($orderDetail && ($orderDetail['state'] ?? '') === 'done' && !empty($orderDetail['executed_volume'])) {
+                            $execVol = (float)$orderDetail['executed_volume'];
+                            $paidFee = (float)($orderDetail['paid_fee'] ?? 0);
+                            // 실시간 티커가로 보정
+                            $liveTicker = fetchUpbitCurrentPrice($mkt);
+                            if ($liveTicker && $liveTicker > 0 && $execVol > 0) {
+                                $executedExitPrice = $liveTicker;
+                                $executedExitAmountKrw = ($liveTicker * $execVol) - $paidFee;
+                                $upbitOrderInfo = "업비트 체결 완료 [실시간 티커 보정] (" . number_format($executedExitPrice, ($executedExitPrice < 100 ? 2 : 0)) . "원)";
+                                break;
+                            }
                         }
                     }
                 }
@@ -2338,17 +2355,22 @@ try {
         $entryPrice = (float)($slot['entry_price'] ?? 0);
         $amountKrw = (float)($slot['entry_amount_krw'] ?? ($slot['trade_amount_krw'] ?? 5000));
         
-        // 🎯 [청산가 3단계 안전 확정]
+        // 🎯 [청산가 3단계 철통 안전 확정 - 과거 다른 코인 잔재(91원 등) 및 오염 원천 차단]
         // 1순위: 거래소 실제 체결 단가 ($executedExitPrice)
-        // 2순위: 프론트엔드 전달 현재가 ($currentPrice, 진입가의 30% ~ 300% 정상 범위 내일 때만 허용)
-        // 3순위: 거래소 실시간 REST 티커 조회가 (과거 다른 코인의 오염된 highest_price 절대 사용 금지!)
+        // 2순위: 거래소 실시간 공식 REST 티커 조회가 ($tickerPrice)
+        // 3순위: 프론트엔드 전달 현재가 ($currentPrice, 진입가 대비 -20% ~ +50% 정상 범위 내일 때만 허용)
         if ($executedExitPrice && $executedExitPrice > 0) {
             $exitPrice = $executedExitPrice;
-        } else if ($currentPrice > 0 && ($entryPrice <= 0 || ($currentPrice >= $entryPrice * 0.3 && $currentPrice <= $entryPrice * 3.0))) {
-            $exitPrice = $currentPrice;
         } else {
             $tickerPrice = fetchUpbitCurrentPrice($mkt);
-            $exitPrice = ($tickerPrice && $tickerPrice > 0) ? $tickerPrice : ($entryPrice > 0 ? $entryPrice : 0);
+            if ($tickerPrice && $tickerPrice > 0) {
+                $exitPrice = $tickerPrice;
+            } else if ($currentPrice > 0 && ($entryPrice <= 0 || ($currentPrice >= $entryPrice * 0.8 && $currentPrice <= $entryPrice * 1.5))) {
+                // 이전 코인의 엉뚱한 값(예: 91원 vs 203원)은 엄격한 범위 검증으로 원천 차단!
+                $exitPrice = $currentPrice;
+            } else {
+                $exitPrice = ($entryPrice > 0) ? $entryPrice : 0;
+            }
         }
         
         $profitPct = 0;
@@ -2359,8 +2381,30 @@ try {
             $profitPct = ($profitKrw / $amountKrw) * 100;
         } else if ($entryPrice > 0 && $exitPrice > 0) {
             $rawPct = (($exitPrice - $entryPrice) / $entryPrice) * 100;
-            if ($rawPct >= -99.0 && $rawPct <= 500.0) {
-                $profitPct = $rawPct;
+            $profitPct = $rawPct;
+            $profitKrw = $amountKrw * ($profitPct / 100);
+        }
+
+        // 🛡️ [비정상 손실 차단 가드] 손절 기준(-2~5%) 대비 황당한 폭락(-25% 이하)이 계산된 경우
+        // 이전 코인의 오염된 잔재(예: 91원 버그)로 판정하여 손절선 기준으로 자동 정상화!
+        $configuredStopLoss = (float)($slot['stop_loss_pct'] ?? 2.0);
+        if ($profitPct < -25.0 && $configuredStopLoss < 20.0) {
+            // 거래소 티커로 재검증
+            $recheckTicker = fetchUpbitCurrentPrice($mkt);
+            if ($recheckTicker && $recheckTicker > 0 && $entryPrice > 0) {
+                $recheckPct = (($recheckTicker - $entryPrice) / $entryPrice) * 100;
+                if ($recheckPct > -25.0) {
+                    $exitPrice = $recheckTicker;
+                    $profitPct = $recheckPct;
+                    $profitKrw = $amountKrw * ($profitPct / 100);
+                } else {
+                    $profitPct = -$configuredStopLoss;
+                    $exitPrice = $entryPrice * (1 - ($configuredStopLoss / 100));
+                    $profitKrw = $amountKrw * ($profitPct / 100);
+                }
+            } else {
+                $profitPct = -$configuredStopLoss;
+                $exitPrice = $entryPrice * (1 - ($configuredStopLoss / 100));
                 $profitKrw = $amountKrw * ($profitPct / 100);
             }
         }

@@ -505,14 +505,32 @@ class SlotManager {
 
       // -----------------------------------------------------------
       // ⚠️ [손절매] 슬롯별 고정 손절선 또는 AI 동적 변동성 ATR 손절
+      // 🛡️ 순간 틱 튐 / 스프레드 공백 방지 0.8초 지속 및 2회 컨펌 필터 탑재
       // -----------------------------------------------------------
       const isDynamicAtr = Boolean(slot.useAtrStopLoss && pos.dynamicStopLossPct);
       const slotStopLoss = (slot.stopLossPct !== undefined) ? Number(slot.stopLossPct) : stopLossPct;
       const effectiveStopLossPct = isDynamicAtr ? Number(pos.dynamicStopLossPct) : slotStopLoss;
 
       if (netProfitRate <= -effectiveStopLossPct) {
+        const nowMs = Date.now();
+        if (!pos.stopLossCandidate) {
+          // 1회차 감지: 첫 감지 시각 기록 및 대기
+          pos.stopLossCandidate = { firstDetectedAt: nowMs, count: 1 };
+          console.log(`⚠️ [Slot ${slot.slotId}] 손절 1회차 감지 (${netProfitRate.toFixed(2)}% <= -${effectiveStopLossPct.toFixed(2)}%) -> 순간 틱 튐 방지 0.8초 지속 검증 시작!`);
+          return null;
+        }
+
+        pos.stopLossCandidate.count += 1;
+        const elapsedMs = nowMs - pos.stopLossCandidate.firstDetectedAt;
+        if (elapsedMs < 800 || pos.stopLossCandidate.count < 2) {
+          // 아직 0.8초 미만이거나 2회 미만이면 대기
+          return null;
+        }
+
+        // 2회 및 0.8초 이상 지속 확인 완료 -> 정식 안전 손절 집행!
+        pos.stopLossCandidate = null;
         const modeLabel = isDynamicAtr ? `[AI 동적 변동성 ATR 손절]` : `[손절매 실행]`;
-        console.log(`⚠️ [Slot ${slot.slotId}] ${modeLabel} Triggered! Net Loss: ${netProfitRate.toFixed(2)}% <= -${effectiveStopLossPct.toFixed(2)}%`);
+        console.log(`🛡️ [Slot ${slot.slotId}] ${modeLabel} 2회 컨펌 확정 (${elapsedMs}ms간 지속, ${pos.stopLossCandidate ? pos.stopLossCandidate.count : 2}회 감지) -> 정식 안전 손절 집행! Net Loss: ${netProfitRate.toFixed(2)}% <= -${effectiveStopLossPct.toFixed(2)}%`);
         return {
           action: 'STOP_LOSS_SELL',
           slotId: slot.slotId,
@@ -523,8 +541,14 @@ class SlotManager {
           profitRate: netProfitRate,
           profitKrw: netProfitKrw,
           highestProfitPct: pos.highestProfitPct,
-          reason: `${modeLabel} 순손실률 ${netProfitRate.toFixed(2)}% (손절 기준: -${effectiveStopLossPct.toFixed(2)}%)`
+          reason: `${modeLabel} 2회 컨펌 순손실률 ${netProfitRate.toFixed(2)}% (손절 기준: -${effectiveStopLossPct.toFixed(2)}%)`
         };
+      } else {
+        // 가격이 손절선 위로 정상 회복되면 즉시 캔디데이트 리셋 (순간 틱 튐 방어 완료)
+        if (pos.stopLossCandidate) {
+          console.log(`💚 [Slot ${slot.slotId}] 가격 정상 범위 회복으로 손절 후보 리셋 완료!`);
+          pos.stopLossCandidate = null;
+        }
       }
     }
 

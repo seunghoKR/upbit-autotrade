@@ -753,6 +753,13 @@ class StrategyEngine {
             slotManager.clearPosition(holding.slotId);
           }
         }
+
+        // ⚡ 매도 실제 체결 금액 및 오차 비동기 정밀 보정
+        if (orderResult && orderResult.uuid) {
+          const targetSlotId = signal.slotId || (slotManager.getHoldingSlot(signal.market) || {}).slotId;
+          const entryAmount = Number(signal.amount) || Number(signal.entryAmountKrw) || 50000;
+          this.syncRealSellOrderAveragePrice(targetSlotId, signal.market, orderResult.uuid, profitKrw, entryAmount);
+        }
       }
 
       signal.status = 'EXECUTED';
@@ -847,6 +854,48 @@ class StrategyEngine {
         } catch (e) {
           // Fallback 유지
         }
+      }
+    }, intervalMs);
+  }
+
+  /**
+   * 🔄 [매도 실체결 정밀 동기화] 시장가 매도 주문 체결 완료 대기 후 거래소 실제 체결가 및 실현손익 1원 단위 동기화
+   */
+  async syncRealSellOrderAveragePrice(slotId, market, orderUuid, estimatedProfitKrw, entryAmountKrw) {
+    if (!orderUuid) return;
+
+    const maxAttempts = 6;
+    const intervalMs = 500;
+    let attempts = 0;
+
+    const pollTimer = setInterval(async () => {
+      attempts++;
+      try {
+        const orderData = await upbitClient.getOrder(orderUuid);
+        if (orderData && (orderData.state === 'done' || orderData.state === 'cancel')) {
+          clearInterval(pollTimer);
+
+          if (Array.isArray(orderData.trades) && orderData.trades.length > 0) {
+            const totalFunds = orderData.trades.reduce((acc, t) => acc + Number(t.funds || (Number(t.price) * Number(t.volume))), 0);
+            const paidFee = Number(orderData.paid_fee || 0);
+            const netFunds = totalFunds - paidFee;
+            if (netFunds > 0 && entryAmountKrw > 0) {
+              const exactRealizedProfitKrw = netFunds - entryAmountKrw;
+              const diffKrw = exactRealizedProfitKrw - estimatedProfitKrw;
+              
+              // 킬스위치 및 통계 오차 보정
+              this.dailyKillSwitch.dailyRealizedProfitKrw += diffKrw;
+              console.log(`✅ [Slot ${slotId} 매도 실체결 확정] 실제 입금액 ${Math.round(netFunds).toLocaleString()}원, 정밀 실현손익: ${exactRealizedProfitKrw >= 0 ? '+' : ''}${Math.round(exactRealizedProfitKrw).toLocaleString()}원 (오차 보정: ${diffKrw >= 0 ? '+' : ''}${Math.round(diffKrw).toLocaleString()}원)`);
+            }
+          }
+          return;
+        }
+      } catch (err) {
+        // 순간 네트워크 오류 시 무시
+      }
+
+      if (attempts >= maxAttempts) {
+        clearInterval(pollTimer);
       }
     }, intervalMs);
   }

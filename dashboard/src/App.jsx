@@ -1035,12 +1035,19 @@ export default function App() {
         // 비정상 수익률 방어 (1000% 이상이면 데이터 오류)
         if (Math.abs(currentProfitPct) > 500) continue;
 
-        // 🛡️ Live slotTrackersRef를 통해 최고가/최고수익률 실시간 보존
-        if (!slotTrackersRef.current[slot.slotId]) {
+        // 🛡️ Live slotTrackersRef 마켓 교차 오염 영구 방지 (코인이 바뀌거나 진입가/최고가 괴리 시 즉시 재생성)
+        const existingTracker = slotTrackersRef.current[slot.slotId];
+        const isTrackerOutdated = !existingTracker ||
+          existingTracker.targetMarket !== slotMarket ||
+          (existingTracker.entryPrice > 0 && Math.abs(existingTracker.entryPrice - entryPrice) > (entryPrice * 0.15)) ||
+          (existingTracker.highestPrice < (entryPrice * 0.4)) ||
+          (existingTracker.highestPrice > (entryPrice * 5));
+
+        if (isTrackerOutdated) {
           slotTrackersRef.current[slot.slotId] = {
             entryPrice,
-            highestPrice: slot.highestPrice || entryPrice,
-            highestProfitPct: Math.max(slot.highestProfitPct || 0, currentProfitPct),
+            highestPrice: Math.max(entryPrice, tickPrice),
+            highestProfitPct: Math.max(0, currentProfitPct),
             targetMarket: slotMarket
           };
         }
@@ -1078,19 +1085,38 @@ export default function App() {
         const isStopLossHit = (currentProfitPct <= -stopLossPct);
 
         // 🛡️ [순간 틱 튐 / 스프레드 공백에 의한 손절 오발동 방지 필터]
-        // 트레일링 익절은 즉시 집행, 손절은 2회 연속 감지 시 안전 집행!
+        // 트레일링 익절은 즉시 집행, 손절은 0.8초 이상 지속 + 2회 이상 연속 감지 시 안전 집행!
         let canTriggerSell = false;
         if (isTrailingProfitHit) {
           canTriggerSell = true;
           delete stopLossConfirmRef.current[slot.slotId];
         } else if (isStopLossHit) {
-          const confirms = (stopLossConfirmRef.current[slot.slotId] || 0) + 1;
-          stopLossConfirmRef.current[slot.slotId] = confirms;
-          if (confirms >= 2) {
-            canTriggerSell = true;
+          const nowMs = Date.now();
+          const prevConfirm = stopLossConfirmRef.current[slot.slotId];
+          if (!prevConfirm || typeof prevConfirm !== 'object') {
+            // 1회차 감지: 첫 감지 시각 기록 및 대기
+            stopLossConfirmRef.current[slot.slotId] = {
+              firstDetectedAt: nowMs,
+              lastDetectedAt: nowMs,
+              count: 1
+            };
+            console.log(`⚠️ [손절 1회차 감지] 슬롯 ${slot.slotId} (${slot.targetMarket}): 손실률 ${currentProfitPct.toFixed(2)}% <= -${stopLossPct}% -> 순간 틱 튐 방지 0.8초 지속 검증 시작!`);
+          } else {
+            // 2회차 이상 감지: 첫 감지 후 800ms 이상 경과 및 2회 이상 감지 확인
+            prevConfirm.count += 1;
+            prevConfirm.lastDetectedAt = nowMs;
+            const sustainedMs = nowMs - prevConfirm.firstDetectedAt;
+            if (sustainedMs >= 800 && prevConfirm.count >= 2) {
+              canTriggerSell = true;
+              console.log(`🛡️ [손절 2회 컨펌 통과] 슬롯 ${slot.slotId} (${slot.targetMarket}): ${sustainedMs}ms간 손실 지속 확인 (${prevConfirm.count}회 틱 감지) -> 정식 안전 손절 집행!`);
+            }
           }
         } else {
-          delete stopLossConfirmRef.current[slot.slotId];
+          // 손절선 위로 정상 회복 시 즉시 컨펌 리셋 (순간 틱 튐 방어 완료)
+          if (stopLossConfirmRef.current[slot.slotId]) {
+            console.log(`💚 [순간 틱 튐 회복] 슬롯 ${slot.slotId} (${slot.targetMarket}): 정상 가격 회복으로 손절 카운트 리셋!`);
+            delete stopLossConfirmRef.current[slot.slotId];
+          }
         }
 
         if (canTriggerSell && !isExecutingSellRef.current[slot.slotId]) {
