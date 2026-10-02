@@ -207,6 +207,15 @@ export const haltUserBot = async (userId, operatorRole = 'OPERATOR') => {
   return res.data;
 };
 
+// ▶️ 회원 자동매매 거래 정상 재개 (봇 가동)
+export const resumeUserBot = async (userId, operatorRole = 'OPERATOR') => {
+  const res = await axios.post(`${API_BASE}/admin/users/${userId}/update`, {
+    action: 'RESUME_BOT',
+    operatorRole
+  });
+  return res.data;
+};
+
 // 🗑️ 회원 영구 삭제
 export const deleteAdminUser = async (userId, operatorRole = 'OPERATOR') => {
   const res = await axios.post(`${API_BASE}/admin/users/${userId}/delete`, {

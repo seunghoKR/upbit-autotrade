@@ -140,6 +140,146 @@ app.post('/api/admin/users/:userId/toggle', (req, res) => {
   }
 });
 
+// 👑 회원 통합 업데이트 (자격 중지, 재개, 긴급 봇 정지, 플랜/역할 변경)
+app.post('/api/admin/users/:userId/update', (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { action, operatorRole = 'OPERATOR' } = req.body;
+    const targetUser = userManager.users.get(Number(userId));
+
+    if (!targetUser) {
+      return res.status(404).json({ success: false, error: '회원을 찾을 수 없습니다.' });
+    }
+
+    // 운영자는 다른 운영자나 개발자를 수정/중지할 수 없음
+    if (operatorRole === 'OPERATOR' && ['OPERATOR', 'ADMIN', 'DEVELOPER'].includes(targetUser.role)) {
+      return res.status(403).json({ success: false, error: '운영자는 다른 운영자나 개발자의 자격을 변경할 수 없습니다.' });
+    }
+
+    // 🛑 긴급 봇 자동매매 정지 (HALT_BOT)
+    if (action === 'HALT_BOT') {
+      const updated = userManager.haltBot(userId);
+      return res.json({
+        success: true,
+        message: `회원 [${updated.name || updated.nickname}] 님의 모든 슬롯 자동매매가 긴급 중단(OFF)되었습니다! 🛑`,
+        isTradingActive: false,
+        activeSlotsCount: 0
+      });
+    }
+
+    // ▶️ 봇 자동매매 정상 재개 (RESUME_BOT)
+    if (action === 'RESUME_BOT') {
+      const updated = userManager.resumeBot(userId);
+      return res.json({
+        success: true,
+        message: `회원 [${updated.name || updated.nickname}] 님의 자동매매 거래가 정상 재개되었습니다! 🟢`,
+        isTradingActive: true,
+        activeSlotsCount: updated.maxSlots || 1
+      });
+    }
+
+    // 🚫 회원 자격 일시 중지 (SUSPEND)
+    if (action === 'SUSPEND' || req.body.approvalStatus === 'SUSPENDED') {
+      const updated = userManager.suspendUser(userId);
+      return res.json({
+        success: true,
+        message: `회원 [${updated.name || updated.nickname}] 님의 이용 자격이 일시 중지되었으며, 모든 슬롯 자동매매가 차단되었습니다. 🚫`,
+        approvalStatus: 'SUSPENDED',
+        isActive: false,
+        isTradingActive: false
+      });
+    }
+
+    // ✨ 회원 자격 정상 재개 (RESUME)
+    if (action === 'RESUME') {
+      const updated = userManager.resumeUser(userId);
+      return res.json({
+        success: true,
+        message: `회원 [${updated.name || updated.nickname}] 님의 이용 자격이 정상 재개(활성화)되었습니다! ✨`,
+        approvalStatus: 'APPROVED',
+        isActive: true,
+        isTradingActive: true
+      });
+    }
+
+    // 일반 플랜/역할/승인 변경
+    const updated = userManager.updateAdminUser(userId, req.body);
+    res.json({
+      success: true,
+      message: `회원 #${userId} 정보가 성공적으로 변경되었습니다.`,
+      user: updated
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// 🗑️ 회원 영구 삭제
+app.post('/api/admin/users/:userId/delete', (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { operatorRole = 'OPERATOR' } = req.body;
+    const targetUser = userManager.users.get(Number(userId));
+
+    if (!targetUser) {
+      return res.status(404).json({ success: false, error: '삭제할 회원을 찾을 수 없습니다.' });
+    }
+
+    if (Number(userId) === 1) {
+      return res.status(403).json({ success: false, error: '최고 관리자(ID 1) 계정은 삭제할 수 없습니다.' });
+    }
+
+    if (operatorRole === 'OPERATOR' && ['OPERATOR', 'ADMIN', 'DEVELOPER'].includes(targetUser.role)) {
+      return res.status(403).json({ success: false, error: '운영자는 다른 운영자나 개발자 계정을 삭제할 수 없습니다.' });
+    }
+
+    const userName = targetUser.name || targetUser.nickname;
+    userManager.deleteUser(userId);
+    res.json({
+      success: true,
+      message: `회원 [${userName}](ID: ${userId}) 계정이 성공적으로 삭제되었습니다. 🗑️`
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// 💰 회비 입금 확인 및 1개월 연장 처리
+app.post('/api/admin/users/:userId/confirm-deposit', (req, res) => {
+  try {
+    const { userId } = req.params;
+    const targetUser = userManager.users.get(Number(userId));
+    if (!targetUser) {
+      return res.status(404).json({ success: false, error: '회원을 찾을 수 없습니다.' });
+    }
+    const currentExpiry = new Date(targetUser.subscriptionExpiresAt > new Date().toISOString() ? targetUser.subscriptionExpiresAt : new Date());
+    currentExpiry.setDate(currentExpiry.getDate() + 30);
+    targetUser.subscriptionExpiresAt = currentExpiry.toISOString();
+    targetUser.approvalStatus = 'APPROVED';
+    if (targetUser.tier === 'FREE_TRIAL') targetUser.tier = 'PRO';
+
+    res.json({
+      success: true,
+      message: `[${targetUser.name || targetUser.nickname}] 회원의 입금이 확인되어 1개월(+30일) 연장되었습니다! ✨`
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// ✈️ 텔레그램 테스트 메시지 전송
+app.post('/api/admin/users/:userId/test-telegram', (req, res) => {
+  const { userId } = req.params;
+  const targetUser = userManager.users.get(Number(userId));
+  if (!targetUser) {
+    return res.status(404).json({ success: false, error: '회원을 찾을 수 없습니다.' });
+  }
+  res.json({
+    success: true,
+    message: `[${targetUser.name || targetUser.nickname}] 님에게 텔레그램 테스트 메시지가 전송되었습니다! 🚀`
+  });
+});
+
 // 마이페이지: 자동매매 동의, 총 운용 한도, 슬롯별 허용 금액 설정 저장
 app.post('/api/user/auto-trading', (req, res) => {
   const userId = req.headers['x-user-id'] || req.body.userId || 1;

@@ -44,6 +44,7 @@ import {
   suspendAdminUser,
   resumeAdminUser,
   haltUserBot,
+  resumeUserBot,
   deleteAdminUser
 } from '../services/api';
 
@@ -54,7 +55,7 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
   const [users, setUsers] = useState(cachedAdminUsers);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchTarget, setSearchTarget] = useState('ALL'); // ALL | NAME | PHONE | EMAIL | TELEGRAM | KAKAO
-  const [selectedFilter, setSelectedFilter] = useState('ALL'); // ALL | OPERATOR | VIP | PRO | FREE | PENDING | SUSPENDED | EXPIRED
+  const [selectedFilter, setSelectedFilter] = useState('ALL'); // ALL | OPERATOR | VIP | PRO | FREE | PENDING | SUSPENDED | HALTED | EXPIRED
   const [telegramFilter, setTelegramFilter] = useState('ALL'); // ALL | LINKED | UNLINKED
   const [sortBy, setSortBy] = useState('LATEST'); // LATEST | NAME_ASC | EXPIRY_ASC | EXPIRY_DESC | ID_ASC
   const [pageSize, setPageSize] = useState(10);
@@ -139,7 +140,7 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
   // 🛑 회원 모든 슬롯 자동매매 긴급 정지 (봇 OFF)
   const handleHaltBot = async (user) => {
     const userName = user.name || user.nickname;
-    if (!window.confirm(`[${userName}] 회원의 모든 슬롯 자동매매를 긴급 중단(OFF)하시겠습니까?`)) {
+    if (!window.confirm(`[${userName}] 회원의 모든 슬롯 자동매매를 긴급 중단(OFF)하시겠습니까?\n\n- 회원의 모든 슬롯이 즉시 OFF 상태로 변경됩니다.`)) {
       return;
     }
     try {
@@ -149,6 +150,22 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
       loadUsers(true);
     } catch (err) {
       alert('봇 긴급 정지 실패: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  // ▶️ 회원 자동매매 거래 정상 재개 (봇 ON)
+  const handleResumeBot = async (user) => {
+    const userName = user.name || user.nickname;
+    if (!window.confirm(`[${userName}] 회원의 자동매매 거래를 정상 재개(ON)하시겠습니까?\n\n- 회원의 슬롯 매매가 다시 가동됩니다.`)) {
+      return;
+    }
+    try {
+      const res = await resumeUserBot(user.id, currentUser?.role || 'OPERATOR');
+      setActionSuccess(res?.message || `[${userName}] 회원의 자동매매 거래가 정상 재개되었습니다! 🟢`);
+      setTimeout(() => setActionSuccess(''), 4000);
+      loadUsers(true);
+    } catch (err) {
+      alert('봇 거래 재개 실패: ' + (err.response?.data?.error || err.message));
     }
   };
 
@@ -218,6 +235,7 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
     return users.filter(u => {
       const isOperator = u.role === 'OPERATOR';
       const isSuspended = u.approvalStatus === 'SUSPENDED' || u.isActive === false;
+      const isBotHalted = u.isTradingActive === false;
       const isExpired = u.approvalStatus === 'EXPIRED' || (!isOperator && u.role !== 'DEVELOPER' && !isSuspended && u.remainingDays <= 0 && Boolean(u.subscriptionExpiresAt && new Date(u.subscriptionExpiresAt) < new Date()));
 
       // 등급/상태 탭 필터
@@ -227,6 +245,7 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
       if (selectedFilter === 'FREE' && (u.tier !== 'FREE_TRIAL' || isOperator)) return false;
       if (selectedFilter === 'PENDING' && u.approvalStatus !== 'PENDING') return false;
       if (selectedFilter === 'SUSPENDED' && !isSuspended) return false;
+      if (selectedFilter === 'HALTED' && !isBotHalted) return false;
       if (selectedFilter === 'EXPIRED' && !isExpired) return false;
 
       // 텔레그램 연동 필터
@@ -456,6 +475,18 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
             </button>
 
             <button
+              onClick={() => { setSelectedFilter('HALTED'); setCurrentPage(1); }}
+              className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1 ${
+                selectedFilter === 'HALTED'
+                  ? 'bg-amber-600 text-white shadow ring-2 ring-amber-400'
+                  : 'bg-slate-950 text-amber-400 border border-slate-800 hover:bg-amber-950/30'
+              }`}
+            >
+              <StopCircle className="w-3.5 h-3.5" />
+              <span>거래 중지 ({users.filter(u => u.isTradingActive === false).length})</span>
+            </button>
+
+            <button
               onClick={() => { setSelectedFilter('EXPIRED'); setCurrentPage(1); }}
               className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1 ${
                 selectedFilter === 'EXPIRED'
@@ -662,6 +693,19 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
                                 <span className="text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/50 px-1.5 py-0.5 rounded-md font-extrabold whitespace-nowrap flex items-center gap-0.5">
                                   <Ban className="w-2.5 h-2.5 text-rose-400" />
                                   <span>자격중지</span>
+                                </span>
+                              )}
+
+                              {/* 🤖 거래 가동 / 중지 상태 뱃지 */}
+                              {user.isTradingActive === false ? (
+                                <span className="text-[10px] bg-amber-950/90 text-amber-300 border border-amber-500/50 px-1.5 py-0.5 rounded-md font-extrabold whitespace-nowrap flex items-center gap-1 shadow-sm">
+                                  <StopCircle className="w-2.5 h-2.5 text-amber-400" />
+                                  <span>거래 중지됨 (전 슬롯 OFF)</span>
+                                </span>
+                              ) : (
+                                <span className="text-[10px] bg-emerald-950/50 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.5 rounded-md font-semibold whitespace-nowrap flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                  <span>거래 가동중 ({user.activeSlotsCount ?? user.maxSlots ?? 1}슬롯)</span>
                                 </span>
                               )}
                             </div>
@@ -911,14 +955,26 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
                                 </button>
                               )}
 
-                              {/* 🛑 봇 긴급 정지 버튼 */}
-                              <button
-                                onClick={() => handleHaltBot(user)}
-                                className="p-1.5 rounded-xl text-xs font-bold border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-amber-400 hover:border-amber-500/50 hover:bg-amber-950/40 transition cursor-pointer flex items-center justify-center shadow-sm active:scale-95"
-                                title="회원의 모든 슬롯 자동매매만 긴급 중단(OFF)"
-                              >
-                                <StopCircle className="w-3.5 h-3.5" />
-                              </button>
+                              {/* 🤖 거래 가동/중지 원클릭 토글 버튼 */}
+                              {user.isTradingActive === false ? (
+                                <button
+                                  onClick={() => handleResumeBot(user)}
+                                  className="px-2 py-1.5 rounded-xl text-xs font-bold border border-emerald-500/60 bg-emerald-950/80 text-emerald-300 hover:bg-emerald-900 hover:text-white transition cursor-pointer flex items-center gap-1 shadow-sm active:scale-95 animate-pulse"
+                                  title="현재 회원의 자동매매가 중지되어 있습니다. 클릭 시 거래를 즉시 재개(ON)합니다"
+                                >
+                                  <PlayCircle className="w-3.5 h-3.5 text-emerald-400" />
+                                  <span>거래 재개</span>
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleHaltBot(user)}
+                                  className="px-2 py-1.5 rounded-xl text-xs font-bold border border-amber-500/50 bg-amber-950/40 text-amber-300 hover:bg-amber-900/70 hover:text-white transition cursor-pointer flex items-center gap-1 shadow-sm active:scale-95"
+                                  title="현재 자동매매 가동 중입니다. 클릭 시 모든 슬롯 매매를 긴급 중단(OFF)합니다"
+                                >
+                                  <StopCircle className="w-3.5 h-3.5 text-amber-400" />
+                                  <span>거래 중지</span>
+                                </button>
+                              )}
 
                               {/* 🗑️ 회원 영구 삭제 버튼 */}
                               <button

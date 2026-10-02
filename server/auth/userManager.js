@@ -470,9 +470,13 @@ class UserManager {
       const now = new Date();
       const expiryDate = new Date(user.subscriptionExpiresAt);
       const remainingDays = Math.max(0, Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24)));
+      const isTradingActive = user.isTradingActive !== false;
+      const activeSlotsCount = isTradingActive ? (user.activeSlotsCount ?? user.maxSlots ?? 1) : 0;
 
       return {
         ...user,
+        isTradingActive,
+        activeSlotsCount,
         hasApiKey: Boolean(apiKeyInfo && apiKeyInfo.isValid) || user.role === 'ADMIN',
         remainingDays: user.role === 'ADMIN' ? 9999 : remainingDays
       };
@@ -549,6 +553,100 @@ class UserManager {
     const user = this.users.get(Number(userId));
     if (!user) throw new Error('해당 회원을 찾을 수 없습니다.');
     user.isActive = !user.isActive;
+    return user;
+  }
+
+  /**
+   * 🛑 회원 모든 슬롯 자동매매 긴급 정지
+   */
+  haltBot(userId) {
+    const user = this.users.get(Number(userId));
+    if (!user) throw new Error('해당 회원을 찾을 수 없습니다.');
+    user.isTradingActive = false;
+    user.activeSlotsCount = 0;
+    console.log(`🛑 [Admin] 회원 #${userId} (${user.name})의 모든 슬롯 자동매매가 긴급 중단되었습니다.`);
+    return user;
+  }
+
+  /**
+   * ▶️ 회원 자동매매 거래 정상 재개
+   */
+  resumeBot(userId) {
+    const user = this.users.get(Number(userId));
+    if (!user) throw new Error('해당 회원을 찾을 수 없습니다.');
+    user.isTradingActive = true;
+    user.activeSlotsCount = user.maxSlots || 1;
+    console.log(`▶️ [Admin] 회원 #${userId} (${user.name})의 슬롯 자동매매가 정상 재개되었습니다.`);
+    return user;
+  }
+
+  /**
+   * 🚫 회원 자격 일시 중지 (로그인 제한 + 매매 차단)
+   */
+  suspendUser(userId) {
+    const user = this.users.get(Number(userId));
+    if (!user) throw new Error('해당 회원을 찾을 수 없습니다.');
+    user.approvalStatus = 'SUSPENDED';
+    user.isActive = false;
+    user.isTradingActive = false;
+    user.activeSlotsCount = 0;
+    console.log(`🚫 [Admin] 회원 #${userId} (${user.name})의 이용 자격이 일시 중지되었습니다.`);
+    return user;
+  }
+
+  /**
+   * ✨ 회원 자격 재개 (정상 활성화)
+   */
+  resumeUser(userId) {
+    const user = this.users.get(Number(userId));
+    if (!user) throw new Error('해당 회원을 찾을 수 없습니다.');
+    user.approvalStatus = 'APPROVED';
+    user.isActive = true;
+    user.isTradingActive = true;
+    user.activeSlotsCount = user.maxSlots || 1;
+    console.log(`✨ [Admin] 회원 #${userId} (${user.name})의 이용 자격이 정상 재개되었습니다.`);
+    return user;
+  }
+
+  /**
+   * 🗑️ 회원 영구 삭제
+   */
+  deleteUser(userId) {
+    const id = Number(userId);
+    if (id === 1) throw new Error('최고 관리자(ID 1) 계정은 삭제할 수 없습니다.');
+    const user = this.users.get(id);
+    if (!user) throw new Error('해당 회원을 찾을 수 없습니다.');
+    this.users.delete(id);
+    this.apiKeys.delete(id);
+    console.log(`🗑️ [Admin] 회원 #${id} (${user.name}) 계정이 영구 삭제되었습니다.`);
+    return user;
+  }
+
+  /**
+   * 👑 회원 통합 업데이트 (역할/등급/승인/일수)
+   */
+  updateAdminUser(userId, data = {}) {
+    const user = this.users.get(Number(userId));
+    if (!user) throw new Error('해당 회원을 찾을 수 없습니다.');
+
+    if (data.role) user.role = data.role;
+    if (data.tier) {
+      user.tier = data.tier;
+      if (data.tier === 'VIP') user.maxSlots = 12;
+      else if (data.tier === 'PRO') user.maxSlots = 3;
+      else user.maxSlots = 1;
+    }
+    if (data.approvalStatus) user.approvalStatus = data.approvalStatus;
+    if (data.addDays) {
+      const currentExpiry = new Date(user.subscriptionExpiresAt > new Date().toISOString() ? user.subscriptionExpiresAt : new Date());
+      currentExpiry.setDate(currentExpiry.getDate() + Number(data.addDays));
+      user.subscriptionExpiresAt = currentExpiry.toISOString();
+    }
+    if (data.role === 'OPERATOR') {
+      user.tier = 'VIP';
+      user.maxSlots = 12;
+      user.subscriptionExpiresAt = '2099-12-31T23:59:59Z';
+    }
     return user;
   }
 }

@@ -1593,10 +1593,12 @@ try {
         $viewerRole = $_GET['viewerRole'] ?? 'DEVELOPER'; // DEVELOPER | OPERATOR
 
         // 👑 개발자 계정은 목록에 표시되지 않아야 함!
-        $stmt = $pdo->query("SELECT id, kakao_id, name, nickname, email, phone, birthyear, profile_image, role, tier, approval_status, subscription_expires_at, max_slots, is_active, telegram_chat_id, created_at 
-            FROM nurioh_users 
-            WHERE role != 'DEVELOPER' AND email != 'leeshkr@kakao.com'
-            ORDER BY id DESC");
+        $stmt = $pdo->query("SELECT u.id, u.kakao_id, u.name, u.nickname, u.email, u.phone, u.birthyear, u.profile_image, 
+            u.role, u.tier, u.approval_status, u.subscription_expires_at, u.max_slots, u.is_active, u.telegram_chat_id, u.created_at,
+            (SELECT COUNT(*) FROM nurioh_slots s WHERE s.user_id = u.id AND s.is_enabled = 1) AS active_slots_count
+            FROM nurioh_users u
+            WHERE u.role != 'DEVELOPER' AND u.email != 'leeshkr@kakao.com'
+            ORDER BY u.id DESC");
         $users = $stmt->fetchAll() ?: [];
 
         $result = array_map(function($u) {
@@ -1605,6 +1607,8 @@ try {
             if ($u['role'] === 'OPERATOR' || $u['role'] === 'DEVELOPER') {
                 $remainingDays = 9999;
             }
+            $activeSlotsCount = (int)($u['active_slots_count'] ?? 0);
+            $isTradingActive = ($activeSlotsCount > 0);
 
             return [
                 'id' => (int)$u['id'],
@@ -1621,6 +1625,8 @@ try {
                 'tier' => $u['tier'] ?: 'FREE_TRIAL', // VIP | PRO | FREE_TRIAL
                 'approvalStatus' => $u['approval_status'] ?: 'PENDING', // APPROVED | PENDING
                 'maxSlots' => (int)$u['max_slots'],
+                'activeSlotsCount' => $activeSlotsCount,
+                'isTradingActive' => $isTradingActive,
                 'remainingDays' => $remainingDays,
                 'isActive' => (bool)$u['is_active'],
                 'hasApiKey' => true,
@@ -1797,7 +1803,23 @@ try {
             $uName = $targetUser['name'] ?: $targetUser['nickname'];
             echo json_encode([
                 'success' => true,
-                'message' => "회원 [{$uName}] 님의 모든 슬롯 자동매매가 긴급 중단(OFF)되었습니다! 🛑"
+                'message' => "회원 [{$uName}] 님의 모든 슬롯 자동매매가 긴급 중단(OFF)되었습니다! 🛑",
+                'isTradingActive' => false,
+                'activeSlotsCount' => 0
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        // ▶️ 회원의 슬롯 자동매매 거래 재개 (RESUME_BOT)
+        if ($action === 'RESUME_BOT') {
+            // 최소 1번 슬롯 활성화
+            $pdo->prepare("UPDATE nurioh_slots SET is_enabled = 1 WHERE user_id = ? AND slot_id = 1")->execute([$targetUserId]);
+            $uName = $targetUser['name'] ?: $targetUser['nickname'];
+            echo json_encode([
+                'success' => true,
+                'message' => "회원 [{$uName}] 님의 자동매매 거래가 정상 재개(ON)되었습니다! 🟢",
+                'isTradingActive' => true,
+                'activeSlotsCount' => 1
             ], JSON_UNESCAPED_UNICODE);
             exit;
         }
