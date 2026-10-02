@@ -8,31 +8,30 @@ class SlotManager {
     this.slots = Array.from({ length: 12 }, (_, i) => {
       const slotId = i + 1;
       const isBreakout = (slotId >= 1 && slotId <= 4) || slotId === 9 || slotId === 10;
-      const isHeavy = slotId === 11 || slotId === 12;
       return {
         slotId,
         name: `${slotId}번 슬롯`,
         strategyMode: isBreakout ? 'BREAKOUT_DAY_HIGH' : 'TREND_SWING',
         isEnabled: false,
         targetMarket: null,
-        tradeAmountKrw: isHeavy ? 100000 : (slotId === 3 || slotId === 4 ? 30000 : 50000),
+        tradeAmountKrw: (slotId === 3 || slotId === 4) ? 30000 : 50000,
         positionStatus: 'IDLE',
         position: null,
         useAtrStopLoss: false,
-        stopLossPct: isBreakout ? 2.0 : 3.0,
+        stopLossPct: isBreakout ? 2.0 : 2.5,
         useWideTrailing: true,
-        trailingTier1TargetProfitPct: 5.0,
-        trailingTier1CallbackPct: isBreakout ? 0.5 : 1.0,
-        trailingTier2HurdlePct: 15.0,
-        trailingTier2CallbackPct: 3.0,
+        trailingTier1TargetProfitPct: 3.0,
+        trailingTier1CallbackPct: isBreakout ? 0.5 : 0.8,
+        trailingTier2HurdlePct: 10.0,
+        trailingTier2CallbackPct: isBreakout ? 2.0 : 2.5,
         breakoutHighEnabled: true,
-        breakoutCandleUnit: (slotId === 3 || slotId === 4 || slotId === 10) ? 3 : 1,
-        breakoutMinVolumeKrwEok: slotId === 1 ? 100 : (slotId === 2 ? 150 : (slotId === 3 ? 300 : (slotId === 4 ? 400 : (slotId === 9 ? 160 : 500)))),
+        breakoutCandleUnit: (slotId === 3 || slotId === 4) ? 3 : 1,
+        breakoutMinVolumeKrwEok: (slotId === 3 || slotId === 4) ? 10 : 5,
         swingCandleUnit: (slotId === 7 || slotId === 8 || slotId === 12) ? 'days' : 'minutes/240',
         swingShortMa: 5,
         swingLongMa: 20,
-        swingMinTradePrice24hEok: (slotId === 7 || slotId === 8 || slotId === 11 || slotId === 12) ? 2000 : 1000,
-        min24hAccTradePriceKrw: (slotId === 7 || slotId === 8 || slotId === 11 || slotId === 12) ? 200000000000 : 100000000000,
+        swingMinTradePrice24hEok: 100,
+        min24hAccTradePriceKrw: 10000000000,
         totalTrades: 0,
         winTrades: 0,
         totalRealizedProfitKrw: 0
@@ -179,11 +178,15 @@ class SlotManager {
   }
 
   getAvailableSlot(market, strategyMode = null) {
-    // strategyMode가 주어진 경우 해당 전략 모드의 슬롯만 필터링 (항상 slotId 오름차순 보장)
-    const candidateSlots = (strategyMode
+    // strategyMode가 주어진 경우 해당 전략 모드의 슬롯 우선 필터링, 없으면 전체 슬롯으로 안전 폴백
+    let candidateSlots = strategyMode
       ? this.slots.filter(s => s.strategyMode === strategyMode)
-      : this.slots
-    ).slice().sort((a, b) => a.slotId - b.slotId);
+      : this.slots;
+
+    if (candidateSlots.length === 0) {
+      candidateSlots = this.slots;
+    }
+    candidateSlots = candidateSlots.slice().sort((a, b) => a.slotId - b.slotId);
 
     // 1순위: 해당 마켓이 명시적으로 지정되어 있고 활성화된 IDLE 슬롯
     let slot = candidateSlots.find(s => s.isEnabled && s.targetMarket === market && s.positionStatus === 'IDLE');

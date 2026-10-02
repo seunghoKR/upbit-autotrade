@@ -165,9 +165,11 @@ class StrategyEngine {
         return;
       }
 
-      const availableSlot = slotManager.getAvailableSlot(surge.market, 'SCALPING');
+      const availableSlot = slotManager.getAvailableSlot(surge.market, 'SCALPING')
+        || slotManager.getAvailableSlot(surge.market, 'BREAKOUT_DAY_HIGH')
+        || slotManager.getAvailableSlot(surge.market);
       if (!availableSlot) {
-        console.log(`ℹ️ [초단타 급등 감지됨] ${surge.market}이나 현재 비어있는 스캘핑(1~8번) 슬롯이 없습니다.`);
+        console.log(`ℹ️ [초단타 급등 감지됨] ${surge.market}이나 현재 비어있는 가동 슬롯이 없습니다.`);
         return;
       }
 
