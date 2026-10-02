@@ -29,9 +29,23 @@ import {
   RotateCcw,
   SlidersHorizontal,
   Filter,
-  ArrowUpDown
+  ArrowUpDown,
+  Trash2,
+  Ban,
+  PlayCircle,
+  AlertOctagon,
+  StopCircle
 } from 'lucide-react';
-import { getAdminUsers, updateAdminUser, sendTelegramTestMessage, confirmUserDeposit } from '../services/api';
+import { 
+  getAdminUsers, 
+  updateAdminUser, 
+  sendTelegramTestMessage, 
+  confirmUserDeposit,
+  suspendAdminUser,
+  resumeAdminUser,
+  haltUserBot,
+  deleteAdminUser
+} from '../services/api';
 
 // ⚡ 초고속 체감 로딩을 위한 모듈 레벨 메모리 캐시
 let cachedAdminUsers = [];
@@ -40,7 +54,7 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
   const [users, setUsers] = useState(cachedAdminUsers);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchTarget, setSearchTarget] = useState('ALL'); // ALL | NAME | PHONE | EMAIL | TELEGRAM | KAKAO
-  const [selectedFilter, setSelectedFilter] = useState('ALL'); // ALL | OPERATOR | VIP | PRO | FREE | PENDING | EXPIRED
+  const [selectedFilter, setSelectedFilter] = useState('ALL'); // ALL | OPERATOR | VIP | PRO | FREE | PENDING | SUSPENDED | EXPIRED
   const [telegramFilter, setTelegramFilter] = useState('ALL'); // ALL | LINKED | UNLINKED
   const [sortBy, setSortBy] = useState('LATEST'); // LATEST | NAME_ASC | EXPIRY_ASC | EXPIRY_DESC | ID_ASC
   const [pageSize, setPageSize] = useState(10);
@@ -48,6 +62,10 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
   const [isLoading, setIsLoading] = useState(cachedAdminUsers.length === 0);
   const [actionSuccess, setActionSuccess] = useState('');
   const [testingTelegramUserId, setTestingTelegramUserId] = useState(null);
+  
+  // 🗑️ 회원 영구 삭제 확인 모달 상태
+  const [deleteConfirmTarget, setDeleteConfirmTarget] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const isDeveloper = currentUser?.role === 'DEVELOPER' || currentUser?.role === 'ADMIN';
 
@@ -80,9 +98,76 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
       await updateAdminUser(userId, updatePayload);
       setActionSuccess(successMsg || `회원 #${userId} 정보가 성공적으로 변경되었습니다.`);
       setTimeout(() => setActionSuccess(''), 3000);
-      loadUsers();
+      loadUsers(true);
     } catch (err) {
       alert('회원 정보 변경 실패: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  // 🚫 회원 자격 일시 중지 (이용 정지 & 슬롯 OFF)
+  const handleSuspendUser = async (user) => {
+    const userName = user.name || user.nickname;
+    if (!window.confirm(`[${userName}] 회원의 이용 자격을 일시 중지하시겠습니까?\n\n- 로그인 및 서비스 이용이 제한됩니다.\n- 회원의 모든 슬롯 자동매매가 즉시 중단(OFF)됩니다.`)) {
+      return;
+    }
+    try {
+      const res = await suspendAdminUser(user.id, currentUser?.role || 'OPERATOR');
+      setActionSuccess(res?.message || `[${userName}] 회원의 자격이 일시 중지되었습니다. 🚫`);
+      setTimeout(() => setActionSuccess(''), 4000);
+      loadUsers(true);
+    } catch (err) {
+      alert('자격 중지 실패: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  // ▶️ 회원 자격 재개 (정상 활성화)
+  const handleResumeUser = async (user) => {
+    const userName = user.name || user.nickname;
+    if (!window.confirm(`[${userName}] 회원의 이용 자격을 정상 재개(활성화)하시겠습니까?`)) {
+      return;
+    }
+    try {
+      const res = await resumeAdminUser(user.id, currentUser?.role || 'OPERATOR');
+      setActionSuccess(res?.message || `[${userName}] 회원의 자격이 정상 재개되었습니다! ✨`);
+      setTimeout(() => setActionSuccess(''), 4000);
+      loadUsers(true);
+    } catch (err) {
+      alert('자격 재개 실패: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  // 🛑 회원 모든 슬롯 자동매매 긴급 정지 (봇 OFF)
+  const handleHaltBot = async (user) => {
+    const userName = user.name || user.nickname;
+    if (!window.confirm(`[${userName}] 회원의 모든 슬롯 자동매매를 긴급 중단(OFF)하시겠습니까?`)) {
+      return;
+    }
+    try {
+      const res = await haltUserBot(user.id, currentUser?.role || 'OPERATOR');
+      setActionSuccess(res?.message || `[${userName}] 회원의 모든 슬롯 매매가 중단되었습니다. 🛑`);
+      setTimeout(() => setActionSuccess(''), 4000);
+      loadUsers(true);
+    } catch (err) {
+      alert('봇 긴급 정지 실패: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  // 🗑️ 회원 영구 삭제 실행
+  const executeDeleteUser = async () => {
+    if (!deleteConfirmTarget) return;
+    const user = deleteConfirmTarget;
+    const userName = user.name || user.nickname;
+    setIsDeleting(true);
+    try {
+      const res = await deleteAdminUser(user.id, currentUser?.role || 'OPERATOR');
+      setActionSuccess(res?.message || `[${userName}] 회원이 안전하게 영구 삭제되었습니다. 🗑️`);
+      setDeleteConfirmTarget(null);
+      setTimeout(() => setActionSuccess(''), 4000);
+      loadUsers(true);
+    } catch (err) {
+      alert('회원 삭제 실패: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -112,7 +197,7 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
       });
       setActionSuccess(res?.message || `[${userName}] 회원의 입금이 확인되어 1개월(+30일) 연장되었습니다! ✨`);
       setTimeout(() => setActionSuccess(''), 4000);
-      loadUsers();
+      loadUsers(true);
     } catch (err) {
       alert('입금 확인 연장 처리 실패: ' + (err.response?.data?.error || err.message));
     }
@@ -132,7 +217,8 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
   const filteredUsers = useMemo(() => {
     return users.filter(u => {
       const isOperator = u.role === 'OPERATOR';
-      const isExpired = u.approvalStatus === 'EXPIRED' || (!isOperator && u.role !== 'DEVELOPER' && u.remainingDays <= 0 && Boolean(u.subscriptionExpiresAt && new Date(u.subscriptionExpiresAt) < new Date()));
+      const isSuspended = u.approvalStatus === 'SUSPENDED' || u.isActive === false;
+      const isExpired = u.approvalStatus === 'EXPIRED' || (!isOperator && u.role !== 'DEVELOPER' && !isSuspended && u.remainingDays <= 0 && Boolean(u.subscriptionExpiresAt && new Date(u.subscriptionExpiresAt) < new Date()));
 
       // 등급/상태 탭 필터
       if (selectedFilter === 'OPERATOR' && !isOperator) return false;
@@ -140,6 +226,7 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
       if (selectedFilter === 'PRO' && (u.tier !== 'PRO' || isOperator)) return false;
       if (selectedFilter === 'FREE' && (u.tier !== 'FREE_TRIAL' || isOperator)) return false;
       if (selectedFilter === 'PENDING' && u.approvalStatus !== 'PENDING') return false;
+      if (selectedFilter === 'SUSPENDED' && !isSuspended) return false;
       if (selectedFilter === 'EXPIRED' && !isExpired) return false;
 
       // 텔레그램 연동 필터
@@ -357,6 +444,18 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
             </button>
 
             <button
+              onClick={() => { setSelectedFilter('SUSPENDED'); setCurrentPage(1); }}
+              className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1 ${
+                selectedFilter === 'SUSPENDED'
+                  ? 'bg-red-700 text-white shadow ring-2 ring-red-400'
+                  : 'bg-slate-950 text-red-400 border border-slate-800 hover:bg-red-950/30'
+              }`}
+            >
+              <Ban className="w-3.5 h-3.5" />
+              <span>자격 중지 ({users.filter(u => u.approvalStatus === 'SUSPENDED' || u.isActive === false).length})</span>
+            </button>
+
+            <button
               onClick={() => { setSelectedFilter('EXPIRED'); setCurrentPage(1); }}
               className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1 ${
                 selectedFilter === 'EXPIRED'
@@ -485,7 +584,7 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
                 <th className="py-3.5 px-3 font-semibold">텔레그램 연동 상태</th>
                 <th className="py-3.5 px-3 font-semibold text-center">승인 상태</th>
                 <th className="py-3.5 px-3 font-semibold text-center">구독 만료일</th>
-                <th className="py-3.5 px-4 font-semibold text-right">알림 & 플랜 변경</th>
+                <th className="py-3.5 px-4 font-semibold text-right">알림 & 플랜 / 회원 관리</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
@@ -514,10 +613,15 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
                   const isVip = user.tier === 'VIP';
                   const isPro = user.tier === 'PRO';
                   const isPending = user.approvalStatus === 'PENDING';
-                  const isExpired = user.approvalStatus === 'EXPIRED' || (!isOperator && user.role !== 'DEVELOPER' && user.remainingDays <= 0 && Boolean(user.subscriptionExpiresAt && new Date(user.subscriptionExpiresAt) < new Date()));
+                  const isSuspended = user.approvalStatus === 'SUSPENDED' || user.isActive === false;
+                  const isExpired = user.approvalStatus === 'EXPIRED' || (!isOperator && user.role !== 'DEVELOPER' && !isSuspended && user.remainingDays <= 0 && Boolean(user.subscriptionExpiresAt && new Date(user.subscriptionExpiresAt) < new Date()));
+                  
+                  // 운영자는 다른 운영자나 개발자를 중지/삭제할 수 없음, 개발자는 모두 가능 (ID 1 제외)
+                  const isTargetOperatorOrDev = user.role === 'OPERATOR' || user.role === 'DEVELOPER' || user.id === 1;
+                  const canManage = (isDeveloper && user.id !== 1) || (!isDeveloper && !isTargetOperatorOrDev);
 
                   return (
-                    <tr key={user.id} className="hover:bg-slate-900/60 transition whitespace-nowrap">
+                    <tr key={user.id} className={`${isSuspended ? 'bg-rose-950/20 hover:bg-rose-950/30' : 'hover:bg-slate-900/60'} transition whitespace-nowrap`}>
                       {/* 회원 실명 / 닉네임 & 역할·등급 뱃지 */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-2.5">
@@ -550,6 +654,14 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
                               ) : (
                                 <span className="text-[10px] bg-slate-800 text-slate-400 border border-slate-700 px-1.5 py-0.5 rounded-md font-medium whitespace-nowrap">
                                   무료 (1슬롯)
+                                </span>
+                              )}
+
+                              {/* 자격 중지 뱃지 */}
+                              {isSuspended && (
+                                <span className="text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/50 px-1.5 py-0.5 rounded-md font-extrabold whitespace-nowrap flex items-center gap-0.5">
+                                  <Ban className="w-2.5 h-2.5 text-rose-400" />
+                                  <span>자격중지</span>
                                 </span>
                               )}
                             </div>
@@ -594,9 +706,26 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
                         )}
                       </td>
 
-                      {/* 승인 상태 & 입금 확인/연장 */}
+                      {/* 승인 상태 & 입금 확인/연장 / 자격중지 안내 */}
                       <td className="py-3.5 px-3 text-center whitespace-nowrap">
-                        {isPending ? (
+                        {isSuspended ? (
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="text-rose-300 font-bold inline-flex items-center gap-1 text-[10px] bg-rose-950/80 border border-rose-500/50 px-2 py-0.5 rounded-md whitespace-nowrap shadow-sm">
+                              <Ban className="w-3 h-3 text-rose-400" />
+                              <span>자격 중지됨</span>
+                            </span>
+                            {canManage && (
+                              <button
+                                onClick={() => handleResumeUser(user)}
+                                className="text-[10px] text-emerald-400 hover:text-emerald-200 hover:underline transition flex items-center gap-0.5 cursor-pointer font-bold"
+                                title="회원 자격을 즉시 정상 재개(활성화)합니다"
+                              >
+                                <PlayCircle className="w-3 h-3 text-emerald-400" />
+                                <span>[이용 재개]</span>
+                              </button>
+                            )}
+                          </div>
+                        ) : isPending ? (
                           <button
                             onClick={() => handleUpdateUser(user.id, { approvalStatus: 'APPROVED', addDays: 3 }, `회원 #${user.id}님의 이용이 승인되었습니다 (3일 무료체험 시작)!`)}
                             className="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-extrabold text-[10px] inline-flex items-center gap-1 transition cursor-pointer animate-pulse whitespace-nowrap"
@@ -645,15 +774,15 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
                           <span className="font-mono text-slate-200 block text-xs whitespace-nowrap">
                             {user.subscriptionExpiresAt ? user.subscriptionExpiresAt.slice(0, 10) : '-'}
                           </span>
-                          <span className={`text-[10px] font-bold block whitespace-nowrap ${isExpired ? 'text-rose-400 font-extrabold' : user.remainingDays <= 3 ? 'text-rose-400' : 'text-yellow-400'}`}>
-                            {user.role === 'OPERATOR' ? '무제한 (운영자)' : isExpired ? '만료됨 (미승인)' : `D-${user.remainingDays}일 남음`}
+                          <span className={`text-[10px] font-bold block whitespace-nowrap ${isSuspended ? 'text-rose-400 font-extrabold' : isExpired ? 'text-rose-400 font-extrabold' : user.remainingDays <= 3 ? 'text-rose-400' : 'text-yellow-400'}`}>
+                            {user.role === 'OPERATOR' ? '무제한 (운영자)' : isSuspended ? '자격 중지 상태' : isExpired ? '만료됨 (미승인)' : `D-${user.remainingDays}일 남음`}
                           </span>
                         </div>
                       </td>
 
-                      {/* 텔레그램 알림 테스트 & 플랜 변경 펼침 메뉴 */}
+                      {/* 텔레그램 알림 테스트 & 플랜 변경 & 회원 자격 관리 액션 */}
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-2 flex-nowrap whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5 flex-nowrap whitespace-nowrap">
                           {/* ✈️ 텔레그램 알림 테스트 버튼 */}
                           <button
                             disabled={!user.hasTelegram || testingTelegramUserId === user.id}
@@ -757,6 +886,55 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
                               </select>
                             )}
                           </div>
+
+                          {/* 🛡️ 회원 관리 도구 (자격 중지 / 긴급 봇 OFF / 회원 삭제) */}
+                          {canManage ? (
+                            <div className="flex items-center gap-1">
+                              {/* 🚫 자격 중지 / ▶️ 재개 토글 버튼 */}
+                              {isSuspended ? (
+                                <button
+                                  onClick={() => handleResumeUser(user)}
+                                  className="px-2 py-1.5 rounded-xl text-xs font-bold border border-emerald-500/50 bg-emerald-950/60 text-emerald-300 hover:bg-emerald-900/80 hover:text-white transition cursor-pointer flex items-center gap-1 shadow-sm active:scale-95"
+                                  title="회원 자격을 정상 활성화(재개)합니다"
+                                >
+                                  <PlayCircle className="w-3.5 h-3.5 text-emerald-400" />
+                                  <span>재개</span>
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleSuspendUser(user)}
+                                  className="px-2 py-1.5 rounded-xl text-xs font-bold border border-rose-500/40 bg-rose-950/40 text-rose-300 hover:bg-rose-900/60 hover:text-white transition cursor-pointer flex items-center gap-1 shadow-sm active:scale-95"
+                                  title="회원의 서비스 이용 및 모든 슬롯 자동매매를 일시 중지합니다"
+                                >
+                                  <Ban className="w-3.5 h-3.5 text-rose-400" />
+                                  <span>중지</span>
+                                </button>
+                              )}
+
+                              {/* 🛑 봇 긴급 정지 버튼 */}
+                              <button
+                                onClick={() => handleHaltBot(user)}
+                                className="p-1.5 rounded-xl text-xs font-bold border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-amber-400 hover:border-amber-500/50 hover:bg-amber-950/40 transition cursor-pointer flex items-center justify-center shadow-sm active:scale-95"
+                                title="회원의 모든 슬롯 자동매매만 긴급 중단(OFF)"
+                              >
+                                <StopCircle className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* 🗑️ 회원 영구 삭제 버튼 */}
+                              <button
+                                onClick={() => setDeleteConfirmTarget(user)}
+                                className="p-1.5 rounded-xl text-xs font-bold border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-rose-400 hover:border-rose-500/50 hover:bg-rose-950/50 transition cursor-pointer flex items-center justify-center shadow-sm active:scale-95"
+                                title="회원 영구 삭제 (슬롯, 거래이력, API키 일괄 정리)"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="px-2 py-1 text-[11px] text-slate-500 bg-slate-900/40 border border-slate-800/60 rounded-xl flex items-center gap-1 font-medium" title="관리자 계정은 보호됩니다">
+                              <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+                              <span>보호됨</span>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -876,6 +1054,86 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
           </div>
         </div>
       </div>
+
+      {/* 🗑️ 회원 영구 삭제 안전 확인 모달 (Delete Confirmation Modal) */}
+      {deleteConfirmTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-slate-900 border border-red-500/50 rounded-2xl max-w-md w-full p-6 shadow-2xl shadow-red-500/10 space-y-4">
+            <div className="flex items-center gap-3 text-red-400">
+              <div className="p-3 bg-red-950/80 border border-red-500/40 rounded-xl">
+                <AlertOctagon className="w-6 h-6 text-red-400 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-white">회원 영구 삭제 확인</h3>
+                <p className="text-xs text-red-400/90 font-medium">이 작업은 취소하거나 되돌릴 수 없습니다!</p>
+              </div>
+            </div>
+
+            {/* 회원 정보 요약 카드 */}
+            <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 space-y-2 text-xs">
+              <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                <span className="text-slate-500">회원 실명 (닉네임)</span>
+                <span className="text-white font-bold">{deleteConfirmTarget.name || deleteConfirmTarget.nickname} ({deleteConfirmTarget.nickname})</span>
+              </div>
+              <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                <span className="text-slate-500">회원 식별 번호</span>
+                <span className="text-indigo-400 font-mono font-bold">#{deleteConfirmTarget.id}</span>
+              </div>
+              <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                <span className="text-slate-500">계정 이메일</span>
+                <span className="text-slate-300 font-mono">{deleteConfirmTarget.email || '미등록'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">연동 텔레그램</span>
+                <span className="text-cyan-400 font-mono">{deleteConfirmTarget.telegramId ? `ID: ${deleteConfirmTarget.telegramId}` : '미연동'}</span>
+              </div>
+            </div>
+
+            {/* 경고 안내문 */}
+            <div className="bg-red-950/30 border border-red-900/50 rounded-xl p-3 text-[11px] text-red-300/90 space-y-1">
+              <p className="font-bold flex items-center gap-1 text-red-300">
+                <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                <span>삭제 시 함께 제거되는 데이터:</span>
+              </p>
+              <ul className="list-disc list-inside text-slate-400 space-y-0.5 pl-1">
+                <li>해당 회원의 모든 자동매매 슬롯 및 전략 설정</li>
+                <li>저장된 업비트 Open API 연동 키 (암호화 키 일괄 파기)</li>
+                <li>회원 계정 및 로그인 인증 자격 전체</li>
+              </ul>
+            </div>
+
+            {/* 액션 버튼 */}
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setDeleteConfirmTarget(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 transition cursor-pointer border border-slate-700"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={executeDeleteUser}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-500 transition cursor-pointer flex items-center gap-1.5 shadow-lg shadow-red-600/30 border border-red-400 active:scale-95 disabled:opacity-50"
+              >
+                {isDeleting ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>삭제 처리 중...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>영구 삭제 진행</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

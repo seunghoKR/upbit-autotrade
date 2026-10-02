@@ -1738,12 +1738,73 @@ try {
         exit;
     }
 
-    // 5. POST admin/users/{id}/update : 회원 권한/플랜/승인상태 통합 변경
+    // 5. POST admin/users/{id}/update : 회원 권한/플랜/승인상태/자격중지 통합 변경
     if (preg_match('#^admin/users/([0-9]+)/update$#', $path, $matches) && $method === 'POST') {
         $targetUserId = (int)$matches[1];
-        $role = $input['role'] ?? 'USER'; // OPERATOR | USER
-        $tier = $input['tier'] ?? 'FREE_TRIAL'; // VIP | PRO | FREE_TRIAL
-        $approvalStatus = $input['approvalStatus'] ?? 'APPROVED'; // APPROVED | PENDING
+        $action = $input['action'] ?? null;
+        $operatorRole = $input['operatorRole'] ?? 'OPERATOR';
+
+        // 대상 회원 확인
+        $stmt = $pdo->prepare("SELECT * FROM nurioh_users WHERE id = ?");
+        $stmt->execute([$targetUserId]);
+        $targetUser = $stmt->fetch();
+        if (!$targetUser) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'error' => '회원을 찾을 수 없습니다.']);
+            exit;
+        }
+
+        // 운영자는 다른 운영자나 개발자를 수정/중지할 수 없음
+        if ($operatorRole === 'OPERATOR' && in_array($targetUser['role'], ['OPERATOR', 'DEVELOPER', 'ADMIN'])) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => '운영자는 다른 운영자나 개발자의 자격을 변경할 수 없습니다.']);
+            exit;
+        }
+
+        // 🚫 회원 자격 중지 (SUSPEND)
+        if ($action === 'SUSPEND' || ($input['approvalStatus'] ?? '') === 'SUSPENDED') {
+            $pdo->prepare("UPDATE nurioh_users SET approval_status = 'SUSPENDED', is_active = 0 WHERE id = ?")->execute([$targetUserId]);
+            // 안전을 위해 회원의 모든 슬롯 자동매매 OFF
+            $pdo->prepare("UPDATE nurioh_slots SET is_enabled = 0 WHERE user_id = ?")->execute([$targetUserId]);
+
+            $uName = $targetUser['name'] ?: $targetUser['nickname'];
+            echo json_encode([
+                'success' => true,
+                'message' => "회원 [{$uName}] 님의 이용 자격이 일시 중지되었으며, 모든 슬롯 자동매매가 차단되었습니다. 🚫",
+                'approvalStatus' => 'SUSPENDED',
+                'isActive' => false
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        // ▶️ 회원 자격 재개 / 정상 활성화 (RESUME)
+        if ($action === 'RESUME') {
+            $pdo->prepare("UPDATE nurioh_users SET approval_status = 'APPROVED', is_active = 1 WHERE id = ?")->execute([$targetUserId]);
+
+            $uName = $targetUser['name'] ?: $targetUser['nickname'];
+            echo json_encode([
+                'success' => true,
+                'message' => "회원 [{$uName}] 님의 이용 자격이 정상 재개(활성화)되었습니다! ✨",
+                'approvalStatus' => 'APPROVED',
+                'isActive' => true
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        // 🛑 회원의 모든 슬롯 자동매매 긴급 정지 (HALT_BOT)
+        if ($action === 'HALT_BOT') {
+            $pdo->prepare("UPDATE nurioh_slots SET is_enabled = 0 WHERE user_id = ?")->execute([$targetUserId]);
+            $uName = $targetUser['name'] ?: $targetUser['nickname'];
+            echo json_encode([
+                'success' => true,
+                'message' => "회원 [{$uName}] 님의 모든 슬롯 자동매매가 긴급 중단(OFF)되었습니다! 🛑"
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        $role = $input['role'] ?? ($targetUser['role'] ?: 'USER'); // OPERATOR | USER
+        $tier = $input['tier'] ?? ($targetUser['tier'] ?: 'FREE_TRIAL'); // VIP | PRO | FREE_TRIAL
+        $approvalStatus = $input['approvalStatus'] ?? ($targetUser['approval_status'] ?: 'APPROVED'); // APPROVED | PENDING
         $addDays = (int)($input['addDays'] ?? 30);
 
         // 슬롯 수 및 만료일 계산
@@ -1763,7 +1824,7 @@ try {
             $expires = date('Y-m-d H:i:s', strtotime("+{$addDays} days"));
         }
 
-        $stmt = $pdo->prepare("UPDATE nurioh_users SET role = ?, tier = ?, max_slots = ?, approval_status = ?, subscription_expires_at = ? WHERE id = ?");
+        $stmt = $pdo->prepare("UPDATE nurioh_users SET role = ?, tier = ?, max_slots = ?, approval_status = ?, is_active = 1, subscription_expires_at = ? WHERE id = ?");
         $stmt->execute([$role, $tier, $slots, $approvalStatus, $expires, $targetUserId]);
 
         // 🛡️ 허용 슬롯 개수 초과 슬롯만 안전하게 비활성화(OFF) 처리 (기존 슬롯 임의 강제 ON 금지!)
@@ -1782,6 +1843,60 @@ try {
                 'expires' => $expires
             ]
         ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // 5-C. POST/DELETE admin/users/{id}/delete : 회원 영구 삭제 (개발자 & 운영자)
+    if ((preg_match('#^admin/users/([0-9]+)/delete$#', $path, $matches) && $method === 'POST') ||
+        (preg_match('#^admin/users/([0-9]+)$#', $path, $matches) && $method === 'DELETE')) {
+        $targetUserId = (int)$matches[1];
+        $operatorRole = $input['operatorRole'] ?? 'OPERATOR';
+
+        // 1. 최고 관리자 및 개발자 계정 삭제 절대 불가 방어
+        if ($targetUserId === 1) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => '최고 관리자(ID 1) 계정은 삭제할 수 없습니다.']);
+            exit;
+        }
+
+        $stmt = $pdo->prepare("SELECT * FROM nurioh_users WHERE id = ?");
+        $stmt->execute([$targetUserId]);
+        $targetUser = $stmt->fetch();
+
+        if (!$targetUser) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'error' => '삭제할 회원을 찾을 수 없습니다.']);
+            exit;
+        }
+
+        // 2. 권한 검증: 운영자는 다른 운영자나 개발자를 삭제할 수 없음!
+        if ($operatorRole === 'OPERATOR' && in_array($targetUser['role'], ['OPERATOR', 'DEVELOPER', 'ADMIN'])) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => '운영자는 다른 운영자나 개발자 계정을 삭제할 수 없습니다.']);
+            exit;
+        }
+
+        $userName = $targetUser['name'] ?: $targetUser['nickname'];
+
+        // 3. 연관 데이터와 함께 안전하게 트랜잭션 삭제
+        try {
+            $pdo->beginTransaction();
+            $pdo->prepare("DELETE FROM nurioh_slots WHERE user_id = ?")->execute([$targetUserId]);
+            $pdo->prepare("DELETE FROM nurioh_user_apikeys WHERE user_id = ?")->execute([$targetUserId]);
+            $pdo->prepare("DELETE FROM nurioh_users WHERE id = ?")->execute([$targetUserId]);
+            $pdo->commit();
+
+            echo json_encode([
+                'success' => true,
+                'message' => "회원 [{$userName}](ID: {$targetUserId}) 님의 계정과 연동 정보가 안전하게 영구 삭제되었습니다. 🗑️"
+            ], JSON_UNESCAPED_UNICODE);
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => '회원 삭제 처리 중 오류가 발생했습니다: ' . $e->getMessage()]);
+        }
         exit;
     }
 

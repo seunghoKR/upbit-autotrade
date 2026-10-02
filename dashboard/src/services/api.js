@@ -180,6 +180,41 @@ export const updateAdminUser = async (userId, data) => {
   return res.data;
 };
 
+// 🚫 회원 자격 일시 중지 (이용 정지 & 모든 슬롯 매매 차단)
+export const suspendAdminUser = async (userId, operatorRole = 'OPERATOR') => {
+  const res = await axios.post(`${API_BASE}/admin/users/${userId}/update`, {
+    action: 'SUSPEND',
+    operatorRole
+  });
+  return res.data;
+};
+
+// ▶️ 회원 자격 재개 (정상 활성화)
+export const resumeAdminUser = async (userId, operatorRole = 'OPERATOR') => {
+  const res = await axios.post(`${API_BASE}/admin/users/${userId}/update`, {
+    action: 'RESUME',
+    operatorRole
+  });
+  return res.data;
+};
+
+// 🛑 회원 모든 슬롯 자동매매 긴급 정지 (봇 일괄 OFF)
+export const haltUserBot = async (userId, operatorRole = 'OPERATOR') => {
+  const res = await axios.post(`${API_BASE}/admin/users/${userId}/update`, {
+    action: 'HALT_BOT',
+    operatorRole
+  });
+  return res.data;
+};
+
+// 🗑️ 회원 영구 삭제
+export const deleteAdminUser = async (userId, operatorRole = 'OPERATOR') => {
+  const res = await axios.post(`${API_BASE}/admin/users/${userId}/delete`, {
+    operatorRole
+  });
+  return res.data;
+};
+
 // ✈️ 회원 대상 텔레그램 알림 테스트 메시지 전송
 export const sendTelegramTestMessage = async (userId) => {
   const res = await axios.post(`${API_BASE}/admin/users/${userId}/test-telegram`);
