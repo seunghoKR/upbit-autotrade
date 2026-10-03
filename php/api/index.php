@@ -174,18 +174,7 @@ function fetchUpbitDeposits(string $accessKey, string $secretKey, string $curren
 }
 
 function getOutboundServerIp(): string {
-    static $cachedIp = null;
-    if ($cachedIp !== null) return $cachedIp;
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, 'https://api.ipify.org');
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 3);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-    $ip = curl_exec($ch);
-    curl_close($ch);
-    $cachedIp = ($ip && filter_var(trim($ip), FILTER_VALIDATE_IP)) ? trim($ip) : ($_SERVER['SERVER_ADDR'] ?? '115.68.168.243');
-    return $cachedIp;
+    return '49.247.139.123';
 }
 
 function getDefaultPeriodSlots(): array {
@@ -1533,7 +1522,7 @@ try {
             curl_close($tch);
             if ($tRes) {
                 $tJson = json_decode($tRes, true);
-                if (is_array($tJson)) {
+                if (is_array($tJson) && isset($tJson[0]['market'])) {
                     $serverTickers = array_merge($serverTickers, $tJson);
                 }
             }
