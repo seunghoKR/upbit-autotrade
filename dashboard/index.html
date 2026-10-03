@@ -65,16 +65,18 @@
     <div id="root" class="w-full max-w-full overflow-x-hidden"></div>
     <!-- 카카오 Javascript SDK (v1 팝업 로그인 지원) -->
     <script src="https://t1.kakaocdn.net/kakao_js_sdk/1.43.0/kakao.min.js"></script>
-    <!-- PWA Service Worker 등록 (데스크톱/모바일 웹앱 설치 지원) -->
+    <!-- 🧹 서비스워커 및 구버전 캐시 즉시 자동 무효화 (실서버 100% 최신 반영 보장) -->
     <script>
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function() {
-          const swPath = (window.location.pathname.endsWith('/') ? window.location.pathname : window.location.pathname + '/').replace(/\/index\.html$/, '/') + 'sw.js';
-          navigator.serviceWorker.register(swPath).then(function(reg) {
-            console.log('🧪 [LAB] PWA Service Worker Registered:', reg.scope);
-          }).catch(function(err) {
-            console.warn('PWA registration:', err);
-          });
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for (let registration of registrations) {
+            registration.unregister();
+          }
+        });
+      }
+      if ('caches' in window) {
+        caches.keys().then(function(names) {
+          for (let name of names) caches.delete(name);
         });
       }
     </script>
