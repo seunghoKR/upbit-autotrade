@@ -357,8 +357,8 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
               </h3>
               <p className="text-xs text-slate-400">
                 {isDeveloper 
-                  ? '👑 개발자 권한: [무료 | PRO 플랜 | VIP 플랜 | 운영자 지정] 모든 등급과 권한을 총괄 관리합니다.' 
-                  : '📊 운영자 권한: [무료 | PRO 플랜 | VIP 플랜] 회원들의 등급 지정 및 이용 기간을 관리합니다.'}
+                  ? '👑 개발자 권한: [무료 | PRO | VIP | 운영자 지정] 모든 등급과 권한을 총괄 관리합니다.' 
+                  : '📊 운영자 권한: [무료 | PRO | VIP] 회원들의 등급 지정 및 이용 기간을 관리합니다.'}
               </p>
             </div>
           </div>
@@ -424,7 +424,7 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
               }`}
             >
               <Crown className="w-3.5 h-3.5" />
-              <span>VIP 플랜 ({users.filter(u => u.tier === 'VIP' && u.role !== 'OPERATOR').length})</span>
+              <span>VIP ({users.filter(u => u.tier === 'VIP' && u.role !== 'OPERATOR').length})</span>
             </button>
 
             <button
@@ -436,7 +436,7 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
               }`}
             >
               <Zap className="w-3.5 h-3.5" />
-              <span>PRO 플랜 ({users.filter(u => u.tier === 'PRO' && u.role !== 'OPERATOR').length})</span>
+              <span>PRO ({users.filter(u => u.tier === 'PRO' && u.role !== 'OPERATOR').length})</span>
             </button>
 
             <button
@@ -615,7 +615,7 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
                 <th className="py-3.5 px-3 font-semibold">텔레그램 연동 상태</th>
                 <th className="py-3.5 px-3 font-semibold text-center">승인 상태</th>
                 <th className="py-3.5 px-3 font-semibold text-center">구독 만료일</th>
-                <th className="py-3.5 px-4 font-semibold text-right">알림 & 플랜 / 회원 관리</th>
+                <th className="py-3.5 px-4 font-semibold text-right">알림 & 회원 관리</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
@@ -666,25 +666,11 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
                               <span>{user.name || user.nickname}</span>
                               <span className="text-[10px] text-slate-400 font-normal">({user.nickname})</span>
                               
-                              {/* 이름 옆 역할/등급 & 슬롯 뱃지 */}
-                              {isOperator ? (
+                              {/* 운영자 뱃지 */}
+                              {isOperator && (
                                 <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/40 px-1.5 py-0.5 rounded-md font-extrabold whitespace-nowrap flex items-center gap-1">
                                   <Shield className="w-2.5 h-2.5 text-purple-400" />
                                   <span>운영자</span>
-                                </span>
-                              ) : isVip ? (
-                                <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded-md font-bold whitespace-nowrap flex items-center gap-1">
-                                  <Crown className="w-2.5 h-2.5 text-amber-400" />
-                                  <span>VIP (12슬롯)</span>
-                                </span>
-                              ) : isPro ? (
-                                <span className="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 px-1.5 py-0.5 rounded-md font-bold whitespace-nowrap flex items-center gap-1">
-                                  <Zap className="w-2.5 h-2.5 text-indigo-400" />
-                                  <span>PRO (3슬롯)</span>
-                                </span>
-                              ) : (
-                                <span className="text-[10px] bg-slate-800 text-slate-400 border border-slate-700 px-1.5 py-0.5 rounded-md font-medium whitespace-nowrap">
-                                  무료 (1슬롯)
                                 </span>
                               )}
 
@@ -693,19 +679,6 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
                                 <span className="text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/50 px-1.5 py-0.5 rounded-md font-extrabold whitespace-nowrap flex items-center gap-0.5">
                                   <Ban className="w-2.5 h-2.5 text-rose-400" />
                                   <span>자격중지</span>
-                                </span>
-                              )}
-
-                              {/* 🤖 거래 가동 / 중지 상태 뱃지 */}
-                              {user.isTradingActive === false ? (
-                                <span className="text-[10px] bg-amber-950/90 text-amber-300 border border-amber-500/50 px-1.5 py-0.5 rounded-md font-extrabold whitespace-nowrap flex items-center gap-1 shadow-sm">
-                                  <StopCircle className="w-2.5 h-2.5 text-amber-400" />
-                                  <span>거래 중지됨 (전 슬롯 OFF)</span>
-                                </span>
-                              ) : (
-                                <span className="text-[10px] bg-emerald-950/50 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.5 rounded-md font-semibold whitespace-nowrap flex items-center gap-1">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                                  <span>거래 가동중 ({user.activeSlotsCount ?? user.maxSlots ?? 1}슬롯)</span>
                                 </span>
                               )}
                             </div>
@@ -867,19 +840,19 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
                                     handleUpdateUser(
                                       user.id, 
                                       { tier: 'FREE_TRIAL', role: 'USER', approvalStatus: 'APPROVED', addDays: 30 }, 
-                                      `회원 #${user.id} (${user.name || user.nickname})님이 [무료 플랜 (1슬롯)]으로 변경되었습니다.`
+                                      `회원 #${user.id} (${user.name || user.nickname})님이 [무료 (1슬롯)]으로 변경되었습니다.`
                                     );
                                   } else if (val === 'PRO') {
                                     handleUpdateUser(
                                       user.id, 
                                       { tier: 'PRO', role: 'USER', approvalStatus: 'APPROVED', addDays: 30 }, 
-                                      `회원 #${user.id} (${user.name || user.nickname})님이 [PRO 플랜 (3슬롯, +30일)]으로 변경되었습니다.`
+                                      `회원 #${user.id} (${user.name || user.nickname})님이 [PRO (3슬롯, +30일)]으로 변경되었습니다.`
                                     );
                                   } else if (val === 'VIP') {
                                     handleUpdateUser(
                                       user.id, 
                                       { tier: 'VIP', role: 'USER', approvalStatus: 'APPROVED', addDays: 30 }, 
-                                      `회원 #${user.id} (${user.name || user.nickname})님이 [VIP 플랜 (12슬롯, +30일)]으로 변경되었습니다.`
+                                      `회원 #${user.id} (${user.name || user.nickname})님이 [VIP (12슬롯, +30일)]으로 변경되었습니다.`
                                     );
                                   } else if (val === 'OPERATOR') {
                                     handleUpdateUser(
@@ -916,8 +889,8 @@ export default function AdminUserManagement({ isOpen, onClose, currentUser }) {
                                 }`}
                               >
                                 <option value="FREE_TRIAL" className="bg-slate-900 text-slate-200">🟢 무료 (1슬롯)</option>
-                                <option value="PRO" className="bg-slate-900 text-indigo-300">🔵 PRO 플랜 (3슬롯)</option>
-                                <option value="VIP" className="bg-slate-900 text-amber-300">🟡 VIP 플랜 (12슬롯)</option>
+                                <option value="PRO" className="bg-slate-900 text-indigo-300">🔵 PRO (3슬롯)</option>
+                                <option value="VIP" className="bg-slate-900 text-amber-300">🟡 VIP (12슬롯)</option>
                                 {isOperator && (
                                   <option value="OPERATOR" className="bg-slate-900 text-purple-300">👑 운영자</option>
                                 )}
