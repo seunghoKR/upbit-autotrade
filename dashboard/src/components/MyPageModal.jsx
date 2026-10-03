@@ -46,7 +46,7 @@ export default function MyPageModal({
   onReloadUser,
   onResetSlotStats,
   onResetAllSlotStats,
-  serverIp = '115.68.168.242, 49.247.139.123' 
+  serverIp = '49.247.139.123' 
 }) {
   const [activeTab, setActiveTab] = useState('PROFILE'); // PROFILE | TIME_RESTRICTION | SLOT_REPORT | APP_SOUND | TELEGRAM | PRICING
   const [copiedTable, setCopiedTable] = useState(false);

@@ -128,7 +128,7 @@ const isLabEnvironment = isLocalLab;
 
 export default function App() {
   const [botRunning, setBotRunning] = useState(false);
-  const [serverIp, setServerIp] = useState('115.68.168.242, 49.247.139.123');
+  const [serverIp, setServerIp] = useState('49.247.139.123');
   
   // 모달 상태 관리
   const [isGuideOpen, setIsGuideOpen] = useState(false);

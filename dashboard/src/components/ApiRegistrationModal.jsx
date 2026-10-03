@@ -7,7 +7,7 @@ export default function ApiRegistrationModal({
   onOpenGuide, 
   onRegisterSuccess,
   userId = 1,
-  serverIp = '115.68.168.242, 49.247.139.123' 
+  serverIp = '49.247.139.123' 
 }) {
   const [accessKey, setAccessKey] = useState('');
   const [secretKey, setSecretKey] = useState('');

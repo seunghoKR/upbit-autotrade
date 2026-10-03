@@ -111,11 +111,9 @@ class CloudTradingDaemon {
       const statusRes = await axios.get(`${API_BASE_URL}/status`, { timeout: 7000 });
       if (statusRes.data) {
         this.botEnabled = statusRes.data.botRunning !== false;
-      }
-
-      const slotsRes = await axios.get(`${API_BASE_URL}/slots`, { timeout: 7000 });
-      if (slotsRes.data && Array.isArray(slotsRes.data.slots)) {
-        this.slots = slotsRes.data.slots;
+        if (Array.isArray(statusRes.data.slots)) {
+          this.slots = statusRes.data.slots;
+        }
       }
     } catch (err) {
       // 일시적 네트워크 지연 시 기존 메모리 캐시 유지

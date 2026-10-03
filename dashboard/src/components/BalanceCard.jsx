@@ -7,7 +7,7 @@ export default function BalanceCard({
   slots = [],
   livePriceMap = {}, 
   accountError = null, 
-  serverIp = '115.68.168.242, 49.247.139.123',
+  serverIp = '49.247.139.123',
   onOpenApiModal,
   marketCount = 134,
   strategyViewMode = 'RECOMMENDED'
@@ -137,8 +137,8 @@ export default function BalanceCard({
               <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed">
                 {accountError.includes('no_authorization_ip') ? (
                   <>
-                    새 실서버 IP(<strong className="text-amber-300 font-mono font-black">115.68.168.242</strong>)가 업비트에 등록되지 않아 조회가 대기 중입니다.<br />
-                    업비트(PC) ➔ 마이페이지 ➔ <strong>[Open API 관리]</strong>의 허용 IP에 <strong className="text-amber-300 font-mono font-black">115.68.168.242</strong>를 등록해 주시면 즉시 연동됩니다.
+                    새 실서버 IP(<strong className="text-amber-300 font-mono font-black">{serverIp}</strong>)가 업비트에 등록되지 않아 조회가 대기 중입니다.<br />
+                    업비트(PC) ➔ 마이페이지 ➔ <strong>[Open API 관리]</strong>의 허용 IP에 <strong className="text-amber-300 font-mono font-black">{serverIp}</strong>를 등록해 주시면 즉시 연동됩니다.
                   </>
                 ) : (
                   accountError
@@ -149,8 +149,8 @@ export default function BalanceCard({
           <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end pt-1 sm:pt-0">
             <button
               onClick={() => {
-                navigator.clipboard.writeText('115.68.168.242');
-                alert('새 서버 IP [115.68.168.242]가 복사되었습니다!\n업비트 Open API 관리 페이지의 허용 IP에 붙여넣어 주세요.');
+                navigator.clipboard.writeText(serverIp);
+                alert(`새 서버 IP [${serverIp}]가 복사되었습니다!\n업비트 Open API 관리 페이지의 허용 IP에 붙여넣어 주세요.`);
               }}
               className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black shadow-lg shadow-amber-500/20 transition-all cursor-pointer whitespace-nowrap active:scale-95"
             >
