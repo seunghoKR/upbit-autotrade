@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Copy, Check, ExternalLink, ShieldCheck, AlertCircle, KeyRound, Server } from 'lucide-react';
 
-export default function UpbitGuideModal({ isOpen, onClose, serverIp = '115.68.168.242' }) {
+export default function UpbitGuideModal({ isOpen, onClose, serverIp = '115.68.168.242, 49.247.139.123' }) {
   const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;

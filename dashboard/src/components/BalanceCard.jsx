@@ -7,7 +7,7 @@ export default function BalanceCard({
   slots = [],
   livePriceMap = {}, 
   accountError = null, 
-  serverIp = '115.68.168.242',
+  serverIp = '115.68.168.242, 49.247.139.123',
   onOpenApiModal,
   marketCount = 134,
   strategyViewMode = 'RECOMMENDED'

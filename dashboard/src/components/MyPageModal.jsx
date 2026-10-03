@@ -46,7 +46,7 @@ export default function MyPageModal({
   onReloadUser,
   onResetSlotStats,
   onResetAllSlotStats,
-  serverIp = '115.68.168.242' 
+  serverIp = '115.68.168.242, 49.247.139.123' 
 }) {
   const [activeTab, setActiveTab] = useState('PROFILE'); // PROFILE | TIME_RESTRICTION | SLOT_REPORT | APP_SOUND | TELEGRAM | PRICING
   const [copiedTable, setCopiedTable] = useState(false);
@@ -560,7 +560,7 @@ export default function MyPageModal({
                   </h5>
                 </div>
                 <p className="text-[11px] text-slate-300 leading-relaxed">
-                  NURIOH 자동매매 시스템의 안전한 운영과 계정 보안을 위해 
+                  Any Life AI 자동매매 시스템의 안전한 운영과 계정 보안을 위해 
                   <strong className="text-amber-300"> 실명, 활동 닉네임, 연락처(전화번호)</strong> 및 
                   <strong className="text-yellow-400"> 업비트 Open API 키</strong>를 정확히 입력해 주셔야 <strong>정상 사용 권한이 승인</strong>됩니다.
                 </p>

@@ -510,7 +510,7 @@ export default function ManualModal({ isOpen, onClose, user, onOpenTableEdit, on
                   Q4. 업비트 Open API 발급 시 어떤 IP를 등록해야 하나요?
                 </h5>
                 <p className="text-slate-300 text-xs sm:text-sm leading-relaxed pl-7">
-                  👉 대표님의 서버 노드 고정 공인 IP인 <strong>`115.68.168.242`</strong>을 업비트 Open API 발급 페이지의 허용 IP란에 등록해 주시면 정상 승인됩니다.
+                  👉 Any Life AI 서버 고정 공인 IP인 <strong>`115.68.168.242, 49.247.139.123`</strong>을 업비트 Open API 발급 페이지의 허용 IP란에 등록해 주시면 24시간 정상 승인 및 자동매매가 가동됩니다.
                 </p>
               </div>
 
