@@ -729,9 +729,18 @@ export default function App() {
             const masterPeriodSlot = curPeriodSlots.find(ps => ps.slotId === s.slotId);
             const masterTradeAmount = (masterPeriodSlot && Number(masterPeriodSlot.tradeAmountKrw) >= 5000) ? Number(masterPeriodSlot.tradeAmountKrw) : null;
 
-            const resolvedTradeAmount = (isRecentlyUpdated && currentLocalSlot?.tradeAmountKrw)
-              ? currentLocalSlot.tradeAmountKrw
-              : (masterTradeAmount || s.tradeAmountKrw || s.trade_amount_krw || 50000);
+            // 🛡️ [매수금액 롤백 원천 차단] 
+            // 1순위: 최근 로컬 수정값, 2순위: 서버/DB 저장값(s.tradeAmountKrw), 3순위: 로컬 유지값, 4순위: 프리셋 기본값
+            const serverTradeAmount = (Number(s.tradeAmountKrw) >= 5000) 
+              ? Number(s.tradeAmountKrw) 
+              : (Number(s.trade_amount_krw) >= 5000 ? Number(s.trade_amount_krw) : null);
+            const localTradeAmount = (Number(currentLocalSlot?.tradeAmountKrw) >= 5000) 
+              ? Number(currentLocalSlot.tradeAmountKrw) 
+              : null;
+
+            const resolvedTradeAmount = (isRecentlyUpdated && localTradeAmount)
+              ? localTradeAmount
+              : (serverTradeAmount || localTradeAmount || masterTradeAmount || 50000);
 
             return {
               ...s,
@@ -1489,13 +1498,23 @@ export default function App() {
 
             const targetSlot = (slotsRef.current || []).find(s => s.slotId === assignedSlotId) || slot;
 
-            // 🚀 [최우선 시간대 매수금액 100% 동기화] 현재 시간대의 마스터 설정 금액을 재확인하여 사용!
+            // 🚀 [슬롯 설정 매수금액 최우선 반영] 대표님이 수정한 슬롯 매수금액을 1순위로 채택!
+            const userSlotAmount = (tradeAmount && Number(tradeAmount) >= 5000) 
+              ? Number(tradeAmount) 
+              : (Number(targetSlot?.tradeAmountKrw) >= 5000 ? Number(targetSlot.tradeAmountKrw) : null);
             const curPeriodKey = (schedulerDataRef.current?.currentPeriod || 'MORNING').toUpperCase();
             const periodSlots = periodSlotsMapRef.current?.[curPeriodKey] || schedulerDataRef.current?.userPresets?.[curPeriodKey]?.slots || DEFAULT_PERIOD_SLOTS[curPeriodKey] || [];
             const masterSlotCfg = periodSlots.find(s => s.slotId === assignedSlotId);
-            const finalTradeAmount = (masterSlotCfg && Number(masterSlotCfg.tradeAmountKrw) >= 5000)
-              ? Number(masterSlotCfg.tradeAmountKrw)
-              : ((tradeAmount && tradeAmount >= 5000) ? tradeAmount : (targetSlot?.tradeAmountKrw || 50000));
+            const masterAmt = (masterSlotCfg && Number(masterSlotCfg.tradeAmountKrw) >= 5000) ? Number(masterSlotCfg.tradeAmountKrw) : null;
+
+            let finalTradeAmount = userSlotAmount || masterAmt || 50000;
+
+            // 🛡️ 주문 가능 잔고(KRW) 초과 시 잔고 부족 에러 방지 안전 보정
+            if (krwBalance >= 5000 && finalTradeAmount > krwBalance) {
+              const safeBalanceOrder = Math.max(5000, Math.floor(krwBalance * 0.999));
+              console.warn(`⚠️ [잔고 안전 보정] 설정 매수금액(${finalTradeAmount.toLocaleString()}원)이 주문 가능 잔고(${Math.floor(krwBalance).toLocaleString()}원)를 초과하여 ${safeBalanceOrder.toLocaleString()}원으로 안전 매수 집행합니다.`);
+              finalTradeAmount = safeBalanceOrder;
+            }
 
             try {
               console.log(`🚨 [Client Surge Verified Trigger] ${assignedSlotId}번 슬롯 안전 매수(${finalTradeAmount.toLocaleString()}원): ${targetMarketCode} +${diffRate.toFixed(2)}% (${winSecs}초 내 ${Math.round(totVolKrw).toLocaleString()}원)`);
@@ -1884,18 +1903,50 @@ export default function App() {
     lastSlotUpdatesRef.current[slotId] = Date.now();
 
     // ⚡ 1. 프론트엔드 상태를 0.001초 만에 즉시 업데이트하여 버튼 및 UI가 딜레이 없이 즉각 전환!
-    setSlots(prevSlots => prevSlots.map(s => {
-      if (s.slotId === slotId) {
-        return { ...s, ...slotData };
+    const effectiveTradeAmount = Number(slotData.tradeAmountKrw || slotData.trade_amount_krw);
+    const normalizedData = {
+      ...slotData,
+      ...(effectiveTradeAmount >= 5000 ? { tradeAmountKrw: effectiveTradeAmount, trade_amount_krw: effectiveTradeAmount } : {})
+    };
+
+    setSlots(prevSlots => {
+      const updated = prevSlots.map(s => {
+        if (s.slotId === slotId) {
+          return { ...s, ...normalizedData };
+        }
+        return s;
+      });
+      try { localStorage.setItem('nurioh_cached_slots', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
+
+    // 🚀 현재 활성 시간대 프리셋 맵에도 즉시 동기화 (폴링 시 프리셋 기본값 덮어쓰기 방어)
+    const activeKey = (schedulerDataRef.current?.currentPeriod || 'MORNING').toUpperCase();
+    if (effectiveTradeAmount >= 5000) {
+      if (periodSlotsMapRef.current?.[activeKey]) {
+        periodSlotsMapRef.current[activeKey] = periodSlotsMapRef.current[activeKey].map(ps => 
+          ps.slotId === slotId ? { ...ps, tradeAmountKrw: effectiveTradeAmount } : ps
+        );
       }
-      return s;
-    }));
+      setPeriodSlotsMap(prev => {
+        if (!prev || !prev[activeKey]) return prev;
+        return {
+          ...prev,
+          [activeKey]: prev[activeKey].map(ps => ps.slotId === slotId ? { ...ps, tradeAmountKrw: effectiveTradeAmount } : ps)
+        };
+      });
+    }
 
     // ⚡ 2. 백그라운드에서 백엔드 DB 저장 동기화
     try {
       const validUserId = getValidAuthUserId();
       const userId = currentUser?.id || validUserId || 1;
-      const res = await updateSlotConfig(slotId, { ...slotData, userId });
+      const res = await updateSlotConfig(slotId, { 
+        ...normalizedData, 
+        slot_id: slotId,
+        userId,
+        trade_amount_krw: normalizedData.tradeAmountKrw 
+      });
       if (res && res.success && res.isEnabled !== undefined) {
         setSlots(prevSlots => prevSlots.map(s => {
           if (s.slotId === slotId) {

@@ -449,10 +449,10 @@ export default function SlotManager({
               )}
 
               {/* 1. 상단 슬롯 헤더 (| 1번 슬롯 | 전략모드 |    | [Power] ON | [통계] | [수정] |) */}
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
+              <div className="flex items-center justify-between gap-1.5 sm:gap-2 w-full">
+                <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 overflow-hidden">
                   {/* 슬롯 번호 버튼형 뱃지 */}
-                  <div className={`px-3 py-1 rounded-xl text-sm sm:text-base font-black flex items-center justify-center border shadow-sm shrink-0 whitespace-nowrap ${
+                  <div className={`px-2 sm:px-3 py-0.5 sm:py-1 rounded-xl text-xs sm:text-base font-black flex items-center justify-center border shadow-sm shrink-0 whitespace-nowrap ${
                     !slot.isEnabled
                       ? 'bg-slate-800 text-slate-400 border-slate-700'
                       : isSwing
@@ -461,14 +461,14 @@ export default function SlotManager({
                       ? 'bg-amber-500/25 text-amber-300 border-amber-400/60 shadow-amber-500/20'
                       : 'bg-emerald-500/25 text-emerald-300 border-emerald-400/60 shadow-emerald-500/20'
                   }`}>
-                    <span className="flex items-center gap-1.5">
-                      {hasPosition && <span className="w-2 h-2 rounded-full bg-rose-400 animate-ping" />}
+                    <span className="flex items-center gap-1 sm:gap-1.5">
+                      {hasPosition && <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-rose-400 animate-ping" />}
                       <span>{slot.slotId}번 슬롯</span>
                     </span>
                   </div>
 
                   {/* 전략 모드 뱃지 (스캘핑 / 당일 돌파 / 추세 스윙) */}
-                  <span className={`text-xs px-2.5 py-1 rounded-lg font-black tracking-tight border shadow-sm shrink-0 whitespace-nowrap ${
+                  <span className={`text-[11px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg font-black tracking-tight border shadow-sm shrink-0 whitespace-nowrap ${
                     !slot.isEnabled
                       ? 'bg-slate-900 text-slate-500 border-slate-800'
                       : isSwing
@@ -482,7 +482,7 @@ export default function SlotManager({
 
                   {/* 🚀 와이드 트레일링 2단계 대시세 진입 뱃지 */}
                   {hasPosition && slot.trailingStage === 2 && (
-                    <span className="text-xs px-2.5 py-1 rounded-lg font-black tracking-tight bg-gradient-to-r from-purple-600 to-indigo-600 text-white border border-purple-400 shadow-md shadow-purple-500/30 animate-pulse whitespace-nowrap">
+                    <span className="text-[10px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg font-black tracking-tight bg-gradient-to-r from-purple-600 to-indigo-600 text-white border border-purple-400 shadow-md shadow-purple-500/30 animate-pulse whitespace-nowrap">
                       🚀 와이드 2단계
                     </span>
                   )}
@@ -490,7 +490,7 @@ export default function SlotManager({
                   {/* ⏳ 현재 시간대 임시 개별 설정 뱃지 */}
                   {slot.isTemporaryOverride && (
                     <span 
-                      className="text-[10px] px-2 py-0.5 rounded-md font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm shrink-0 whitespace-nowrap" 
+                      className="text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-md font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm shrink-0 whitespace-nowrap" 
                       title="현재 시간대에만 임시 적용된 개별 설정입니다. 다음 시간대로 전환되면 해당 시간대 마스터 설정으로 자동 원복됩니다."
                     >
                       임시 설정
@@ -498,8 +498,8 @@ export default function SlotManager({
                   )}
                 </div>
 
-                {/* 우측 액션 메뉴: | [Power] ON | [통계 아이콘] | [수정 아이콘] | */}
-                <div className="flex items-center gap-1.5 shrink-0">
+                {/* 우측 액션 메뉴: | [Power] ON | [가져오기] | [통계] | [수정] | */}
+                <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
                   {/* ⚡ ON / OFF 스위치 */}
                   <button
                     type="button"
@@ -514,25 +514,25 @@ export default function SlotManager({
                         });
                       }
                     }}
-                    className={`px-3 py-1 rounded-lg text-xs sm:text-sm font-black flex items-center gap-1.5 border transition shadow-sm cursor-pointer whitespace-nowrap ${
+                    className={`px-2 sm:px-3 py-1 rounded-lg text-xs sm:text-sm font-black flex items-center gap-1 sm:gap-1.5 border transition shadow-sm cursor-pointer whitespace-nowrap ${
                       slot.isEnabled
                         ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/60 hover:bg-emerald-500/30'
                         : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white hover:bg-slate-700'
                     }`}
                     title={slot.isEnabled ? '슬롯 자동매매 OFF (일시정지)' : '슬롯 자동매매 ON (가동 시작)'}
                   >
-                    <Power className={`w-3.5 h-3.5 ${slot.isEnabled ? 'text-emerald-400 animate-pulse' : 'text-slate-500'}`} />
+                    <Power className={`w-3 sm:w-3.5 h-3 sm:h-3.5 ${slot.isEnabled ? 'text-emerald-400 animate-pulse' : 'text-slate-500'}`} />
                     <span>{slot.isEnabled ? 'ON' : 'OFF'}</span>
                   </button>
 
-                  {/* 📥 가져오기(아이콘) 버튼: ON 버튼과 통계버튼 사이에 배치 */}
+                  {/* 📥 가져오기(아이콘) 버튼 */}
                   <button
                     type="button"
                     onClick={(e) => handleOpenImport(e, slot)}
-                    className="p-1.5 rounded-lg bg-slate-900/90 hover:bg-emerald-950/60 text-slate-300 hover:text-emerald-400 border border-slate-700/80 hover:border-emerald-500/50 transition cursor-pointer"
+                    className="p-1 sm:p-1.5 rounded-lg bg-slate-900/90 hover:bg-emerald-950/60 text-slate-300 hover:text-emerald-400 border border-slate-700/80 hover:border-emerald-500/50 transition cursor-pointer"
                     title="업비트 보유 코인 이 슬롯으로 가져오기"
                   >
-                    <Download className="w-3.5 h-3.5" />
+                    <Download className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
                   </button>
 
                   {isEditing ? (
@@ -1346,8 +1346,8 @@ export default function SlotManager({
                       {/* 1단계: +10% 미만 잔파도 구간 */}
                       <div className="bg-slate-900/90 p-2 rounded-lg border border-slate-800 space-y-1.5">
                         <div className="flex items-center justify-between text-[10px] font-bold text-rose-300 border-b border-slate-800 pb-1">
-                          <span>1단계 (잔파도 방어)</span>
-                          <span className="text-[9px] text-slate-400">수익 10% 미만</span>
+                          <span className="whitespace-nowrap font-black">1단계 (잔파도)</span>
+                          <span className="text-[9px] text-slate-400 whitespace-nowrap">&lt; 10% 미만</span>
                         </div>
                         <div className="grid grid-cols-2 gap-1 text-center">
                           <div>
@@ -1382,8 +1382,8 @@ export default function SlotManager({
                       {/* 2단계: +10% 이상 대시세 와이드 홀딩 */}
                       <div className="bg-slate-900/90 p-2 rounded-lg border border-slate-800 space-y-1.5">
                         <div className="flex items-center justify-between text-[10px] font-bold text-amber-300 border-b border-slate-800 pb-1">
-                          <span>2단계 (대시세 와이드)</span>
-                          <span className="text-[9px] text-amber-400 font-black">대박 코인 홀딩</span>
+                          <span className="whitespace-nowrap font-black">2단계 (와이드)</span>
+                          <span className="text-[9px] text-amber-400 font-black whitespace-nowrap">대시세 홀딩</span>
                         </div>
                         <div className="grid grid-cols-2 gap-1 text-center">
                           <div>

@@ -104,19 +104,57 @@ class CloudTradingDaemon {
   }
 
   /**
-   * 2. 실서버(anylifeai.kr)로부터 슬롯 설정 및 가동 상태 동기화
+   * 2. 실서버(anylifeai.kr)로부터 모든 승인 회원의 슬롯 설정 및 가동 상태 동기화
    */
   async syncSlotsFromCloud() {
     try {
-      const statusRes = await axios.get(`${API_BASE_URL}/status`, { timeout: 7000 });
-      if (statusRes.data) {
-        this.botEnabled = statusRes.data.botRunning !== false;
-        if (Array.isArray(statusRes.data.slots)) {
-          this.slots = statusRes.data.slots;
+      // 1순위: 24시간 데몬 전용 전체 승인 회원 슬롯 일괄 조회
+      let slotsData = [];
+      let botRunning = true;
+
+      try {
+        const daemonRes = await axios.get(`${API_BASE_URL}/daemon/slots`, { timeout: 7000 });
+        if (daemonRes.data && Array.isArray(daemonRes.data.slots)) {
+          slotsData = daemonRes.data.slots;
+          botRunning = daemonRes.data.botRunning !== false;
+        }
+      } catch (dErr) {
+        // 폴백: 구버전 status 엔드포인트
+        const statusRes = await axios.get(`${API_BASE_URL}/status`, { timeout: 7000 });
+        if (statusRes.data) {
+          botRunning = statusRes.data.botRunning !== false;
+          if (Array.isArray(statusRes.data.slots)) {
+            slotsData = statusRes.data.slots;
+          }
         }
       }
+
+      this.botEnabled = botRunning;
+      if (Array.isArray(slotsData) && slotsData.length > 0) {
+        // 각 슬롯의 필드 정규화
+        this.slots = slotsData.map(s => ({
+          ...s,
+          slotId: Number(s.slotId || s.slot_id),
+          userId: Number(s.userId || s.user_id || 1),
+          isEnabled: Boolean(s.isEnabled === 1 || s.isEnabled === '1' || s.isEnabled === true || s.is_enabled === 1 || s.is_enabled === '1' || s.is_enabled === true),
+          positionStatus: s.positionStatus || s.position_status || 'IDLE',
+          targetMarket: s.targetMarket || s.target_market || null,
+          tradeAmountKrw: Number(s.tradeAmountKrw || s.trade_amount_krw || 30000),
+          entryPrice: Number(s.entryPrice || s.entry_price || 0),
+          highestPrice: Number(s.highestPrice || s.highest_price || 0),
+          highestProfitPct: Number(s.highestProfitPct || s.highest_profit_pct || 0),
+          stopLossPct: Number(s.stopLossPct || s.stop_loss_pct || 2.0),
+          trailingTier1TargetProfitPct: Number(s.trailingTier1TargetProfitPct || s.trailing_tier1_target_profit_pct || 3.0),
+          trailingTier1CallbackPct: Number(s.trailingTier1CallbackPct || s.trailing_tier1_callback_pct || 0.5),
+          trailingTier2HurdlePct: Number(s.trailingTier2HurdlePct || s.trailing_tier2_hurdle_pct || 10.0),
+          trailingTier2CallbackPct: Number(s.trailingTier2CallbackPct || s.trailing_tier2_callback_pct || 2.0)
+        }));
+
+        const uniqueUsers = [...new Set(this.slots.map(s => s.userId))];
+        const activeCount = this.slots.filter(s => s.isEnabled).length;
+        // log(`🔄 슬롯 동기화: 회원 ${uniqueUsers.length}명, 활성 슬롯 ${activeCount}개 감시 중`);
+      }
     } catch (err) {
-      // 일시적 네트워크 지연 시 기존 메모리 캐시 유지
       warn('실서버 슬롯 상태 동기화 지연:', err.message);
     }
   }
@@ -227,9 +265,11 @@ class CloudTradingDaemon {
    */
   async evaluatePositionExit(slot, currentPrice) {
     const slotId = slot.slotId || slot.id;
-    if (this.processingSlots.has(slotId)) return;
+    const userId = slot.userId || 1;
+    const slotKey = `${userId}_${slotId}`;
+    if (this.processingSlots.has(slotKey)) return;
 
-    const entryPrice = Number(slot.entryPrice) || (slot.position && Number(slot.position.entryPrice)) || 0;
+    const entryPrice = Number(slot.entryPrice) || 0;
     if (entryPrice <= 0) return;
 
     // 수익률 계산
@@ -246,7 +286,7 @@ class CloudTradingDaemon {
 
     // 1) 🛑 원금 손절선 터치 (-2.0% 등)
     if (profitRatePct <= -Math.abs(stopLossPct)) {
-      await this.triggerSellOrder(slotId, currentPrice, `손절선 도달 (${profitRatePct.toFixed(2)}% <= -${stopLossPct}%)`);
+      await this.triggerSellOrder(slotId, currentPrice, `손절선 도달 (${profitRatePct.toFixed(2)}% <= -${stopLossPct}%)`, userId);
       return;
     }
 
@@ -260,7 +300,7 @@ class CloudTradingDaemon {
     if (highestProfit >= tier2Hurdle) {
       const hurdleDrop = highestProfit - profitRatePct;
       if (hurdleDrop >= tier2Callback) {
-        await this.triggerSellOrder(slotId, currentPrice, `2차 트레일링 익절 (최고 +${highestProfit.toFixed(2)}% ➔ 되돌림 -${hurdleDrop.toFixed(2)}%)`);
+        await this.triggerSellOrder(slotId, currentPrice, `2차 트레일링 익절 (최고 +${highestProfit.toFixed(2)}% ➔ 되돌림 -${hurdleDrop.toFixed(2)}%)`, userId);
         return;
       }
     }
@@ -268,7 +308,7 @@ class CloudTradingDaemon {
     else if (highestProfit >= tier1Target) {
       const hurdleDrop = highestProfit - profitRatePct;
       if (hurdleDrop >= tier1Callback) {
-        await this.triggerSellOrder(slotId, currentPrice, `1차 트레일링 익절 (최고 +${highestProfit.toFixed(2)}% ➔ 되돌림 -${hurdleDrop.toFixed(2)}%)`);
+        await this.triggerSellOrder(slotId, currentPrice, `1차 트레일링 익절 (최고 +${highestProfit.toFixed(2)}% ➔ 되돌림 -${hurdleDrop.toFixed(2)}%)`, userId);
         return;
       }
     }
@@ -277,28 +317,30 @@ class CloudTradingDaemon {
   /**
    * 6. 실서버 매도 API 호출
    */
-  async triggerSellOrder(slotId, currentPrice, reason) {
-    this.processingSlots.add(slotId);
-    log(`🚨 [자동 매도 트리거] 슬롯 #${slotId} 청산 집행 사유: ${reason}, 현재가: ${currentPrice}`);
+  async triggerSellOrder(slotId, currentPrice, reason, userId = 1) {
+    const slotKey = `${userId}_${slotId}`;
+    this.processingSlots.add(slotKey);
+    log(`🚨 [자동 매도 트리거] 회원 #${userId} 슬롯 #${slotId} 청산 사유: ${reason}, 현재가: ${currentPrice}`);
 
     try {
       const res = await axios.post(`${API_BASE_URL}/slots/${slotId}/sell`, {
         currentPrice,
-        reason
+        reason,
+        userId
       }, { timeout: 10000 });
 
-      log(`✅ [매도 완료 응답] 슬롯 #${slotId}:`, res.data?.message || '성공');
+      log(`✅ [매도 완료 응답] 회원 #${userId} 슬롯 #${slotId}:`, res.data?.message || '성공');
       // 로컬 슬롯 상태 즉시 IDLE 전환
-      const target = this.slots.find(s => (s.slotId || s.id) === slotId);
+      const target = this.slots.find(s => s.slotId === slotId && s.userId === userId);
       if (target) {
         target.positionStatus = 'IDLE';
         target.targetMarket = null;
         target.entryPrice = 0;
       }
     } catch (err) {
-      error(`매도 주문 실패 슬롯 #${slotId}:`, err.response?.data?.error || err.message);
+      error(`매도 주문 실패 회원 #${userId} 슬롯 #${slotId}:`, err.response?.data?.error || err.message);
     } finally {
-      setTimeout(() => this.processingSlots.delete(slotId), 5000);
+      setTimeout(() => this.processingSlots.delete(slotKey), 5000);
     }
   }
 
@@ -318,47 +360,63 @@ class CloudTradingDaemon {
     // 기본 안전 필터: 24시간 누적 거래대금 50억 이상 & 상승률 +1.5% 이상
     if (accTradePrice24h < 5000000000 || changeRate < 1.5) return;
 
-    // 가용한 IDLE 슬롯 탐색
-    const idleSlot = this.slots.find(s => 
-      s.isEnabled && 
-      s.positionStatus === 'IDLE' && 
-      !this.processingSlots.has(s.slotId || s.id)
-    );
+    // 👥 회원별(운영자, 대표님, VIP 등)로 가용한 IDLE 슬롯 1개씩 독립 탐색!
+    const targetSlotsToBuy = [];
+    const usersChecked = new Set();
 
-    if (!idleSlot) return; // 빈 슬롯 없음
+    for (const slot of this.slots) {
+      const uid = slot.userId || 1;
+      const slotId = slot.slotId;
+      const slotKey = `${uid}_${slotId}`;
 
-    const slotId = idleSlot.slotId || idleSlot.id;
-    await this.triggerBuyOrder(slotId, market, price, idleSlot.tradeAmountKrw || 50000);
+      if (usersChecked.has(uid)) continue;
+
+      if (slot.isEnabled && slot.positionStatus === 'IDLE' && !this.processingSlots.has(slotKey)) {
+        targetSlotsToBuy.push(slot);
+        usersChecked.add(uid); // 한 종목에 대해 회원당 1개 슬롯만 동시 진입
+      }
+    }
+
+    if (targetSlotsToBuy.length === 0) return; // 빈 슬롯 없음
+
+    // 진입 가능한 모든 회원의 슬롯에 매수 집행
+    this.lastBuyTimes.set(market, Date.now());
+    for (const idleSlot of targetSlotsToBuy) {
+      const slotId = idleSlot.slotId;
+      const uid = idleSlot.userId || 1;
+      await this.triggerBuyOrder(slotId, market, price, idleSlot.tradeAmountKrw || 30000, uid);
+    }
   }
 
   /**
    * 8. 실서버 매수 API 호출
    */
-  async triggerBuyOrder(slotId, market, currentPrice, amountKrw) {
-    this.processingSlots.add(slotId);
-    this.lastBuyTimes.set(market, Date.now());
+  async triggerBuyOrder(slotId, market, currentPrice, amountKrw, userId = 1) {
+    const slotKey = `${userId}_${slotId}`;
+    this.processingSlots.add(slotKey);
 
-    log(`🎯 [자동 매수 트리거] 슬롯 #${slotId} ➔ ${market} (금액: ${amountKrw.toLocaleString()}원, 진입가: ${currentPrice})`);
+    log(`🎯 [자동 매수 트리거] 회원 #${userId} 슬롯 #${slotId} ➔ ${market} (금액: ${amountKrw.toLocaleString()}원, 진입가: ${currentPrice})`);
 
     try {
       const res = await axios.post(`${API_BASE_URL}/slots/${slotId}/buy`, {
         market,
         currentPrice,
-        amountKrw
+        amountKrw,
+        userId
       }, { timeout: 10000 });
 
-      log(`✅ [매수 완료 응답] 슬롯 #${slotId}:`, res.data?.message || '성공');
+      log(`✅ [매수 완료 응답] 회원 #${userId} 슬롯 #${slotId}:`, res.data?.message || '성공');
       // 로컬 슬롯 상태 즉시 IN_POSITION 전환
-      const target = this.slots.find(s => (s.slotId || s.id) === slotId);
+      const target = this.slots.find(s => s.slotId === slotId && s.userId === userId);
       if (target) {
         target.positionStatus = 'IN_POSITION';
         target.targetMarket = market;
         target.entryPrice = currentPrice;
       }
     } catch (err) {
-      error(`매수 주문 실패 슬롯 #${slotId}:`, err.response?.data?.error || err.message);
+      error(`매수 주문 실패 회원 #${userId} 슬롯 #${slotId}:`, err.response?.data?.error || err.message);
     } finally {
-      setTimeout(() => this.processingSlots.delete(slotId), 5000);
+      setTimeout(() => this.processingSlots.delete(slotKey), 5000);
     }
   }
 }

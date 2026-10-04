@@ -1147,9 +1147,34 @@ try {
         exit;
     }
 
+    // 2.9 GET daemon/slots : 24시간 백엔드 트레이딩 데몬용 전체 승인 회원 슬롯 일괄 동기화
+    if ($path === 'daemon/slots' && $method === 'GET') {
+        $setStmt = $pdo->query("SELECT * FROM nurioh_settings WHERE id = 1");
+        $settings = $setStmt->fetch() ?: [];
+        $botRunning = !isset($settings['bot_enabled']) || (int)$settings['bot_enabled'] === 1;
+
+        // API 키가 유효하고 승인된 모든 회원의 슬롯 조회
+        $slotStmt = $pdo->query("
+            SELECT s.*, u.role, u.tier, u.nickname, u.approval_status
+            FROM nurioh_slots s
+            JOIN nurioh_users u ON s.user_id = u.id
+            JOIN nurioh_user_apikeys k ON u.id = k.user_id AND k.is_valid = 1
+            WHERE u.approval_status = 'APPROVED'
+            ORDER BY s.user_id ASC, s.slot_id ASC
+        ");
+        $allSlots = $slotStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        echo json_encode([
+            'success' => true,
+            'botRunning' => $botRunning,
+            'slots' => $allSlots
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
     // 3. GET status : 슬롯 & 잔고 & 제외 코인 목록
     if ($path === 'status' && $method === 'GET') {
-        $userId = (int)($_GET['userId'] ?? 1);
+        $userId = (int)($_GET['userId'] ?? $_GET['user_id'] ?? 1);
 
         $setStmt = $pdo->query("SELECT * FROM nurioh_settings WHERE id = 1");
         $settings = $setStmt->fetch() ?: [];
@@ -2272,7 +2297,7 @@ try {
     // 7.1 POST slots/{id}/buy : 슬롯 급등 포착 시 업비트 시장가 자동 매수 집행
     if (preg_match('#^slots/([0-9]+)/buy$#', $path, $matches) && $method === 'POST') {
         $slotId = (int)$matches[1];
-        $userId = (int)($input['userId'] ?? 1);
+        $userId = (int)($input['userId'] ?? $input['user_id'] ?? 1);
         $market = trim((string)($input['market'] ?? 'KRW-BTC'));
         $tradeAmount = (float)($input['amountKrw'] ?? 0);
         $currentPrice = (float)($input['currentPrice'] ?? 0);
@@ -2520,7 +2545,7 @@ try {
     // 8. POST slots/{id}/sell : 슬롯 개별 긴급 시장가 매도 및 텔레그램 정산 알림
     if (preg_match('#^slots/([0-9]+)/sell$#', $path, $matches) && $method === 'POST') {
         $slotId = (int)$matches[1];
-        $userId = (int)($input['userId'] ?? 1);
+        $userId = (int)($input['userId'] ?? $input['user_id'] ?? 1);
         $currentPrice = (float)($input['currentPrice'] ?? 0);
 
         $slotStmt = $pdo->prepare("SELECT * FROM nurioh_slots WHERE user_id = ? AND slot_id = ?");

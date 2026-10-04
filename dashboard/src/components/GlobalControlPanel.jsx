@@ -19,7 +19,16 @@ export default function GlobalControlPanel({
   onOpenTableEdit,
   activePeriodOverride = null
 }) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(() => {
+    try {
+      const saved = localStorage.getItem('nurioh_control_tower_expanded');
+      if (saved !== null) return saved === 'true';
+      // 모바일(화면 폭 640px 미만)에서는 슬롯이 바로 보이도록 기본 접힘(false), PC에서는 펼침(true)
+      return typeof window !== 'undefined' ? window.innerWidth >= 640 : true;
+    } catch {
+      return true;
+    }
+  });
   const [editingPresetKey, setEditingPresetKey] = useState(null);
 
   // 1. 스케줄러 시간표 로컬 상태 (KST 기준)
@@ -384,67 +393,95 @@ export default function GlobalControlPanel({
   return (
     <div className={`w-full mb-6 rounded-2xl border backdrop-blur-xl overflow-hidden transition-all duration-500 ${panelTheme.container}`}>
       {/* 최상단 글로벌 요약 헤더바 */}
-      <div className={`px-4 sm:px-5 py-3.5 flex flex-wrap items-center justify-between gap-3 border-b transition-all ${
-        !isExpanded ? 'border-transparent bg-slate-950/75' : panelTheme.headerBar
+      <div className={`px-3.5 sm:px-5 py-3 sm:py-3.5 transition-all ${
+        !isExpanded ? 'bg-slate-950/85 border-b border-slate-800/80' : `${panelTheme.headerBar} border-b`
       }`}>
-        <div className="flex items-center gap-3 min-w-0">
-          <div className={`relative flex items-center justify-center w-10 h-10 rounded-xl shadow-lg text-white text-xl shrink-0 transition-transform duration-300 ${panelTheme.iconBg} scale-105`}>
-            {!isExpanded ? currentModeCard.icon : '⚡'}
-            <span className="absolute -top-1 -right-1 flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-            </span>
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-bold text-base text-white tracking-wide truncate">
-                글로벌 통합 제어 타워
-              </h3>
-              <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shrink-0">
-                ⚡ 셀프전략 모드
+        {/* 상단 1행: 타이틀 & 셀프전략 뱃지 & 우측 고정 접기/펼치기 토글 버튼 */}
+        <div className="flex items-center justify-between gap-2 w-full">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+            <div className={`relative flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl shadow-lg text-white text-lg sm:text-xl shrink-0 transition-transform duration-300 ${panelTheme.iconBg} scale-100 sm:scale-105`}>
+              {!isExpanded ? currentModeCard.icon : '⚡'}
+              <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5 sm:h-3 sm:w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-full w-full bg-emerald-500"></span>
               </span>
-              {!isExpanded && (
-                <span className={`px-2.5 py-0.5 text-xs font-black rounded-full border flex items-center gap-1 shadow-sm shrink-0 animate-pulse ${
-                  currentPeriod === 'MORNING'
-                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
-                    : currentPeriod === 'AFTERNOON'
-                    ? 'bg-blue-500/20 text-blue-300 border-blue-500/50'
-                    : 'bg-purple-500/20 text-purple-300 border-purple-500/50'
-                }`}>
-                  <span>{currentModeCard.icon}</span>
-                  <span>현재 가동: {currentModeCard.title}</span>
-                </span>
-              )}
             </div>
-            {!isExpanded ? (
-              <p className="text-xs text-slate-300 flex items-center gap-1.5 flex-wrap mt-0.5">
-                <span className="font-semibold text-slate-400">운영 시간:</span>
-                <span className="font-mono font-bold text-amber-300 bg-slate-900/90 px-1.5 py-0.2 rounded border border-slate-700/80">
-                  {currentModeCard.timeRange}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <h3 className="font-extrabold text-sm sm:text-base text-white tracking-wide truncate">
+                  글로벌 통합 제어 타워
+                </h3>
+                <span className="px-2 py-0.5 text-[10px] sm:text-xs font-bold rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shrink-0">
+                  ⚡ 셀프전략 모드
                 </span>
-                <span className="text-slate-500">•</span>
-                <span className="text-indigo-300 font-medium truncate">
-                  {currentModeCard.tagText}
-                </span>
+              </div>
+              <p className="text-[11px] sm:text-xs text-slate-400 break-keep leading-tight mt-0.5 hidden xs:block sm:block">
+                장세 설정(오전/오후/야간) &amp; 12개 슬롯 통합 표 수정 · 일일 킬 스위치
               </p>
-            ) : (
-              <p className="text-xs text-slate-400 truncate mt-0.5">
-                오전 / 오후 / 야간 장세 설정 &amp; 12개 슬롯 통합 표 수정 · 모드 전환 시간표 · 일일 킬 스위치
-              </p>
+            </div>
+          </div>
+
+          {/* 우측 고정 액션 버튼 그룹 (슬롯 수정 + 접기/펼치기) */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* 접혀있을 때 빠른 수정 버튼 */}
+            {!isExpanded && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (onOpenTableEdit) {
+                    onOpenTableEdit(currentPeriod);
+                  } else {
+                    setEditingPresetKey(currentModeCard.presetKey);
+                  }
+                }}
+                className="px-2 sm:px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-400/50 shadow-sm flex items-center gap-1 text-[11px] sm:text-xs font-black transition-all cursor-pointer active:scale-95 shrink-0"
+                title="현재 가동 중인 모드의 12개 슬롯 표 수정 화면으로 이동"
+              >
+                <span>⚙️</span>
+                <span className="hidden sm:inline">슬롯</span>
+                <span>수정</span>
+              </button>
             )}
+
+            {/* 🌟 모바일에서도 무조건 선명하게 보이는 접기/펼치기 토글 버튼 */}
+            <button
+              type="button"
+              onClick={() => {
+                const nextState = !isExpanded;
+                setIsExpanded(nextState);
+                try { localStorage.setItem('nurioh_control_tower_expanded', String(nextState)); } catch (e) {}
+              }}
+              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl font-black text-xs sm:text-xs transition-all cursor-pointer shadow-md border active:scale-95 shrink-0 ${
+                isExpanded
+                  ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-400/60 ring-1 ring-amber-400/30'
+                  : 'bg-emerald-500 hover:bg-emerald-400 text-black border-emerald-400 shadow-emerald-500/30 ring-1 ring-emerald-300'
+              }`}
+              title={isExpanded ? '제어타워 접어서 슬롯 바로 보기' : '제어타워 펼쳐서 장세별 상세 설정 보기'}
+            >
+              <span>{isExpanded ? '▲' : '▼'}</span>
+              <span>{isExpanded ? '접기' : '펼치기'}</span>
+            </button>
           </div>
         </div>
 
-        {/* 실시간 주요 상태 뱃지 그룹 */}
-        <div className="flex flex-wrap items-center gap-2 text-xs shrink-0">
-          {/* 장세 뱃지 */}
-          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border shadow-md font-bold ${panelTheme.badge}`}>
-            <span>{currentModeCard.icon}</span>
-            <span>{currentModeCard.title} ({currentModeCard.timeRange})</span>
+        {/* 상단 2행: 실시간 주요 상태 뱃지 그룹 (모바일에서 접혀있거나 펼쳐졌을 때 모두 반응형으로 완벽 표시) */}
+        <div className="flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 text-xs mt-2.5 pt-2 border-t border-slate-800/60">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {/* 현재 가동 모드 뱃지 */}
+            <div className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border shadow-sm font-black text-[11px] sm:text-xs ${panelTheme.badge}`}>
+              <span>{currentModeCard.icon}</span>
+              <span>{currentModeCard.title}</span>
+              <span className="font-mono opacity-90 hidden sm:inline">({currentModeCard.timeRange})</span>
+            </div>
+
+            {/* 시간대 표시 (모바일) */}
+            <span className="text-[10px] font-mono font-bold text-amber-300/90 bg-slate-900/90 px-1.5 py-0.5 rounded border border-slate-800 sm:hidden">
+              {currentModeCard.timeRange}
+            </span>
           </div>
 
           {/* 킬스위치 상태 뱃지 */}
-          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border font-medium ${
+          <div className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border font-bold text-[11px] sm:text-xs shrink-0 ${
             isKillTriggered 
               ? 'bg-rose-500/20 text-rose-300 border-rose-500/50 animate-pulse' 
               : (killSwitchConfig.enabled ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' : 'bg-slate-800 text-slate-400 border-slate-700')
@@ -452,36 +489,6 @@ export default function GlobalControlPanel({
             <span>{isKillTriggered ? '🚨' : '🛡️'}</span>
             <span>{isKillTriggered ? '킬스위치 발동' : (killSwitchConfig.enabled ? `킬스위치 ON (-${killSwitchConfig.maxLossPct}%)` : '킬스위치 OFF')}</span>
           </div>
-
-          {/* 접혀있을 때 빠른 수정 버튼 제공 */}
-          {!isExpanded && (
-            <button
-              onClick={() => {
-                if (onOpenTableEdit) {
-                  onOpenTableEdit(currentPeriod);
-                } else {
-                  setEditingPresetKey(currentModeCard.presetKey);
-                }
-              }}
-              className="px-2.5 py-1.5 rounded-lg bg-indigo-950/90 hover:bg-indigo-600 text-indigo-200 hover:text-white border border-indigo-500/60 shadow-sm flex items-center gap-1 text-xs font-bold transition-all cursor-pointer active:scale-95 shrink-0"
-              title="현재 가동 중인 모드의 12개 슬롯 표 수정 화면으로 이동"
-            >
-              <span>⚙️</span>
-              <span>슬롯 수정</span>
-            </button>
-          )}
-
-          {/* 펼치기/접기 토글 */}
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition-all ml-1 cursor-pointer font-bold border border-slate-700 active:scale-95"
-            title={isExpanded ? '설정창 접기' : '3개 모드 설정창 펼치기'}
-          >
-            <span className="text-[11px] hidden sm:inline">{isExpanded ? '접기' : '설정 펼치기'}</span>
-            <svg className={`w-3.5 h-3.5 transform transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
         </div>
       </div>
 
